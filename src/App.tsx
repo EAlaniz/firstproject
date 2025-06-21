@@ -1,20 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, useDisconnect, useBalance } from 'wagmi';
+import { useAccount, useReadContract, useDisconnect, useBalance } from 'wagmi';
 import { ConnectWallet } from '@coinbase/onchainkit/wallet';
 import { base } from 'wagmi/chains';
 import { 
-  Activity, 
   Trophy, 
   Users, 
   MessageCircle, 
   Settings,
-  ChevronDown, 
-  ChevronUp, 
   X, 
   CheckCircle2, 
-  Smartphone,
   User,
-  Loader2,
   ArrowRight,
   Zap,
   Circle,
@@ -23,16 +18,13 @@ import {
   Share2,
   Copy,
   Gift,
-  Bell,
   Heart,
-  ThumbsUp,
   Send,
-  Plus,
   ExternalLink,
   LogOut
 } from 'lucide-react';
-import { encodeFunctionData, parseUnits, numberToHex, erc20Abi } from 'viem';
 import MessagingPanel from './components/MessagingPanel';
+import FarcasterMiniApp from './components/FarcasterMiniApp';
 import { useProfile, useSignIn, SignInButton } from '@farcaster/auth-kit';
 
 // Contract ABI (simplified for demo)
@@ -61,22 +53,21 @@ const stepTrackerAbi = [
 function App() {
   // Wagmi hooks for Base chain integration
   const { address, isConnected, chain } = useAccount();
-  const { writeContract, isPending } = useWriteContract();
   const { disconnect } = useDisconnect();
   const { data: balance } = useBalance({
     address,
     chainId: base.id,
   });
   
-  // Farcaster Mini App hooks
+  // Farcaster mini app hooks
   const { profile, isAuthenticated } = useProfile();
-  const { signIn, isConnected: isFarcasterConnected } = useSignIn();
+  const { signIn } = useSignIn();
   
   // Contract addresses
   const STEP_TRACKER_CONTRACT = import.meta.env.VITE_STEP_TRACKER_CONTRACT as `0x${string}`;
   
   // Read user stats from Base chain
-  const { data: userStats, refetch: refetchStats } = useReadContract({
+  const { data: userStats } = useReadContract({
     address: STEP_TRACKER_CONTRACT,
     abi: stepTrackerAbi,
     functionName: 'getUserStats',
@@ -95,6 +86,7 @@ function App() {
   const [showSocialModal, setShowSocialModal] = useState(false);
   const [showCommunityModal, setShowCommunityModal] = useState(false);
   const [showRewardsModal, setShowRewardsModal] = useState(false);
+  const [showFarcasterModal, setShowFarcasterModal] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
   
   // Social component state
@@ -119,29 +111,6 @@ function App() {
 
     return () => clearInterval(interval);
   }, [dailyGoal]);
-
-  // Farcaster Mini App: Share to Farcaster
-  const handleShareToFarcaster = async () => {
-    if (!isAuthenticated) {
-      // If not signed in to Farcaster, trigger sign in
-      signIn();
-      return;
-    }
-    
-    const shareText = `Just hit ${currentSteps.toLocaleString()} steps today on 10K! 🚶‍♂️ Join me in earning tokens for staying active. #10K #MoveToEarn`;
-    
-    try {
-      // In a real implementation, you would post to Farcaster here
-      // For now, we'll simulate the action
-      console.log('Sharing to Farcaster:', shareText);
-      console.log('Farcaster profile:', profile);
-      
-      // You can implement actual Farcaster posting here using the profile data
-      // This would typically involve calling the Farcaster API
-    } catch (error) {
-      console.error('Failed to share to Farcaster:', error);
-    }
-  };
 
   const handleShare = async (platform: string) => {
     const shareText = `Just hit ${currentSteps.toLocaleString()} steps today on 10K! 🚶‍♂️ Join me in earning tokens for staying active. #10K #MoveToEarn`;
@@ -268,6 +237,17 @@ function App() {
     }
   ];
 
+  // Add a handler for sharing to Farcaster
+  const handleShareToFarcaster = async () => {
+    if (!isAuthenticated) {
+      signIn({});
+      return;
+    }
+    const shareText = `Just hit ${currentSteps.toLocaleString()} steps today on 10K! 🚶‍♂️ Join me in earning tokens for staying active. #10K #MoveToEarn`;
+    // Simulate posting to Farcaster (replace with actual API call if needed)
+    alert('Shared to Farcaster: ' + shareText);
+  };
+
   // Modal component
   const Modal = ({ isOpen, onClose, title, children }: { 
     isOpen: boolean; 
@@ -296,7 +276,7 @@ function App() {
       </div>
     );
   };
-  
+
   // Show wallet connection if not connected
   if (!isConnected) {
     return (
@@ -587,7 +567,7 @@ function App() {
               className="p-4 sm:p-6 border border-gray-200 rounded-xl sm:rounded-2xl hover:border-gray-300 transition-colors text-left group"
             >
               <div className="flex items-center justify-between mb-2 sm:mb-3">
-                <Zap className="w-5 h-5 sm:w-6 sm:h-6" />
+                <Zap className="w-5 h-5 sm:w-6 sm:w-6" />
                 <ArrowRight className="w-3 h-3 sm:w-4 sm:h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
               <h3 className="font-medium mb-1 text-sm sm:text-base">Earn Rewards</h3>
@@ -1046,10 +1026,9 @@ function App() {
               </div>
               <button
                 onClick={handleClaimReward}
-                disabled={isPending}
-                className="w-full bg-green-600 text-white py-3 rounded-xl hover:bg-green-700 transition-colors disabled:opacity-50"
+                className="w-full bg-green-600 text-white py-3 rounded-xl hover:bg-green-700 transition-colors"
               >
-                {isPending ? 'Claiming...' : 'Claim Reward'}
+                Claim Reward
               </button>
             </div>
           ) : (
@@ -1181,6 +1160,29 @@ function App() {
           )}
         </div>
       </Modal>
+
+      {/* Farcaster Mini App Modal */}
+      <Modal isOpen={showFarcasterModal} onClose={() => setShowFarcasterModal(false)} title="Farcaster Social">
+        <FarcasterMiniApp
+          currentSteps={currentSteps}
+          dailyGoal={dailyGoal}
+          isGoalReached={isGoalReached}
+          currentStreak={currentStreak}
+          totalTokens={totalTokens}
+          onShareAchievement={handleShareToFarcaster}
+        />
+      </Modal>
+
+      {/* Farcaster Integration Button */}
+      <div className="fixed bottom-4 right-4 z-40">
+        <button
+          onClick={() => setShowFarcasterModal(true)}
+          className="bg-purple-600 text-white p-3 rounded-full shadow-lg hover:bg-purple-700 transition-colors"
+          title="Open Farcaster Social"
+        >
+          <MessageCircle className="w-6 h-6" />
+        </button>
+      </div>
     </div>
   );
 }

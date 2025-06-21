@@ -1,0 +1,84 @@
+{
+  "name": "10K - Move. Earn. Connect.",
+  "short_name": "10K",
+  "description": "Inclusive wellness app for step tracking, social connection, and token rewards on Base Chain",
+  "version": "1.0.0",
+  "manifest_version": 3,
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#667eea",
+  "background_color": "#ffffff",
+  "farcaster": {
+    "app_id": "10k-wellness",
+    "embed_url": "https://www.move10k.xyz",
+    "embed_image": "https://www.move10k.xyz/frame-image.png",
+    "embed_title": "10K - Move. Earn. Connect.",
+    "embed_description": "Inclusive wellness app for step tracking, social connection, and token rewards"
+  },
+  "frame": {
+    "version": "1",
+    "name": "10K - Move. Earn. Connect.",
+    "iconUrl": "https://www.move10k.xyz/10k-icon.png",
+    "homeUrl": "https://www.move10k.xyz",
+    "imageUrl": "https://www.move10k.xyz/frame-image.png",
+    "buttonTitle": "🚶‍♂️ Start Walking",
+    "splashImageUrl": "https://www.move10k.xyz/10k-icon.png",
+    "splashBackgroundColor": "#667eea",
+    "webhookUrl": "https://www.move10k.xyz/api/webhook",
+    "subtitle": "Move. Earn. Connect.",
+    "description": "Track your steps, earn tokens, and connect with friends on Base Chain. Join the 10K movement for a healthier lifestyle.",
+    "screenshotUrls": [
+      "https://www.move10k.xyz/screenshot1.png",
+      "https://www.move10k.xyz/screenshot2.png",
+      "https://www.move10k.xyz/screenshot3.png"
+    ],
+    "primaryCategory": "health",
+    "tags": [
+      "fitness",
+      "wellness",
+      "steps",
+      "tokens",
+      "social",
+      "base",
+      "move-to-earn"
+    ],
+    "heroImageUrl": "https://www.move10k.xyz/frame-image.png",
+    "tagline": "Move. Earn. Connect.",
+    "ogTitle": "10K - Move. Earn. Connect.",
+    "ogDescription": "Track your steps, earn tokens, and connect with friends on Base Chain",
+    "ogImageUrl": "https://www.move10k.xyz/frame-image.png",
+    "requiredChains": [
+      "eip155:8453"
+    ],
+    "requiredCapabilities": [
+      "actions.signIn",
+      "wallet.getEthereumProvider",
+      "actions.composeCast",
+      "actions.addMiniApp"
+    ]
+  },
+  "icons": [
+    {
+      "src": "/10k-icon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ],
+  "permissions": [
+    "wallet",
+    "notifications",
+    "storage"
+  ],
+  "features": [
+    "step_tracking",
+    "token_rewards",
+    "social_feed",
+    "achievements",
+    "streak_tracking"
+  ],
+  "integrations": [
+    "farcaster",
+    "wallet"
+  ]
+} 
