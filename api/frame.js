@@ -91,7 +91,7 @@ export default function handler(req, res) {
     return;
   }
 
-  // Handle GET request (initial frame)
+  // Handle GET request (initial frame) - return proper HTML meta output
   res.setHeader("Content-Type", "text/html");
   res.status(200).send(`
     <!DOCTYPE html>
