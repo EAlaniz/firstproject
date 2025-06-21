@@ -3,7 +3,7 @@
   "description": "Inclusive 8-bit wellness app for step tracking, social connection, and token rewards",
   "version": "1.0.0",
   "startUrl": "https://www.move10k.xyz",
-  "splashImageUrl": "https://www.move10k.xyz/frame-image.png?v=5",
+  "splashImageUrl": "https://www.move10k.xyz/frame-image.png?v=7",
   "splashBackgroundColor": "#667eea",
   "iconUrl": "https://www.move10k.xyz/10k-icon.png",
   "permissions": [
