@@ -22,7 +22,7 @@ if (rootElement) {
       <WagmiProvider config={config}>
         <QueryClientProvider client={queryClient}>
           <AuthKitProvider config={{ 
-            domain: isDevelopment ? 'localhost:5173' : 'move10k.xyz', 
+            domain: isDevelopment ? 'localhost:5176' : 'move10k.xyz', 
             redirectUrl: currentOrigin 
           }}>
             <OnchainKitProvider
