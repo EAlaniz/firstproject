@@ -10,7 +10,7 @@ const cbWalletConnector = coinbaseWallet({
 });
 
 export function getConfig() {
-  console.log("Initializing WAGMI config with Base RPC URL:", "https://mainnet.base.org");
+  console.log("Initializing WAGMI config with QuickNode RPC URL");
   
   return createConfig({
     chains: [base],
@@ -20,12 +20,7 @@ export function getConfig() {
     }),
     ssr: true,
     transports: {
-      [base.id]: http("https://mainnet.base.org", {
-        batch: {
-          batchSize: 1024,
-          wait: 16,
-        },
-      }),
+      [base.id]: http('https://flashy-convincing-paper.base-mainnet.quiknode.pro/fe55bc09278a1ccc534942fad989695b412ab4ea/'),
     },
   });
 }
