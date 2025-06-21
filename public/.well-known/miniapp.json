@@ -9,13 +9,13 @@
   "orientation": "portrait",
   "theme_color": "#667eea",
   "background_color": "#ffffff",
-  "scope": "/",
-  "categories": [
-    "health",
-    "fitness",
-    "social",
-    "lifestyle"
-  ],
+  "farcaster": {
+    "app_id": "10k-wellness",
+    "embed_url": "https://www.move10k.xyz",
+    "embed_image": "https://www.move10k.xyz/frame-image.png",
+    "embed_title": "10K - Move. Earn. Connect.",
+    "embed_description": "Inclusive wellness app for step tracking, social connection, and token rewards"
+  },
   "icons": [
     {
       "src": "/10k-icon.png",
@@ -28,13 +28,6 @@
     "notifications",
     "storage"
   ],
-  "farcaster": {
-    "app_id": "10k-wellness",
-    "embed_url": "https://www.move10k.xyz",
-    "embed_image": "https://www.move10k.xyz/frame-image.png",
-    "embed_title": "10K - Move. Earn. Connect.",
-    "embed_description": "Inclusive wellness app for step tracking, social connection, and token rewards"
-  },
   "features": [
     "step_tracking",
     "token_rewards",
@@ -46,4 +39,4 @@
     "farcaster",
     "wallet"
   ]
-}
+} 

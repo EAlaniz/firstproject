@@ -16,6 +16,7 @@
   "dependencies": {
     "@coinbase/onchainkit": "^0.31.6",
     "@coinbase/wallet-sdk": "^4.3.4",
+    "@farcaster/frame-sdk": "^0.0.64",
     "@rainbow-me/rainbowkit": "^2.0.0",
     "@tanstack/react-query": "^5.80.7",
     "canvas": "^3.1.1",

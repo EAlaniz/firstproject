@@ -1,4 +1,3 @@
-import { useMiniApp } from './hooks/useMiniApp';
 import React, { useState, useEffect } from 'react';
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, useDisconnect, useBalance } from 'wagmi';
 import { ConnectWallet } from '@coinbase/onchainkit/wallet';
@@ -34,6 +33,7 @@ import {
 } from 'lucide-react';
 import { encodeFunctionData, parseUnits, numberToHex, erc20Abi } from 'viem';
 import MessagingPanel from './components/MessagingPanel';
+import { sdk } from '@farcaster/frame-sdk';
 
 // Contract ABI (simplified for demo)
 const stepTrackerAbi = [
@@ -104,9 +104,6 @@ function App() {
   const isGoalReached = currentSteps >= dailyGoal;
   const progress = Math.min((currentSteps / dailyGoal) * 100, 100);
 
-  // Mini App detection (add this AFTER all other hooks)
-  const { isInMiniApp, isLoading } = useMiniApp();
-  
   // Simulate step updates
   useEffect(() => {
     const interval = setInterval(() => {
@@ -119,17 +116,9 @@ function App() {
     return () => clearInterval(interval);
   }, [dailyGoal]);
 
-  // Loading state (add this AFTER all hooks)
-  if (isLoading) {
-    return (
-      <div className="mini-app-loading">
-        <div className="text-center">
-          <div className="text-2xl mb-4">🏃‍♂️</div>
-          <div>Loading 10K Wellness...</div>
-        </div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    sdk.actions.ready();
+  }, []);
 
   const handleShare = async (platform: string) => {
     const shareText = `Just hit ${currentSteps.toLocaleString()} steps today on 10K! 🚶‍♂️ Join me in earning tokens for staying active. #10K #MoveToEarn`;
