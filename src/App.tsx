@@ -1,3 +1,4 @@
+import { useMiniApp } from './hooks/useMiniApp';
 import React, { useState, useEffect } from 'react';
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, useDisconnect, useBalance } from 'wagmi';
 import { ConnectWallet } from '@coinbase/onchainkit/wallet';
@@ -102,6 +103,9 @@ function App() {
   
   const isGoalReached = currentSteps >= dailyGoal;
   const progress = Math.min((currentSteps / dailyGoal) * 100, 100);
+
+  // Mini App detection (add this AFTER all other hooks)
+  const { isInMiniApp, isLoading } = useMiniApp();
   
   // Simulate step updates
   useEffect(() => {
@@ -115,7 +119,18 @@ function App() {
     return () => clearInterval(interval);
   }, [dailyGoal]);
 
-  // Handle share functionality
+  // Loading state (add this AFTER all hooks)
+  if (isLoading) {
+    return (
+      <div className="mini-app-loading">
+        <div className="text-center">
+          <div className="text-2xl mb-4">🏃‍♂️</div>
+          <div>Loading 10K Wellness...</div>
+        </div>
+      </div>
+    );
+  }
+
   const handleShare = async (platform: string) => {
     const shareText = `Just hit ${currentSteps.toLocaleString()} steps today on 10K! 🚶‍♂️ Join me in earning tokens for staying active. #10K #MoveToEarn`;
     const shareUrl = window.location.origin;
@@ -278,9 +293,13 @@ function App() {
         <header className="border-b border-gray-200 px-4 sm:px-6 py-4">
           <div className="max-w-6xl mx-auto flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-black rounded-full flex items-center justify-center">
-                <Activity className="w-5 h-5 text-white" />
-              </div>
+              {/* 10K Icon */}
+              <img
+                src="/10k-icon.png"
+                alt="10K Icon"
+                className="w-10 h-10 rounded-full border border-gray-300 bg-white"
+                style={{ objectFit: 'cover' }}
+              />
               <span className="text-xl font-medium">10K</span>
             </div>
           </div>
