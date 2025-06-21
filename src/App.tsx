@@ -1,27 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, useDisconnect, useBalance } from 'wagmi';
-import { 
-  ConnectWallet, 
-  Wallet, 
-  WalletDropdown, 
-  WalletDropdownLink, 
-  WalletDropdownDisconnect,
-} from '@coinbase/onchainkit/wallet';
-import { 
-  Address,
-  Avatar,
-  Name,
-  Identity,
-  EthBalance,
-} from '@coinbase/onchainkit/identity';
-import { color } from '@coinbase/onchainkit/theme';
+import { ConnectWallet } from '@coinbase/onchainkit/wallet';
 import { base } from 'wagmi/chains';
 import { 
   Activity, 
   Trophy, 
   Users, 
   MessageCircle, 
-  Settings, 
+  Settings,
   ChevronDown, 
   ChevronUp, 
   X, 
@@ -100,7 +86,6 @@ function App() {
   // Modal states
   const [showMessagingPanel, setShowMessagingPanel] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showMobileWalletModal, setShowMobileWalletModal] = useState(false);
   const [showSocialModal, setShowSocialModal] = useState(false);
   const [showCommunityModal, setShowCommunityModal] = useState(false);
@@ -298,12 +283,6 @@ function App() {
               </div>
               <span className="text-xl font-medium">10K</span>
             </div>
-            
-            <ConnectWallet>
-              <div className="bg-black text-white px-4 sm:px-6 py-2 rounded-full hover:bg-gray-800 transition-colors cursor-pointer text-sm font-medium">
-                Connect
-              </div>
-            </ConnectWallet>
           </div>
         </header>
 
@@ -350,49 +329,12 @@ function App() {
             <p className="text-gray-600">Please switch to Base network to continue</p>
           </div>
           
-          <Wallet>
-            <ConnectWallet>
-              <div className="bg-black text-white px-6 py-3 rounded-full hover:bg-gray-800 transition-colors cursor-pointer w-full flex items-center justify-center space-x-2">
-                <Zap className="w-4 h-4" />
-                <span>Switch Network</span>
-              </div>
-            </ConnectWallet>
-            <WalletDropdown>
-              {address && (
-                <Identity className="px-4 pt-3 pb-2" address={address} hasCopyAddressOnClick>
-                  <Avatar />
-                  <Name />
-                  <Address className={color.foregroundMuted} />
-                  <EthBalance />
-                </Identity>
-              )}
-              <WalletDropdownLink
-                icon="wallet"
-                href="https://keys.coinbase.com"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Manage Wallet
-              </WalletDropdownLink>
-              <WalletDropdownLink
-                icon="wallet"
-                href="https://www.coinbase.com/settings"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Account Settings
-              </WalletDropdownLink>
-              <WalletDropdownLink
-                icon="wallet"
-                href="https://www.coinbase.com/security"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Security
-              </WalletDropdownLink>
-              <WalletDropdownDisconnect />
-            </WalletDropdown>
-          </Wallet>
+          <ConnectWallet>
+            <div className="bg-black text-white px-6 py-3 rounded-full hover:bg-gray-800 transition-colors cursor-pointer w-full flex items-center justify-center space-x-2">
+              <Zap className="w-4 h-4" />
+              <span>Switch Network</span>
+            </div>
+          </ConnectWallet>
         </div>
       </div>
     );
@@ -436,59 +378,14 @@ function App() {
                 <MessageCircle className="w-5 h-5" />
               </button>
               
-              {/* Settings */}
-              <button
-                onClick={() => setShowSettingsModal(true)}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                title="Settings"
-              >
-                <Settings className="w-5 h-5" />
-              </button>
-              
               {/* Wallet */}
-              <Wallet>
-                <ConnectWallet>
-                  <div className="bg-gray-100 text-black px-4 py-2 rounded-full hover:bg-gray-200 transition-colors cursor-pointer text-sm flex items-center space-x-2">
-                    <User className="w-4 h-4" />
-                    <span>Wallet</span>
-                  </div>
-                </ConnectWallet>
-                <WalletDropdown>
-                  {address && (
-                    <Identity className="px-4 pt-3 pb-2" address={address} hasCopyAddressOnClick>
-                      <Avatar />
-                      <Name />
-                      <Address className={color.foregroundMuted} />
-                      <EthBalance />
-                    </Identity>
-                  )}
-                  <WalletDropdownLink
-                    icon="wallet"
-                    href="https://keys.coinbase.com"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Manage Wallet
-                  </WalletDropdownLink>
-                  <WalletDropdownLink
-                    icon="wallet"
-                    href="https://www.coinbase.com/settings"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Account Settings
-                  </WalletDropdownLink>
-                  <WalletDropdownLink
-                    icon="wallet"
-                    href="https://www.coinbase.com/security"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Security
-                  </WalletDropdownLink>
-                  <WalletDropdownDisconnect />
-                </WalletDropdown>
-              </Wallet>
+              <button
+                onClick={() => setShowMobileWalletModal(true)}
+                className="bg-gray-100 text-black px-4 py-2 rounded-full hover:bg-gray-200 transition-colors cursor-pointer text-sm flex items-center space-x-2"
+              >
+                <User className="w-4 h-4" />
+                <span>Wallet</span>
+              </button>
             </div>
           </div>
 
@@ -722,12 +619,11 @@ function App() {
           <p>Connected to Base</p>
           {address && (
             <div className="flex justify-center">
-              {address && (
-                <Identity className="inline-flex items-center space-x-1" address={address}>
-                  <Name />
-                  <Address className="ml-2" />
-                </Identity>
-              )}
+              <div className="inline-flex items-center space-x-1">
+                <span className="text-sm font-medium">
+                  {address.slice(0, 6)}...{address.slice(-4)}
+                </span>
+              </div>
             </div>
           )}
           <p>Secure • Decentralized • Community-driven</p>
