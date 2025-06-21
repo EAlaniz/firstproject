@@ -6,14 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>10K - Move. Earn. Connect.</title>
     <meta name="description" content="Inclusive 8-bit wellness app for step tracking, social connection, and token rewards">
-    
-    <!-- Farcaster Frame Meta Tags -->
-    <meta property="fc:frame" content="vNext" />
-    <meta property="fc:frame:image" content="https://move10k.vercel.app/frame-image.png" />
-    <meta property="fc:frame:button:1" content="Connect Wallet" />
-    <meta property="fc:frame:button:2" content="View Leaderboard" />
-    <meta property="fc:frame:button:3" content="Join Community" />
-    <meta property="fc:frame:post_url" content="https://move10k.vercel.app/api/frame" />
   </head>
   <body>
     <div id="root"></div>

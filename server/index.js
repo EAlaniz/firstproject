@@ -213,6 +213,83 @@ app.post('/api/profile-validation', (req, res) => {
   });
 });
 
+// Farcaster Frame API endpoint
+app.post('/api/frame', (req, res) => {
+  const { trustedData } = req.body;
+  
+  if (!trustedData || !trustedData.messageBytes) {
+    return res.status(400).json({ error: 'Invalid frame data' });
+  }
+
+  try {
+    // Parse the message bytes to get button index
+    const messageBytes = trustedData.messageBytes;
+    const buttonIndex = parseInt(messageBytes.slice(-1), 16);
+    
+    let response;
+    
+    switch (buttonIndex) {
+      case 1: // Connect Wallet
+        response = {
+          frames: [{
+            image: "https://move10k.vercel.app/frame-connect.png",
+            buttons: [
+              { label: "Open App", action: "post_redirect" },
+              { label: "Back", action: "post" }
+            ],
+            postUrl: "https://move10k.vercel.app/api/frame"
+          }]
+        };
+        break;
+        
+      case 2: // View Leaderboard
+        response = {
+          frames: [{
+            image: "https://move10k.vercel.app/frame-leaderboard.png",
+            buttons: [
+              { label: "Join Challenge", action: "post_redirect" },
+              { label: "Back", action: "post" }
+            ],
+            postUrl: "https://move10k.vercel.app/api/frame"
+          }]
+        };
+        break;
+        
+      case 3: // Join Community
+        response = {
+          frames: [{
+            image: "https://move10k.vercel.app/frame-community.png",
+            buttons: [
+              { label: "Join Discord", action: "post_redirect" },
+              { label: "Back", action: "post" }
+            ],
+            postUrl: "https://move10k.vercel.app/api/frame"
+          }]
+        };
+        break;
+        
+      default:
+        response = {
+          frames: [{
+            image: "https://move10k.vercel.app/frame-image.png",
+            buttons: [
+              { label: "Connect Wallet", action: "post" },
+              { label: "View Leaderboard", action: "post" },
+              { label: "Join Community", action: "post" }
+            ],
+            postUrl: "https://move10k.vercel.app/api/frame"
+          }]
+        };
+    }
+    
+    res.json(response);
+    
+  } catch (error) {
+    console.error('Frame processing error:', error);
+    res.status(500).json({ error: 'Frame processing failed' });
+  }
+});
+
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
   console.log(`Webhook server running on port ${PORT}`);
