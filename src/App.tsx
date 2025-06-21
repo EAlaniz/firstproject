@@ -33,7 +33,7 @@ import {
 } from 'lucide-react';
 import { encodeFunctionData, parseUnits, numberToHex, erc20Abi } from 'viem';
 import MessagingPanel from './components/MessagingPanel';
-import { sdk } from '@farcaster/frame-sdk';
+import { useProfile, useSignIn, SignInButton } from '@farcaster/auth-kit';
 
 // Contract ABI (simplified for demo)
 const stepTrackerAbi = [
@@ -67,6 +67,10 @@ function App() {
     address,
     chainId: base.id,
   });
+  
+  // Farcaster Mini App hooks
+  const { profile, isAuthenticated } = useProfile();
+  const { signIn, isConnected: isFarcasterConnected } = useSignIn();
   
   // Contract addresses
   const STEP_TRACKER_CONTRACT = import.meta.env.VITE_STEP_TRACKER_CONTRACT as `0x${string}`;
@@ -116,9 +120,28 @@ function App() {
     return () => clearInterval(interval);
   }, [dailyGoal]);
 
-  useEffect(() => {
-    sdk.actions.ready();
-  }, []);
+  // Farcaster Mini App: Share to Farcaster
+  const handleShareToFarcaster = async () => {
+    if (!isAuthenticated) {
+      // If not signed in to Farcaster, trigger sign in
+      signIn();
+      return;
+    }
+    
+    const shareText = `Just hit ${currentSteps.toLocaleString()} steps today on 10K! 🚶‍♂️ Join me in earning tokens for staying active. #10K #MoveToEarn`;
+    
+    try {
+      // In a real implementation, you would post to Farcaster here
+      // For now, we'll simulate the action
+      console.log('Sharing to Farcaster:', shareText);
+      console.log('Farcaster profile:', profile);
+      
+      // You can implement actual Farcaster posting here using the profile data
+      // This would typically involve calling the Farcaster API
+    } catch (error) {
+      console.error('Failed to share to Farcaster:', error);
+    }
+  };
 
   const handleShare = async (platform: string) => {
     const shareText = `Just hit ${currentSteps.toLocaleString()} steps today on 10K! 🚶‍♂️ Join me in earning tokens for staying active. #10K #MoveToEarn`;
