@@ -10,6 +10,8 @@ const cbWalletConnector = coinbaseWallet({
 });
 
 export function getConfig() {
+  console.log("Initializing WAGMI config with Base RPC URL:", "https://mainnet.base.org");
+  
   return createConfig({
     chains: [base],
     connectors: [cbWalletConnector],
@@ -18,7 +20,12 @@ export function getConfig() {
     }),
     ssr: true,
     transports: {
-      [base.id]: http("https://mainnet.base.org"),
+      [base.id]: http("https://mainnet.base.org", {
+        batch: {
+          batchSize: 1024,
+          wait: 16,
+        },
+      }),
     },
   });
 }
