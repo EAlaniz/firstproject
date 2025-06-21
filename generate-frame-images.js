@@ -5,9 +5,9 @@ import { createCanvas } from 'canvas';
 const frameConfigs = [
   {
     name: 'frame-image.png',
-    title: '10K Wellness App',
+    title: '10K',
     subtitle: 'Move. Earn. Connect.',
-    description: 'Join the inclusive 8-bit wellness community'
+    description: 'Inclusive 8-bit wellness app for step tracking, social connection, and token rewards'
   },
   {
     name: 'frame-connect.png',
@@ -35,42 +35,48 @@ function createFrameImage(config) {
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext('2d');
 
-  // Background gradient
+  // Background gradient matching landing page
   const gradient = ctx.createLinearGradient(0, 0, width, height);
   gradient.addColorStop(0, '#667eea');
-  gradient.addColorStop(1, '#764ba2');
+  gradient.addColorStop(0.5, '#764ba2');
+  gradient.addColorStop(1, '#f093fb');
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, width, height);
 
-  // Add some 8-bit style elements
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
-  for (let i = 0; i < 20; i++) {
+  // Add subtle 8-bit style pixel elements
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+  for (let i = 0; i < 50; i++) {
     const x = Math.random() * width;
     const y = Math.random() * height;
-    const size = Math.random() * 10 + 5;
-    ctx.fillRect(x, y, size, size);
+    const size = Math.random() * 8 + 2;
+    ctx.fillRect(Math.floor(x), Math.floor(y), size, size);
   }
 
-  // Title
+  // Main title with larger, bolder font
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 48px Arial';
+  ctx.font = 'bold 72px Arial, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(config.title, width / 2, 200);
+  ctx.fillText(config.title, width / 2, 180);
 
-  // Subtitle
-  ctx.font = '24px Arial';
+  // Subtitle with the tagline
+  ctx.font = 'bold 32px Arial, sans-serif';
   ctx.fillStyle = '#e2e8f0';
-  ctx.fillText(config.subtitle, width / 2, 250);
+  ctx.fillText(config.subtitle, width / 2, 240);
 
   // Description
-  ctx.font = '18px Arial';
+  ctx.font = '20px Arial, sans-serif';
   ctx.fillStyle = '#cbd5e0';
   ctx.fillText(config.description, width / 2, 300);
 
-  // 10K logo/icon
+  // 10K logo/icon with emoji
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 36px Arial';
-  ctx.fillText('🏃‍♂️ 10K', width / 2, 400);
+  ctx.font = 'bold 48px Arial, sans-serif';
+  ctx.fillText('🏃‍♂️', width / 2, 380);
+
+  // Add a subtle border
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(20, 20, width - 40, height - 40);
 
   // Save the image
   const buffer = canvas.toBuffer('image/png');
@@ -86,4 +92,4 @@ if (!fs.existsSync('public')) {
 // Generate all frame images
 frameConfigs.forEach(createFrameImage);
 
-console.log('All frame images generated successfully!'); 
+console.log('All frame images generated successfully!');
