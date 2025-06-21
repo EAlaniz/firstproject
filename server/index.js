@@ -3,6 +3,7 @@ const cors = require('cors');
 const crypto = require('crypto');
 const { createServer } = require('http');
 const { Server } = require('socket.io');
+const path = require('path');
 
 const app = express();
 const server = createServer(app);
@@ -15,6 +16,7 @@ const io = new Server(server, {
 
 app.use(cors());
 app.use(express.json());
+app.use(express.static(path.join(__dirname, '../dist')));
 
 // Store user data in memory (use database in production)
 const userData = new Map();
@@ -211,83 +213,6 @@ app.post('/api/profile-validation', (req, res) => {
       verifiedAt: new Date().toISOString()
     }
   });
-});
-
-// Farcaster Frame API endpoint
-app.post('/api/frame', (req, res) => {
-  const { trustedData } = req.body;
-  
-  if (!trustedData || !trustedData.messageBytes) {
-    return res.status(400).json({ error: 'Invalid frame data' });
-  }
-
-  try {
-    // Parse the message bytes to get button index
-    const messageBytes = trustedData.messageBytes;
-    const buttonIndex = parseInt(messageBytes.slice(-1), 16);
-    
-    let response;
-    
-    switch (buttonIndex) {
-      case 1: // Connect Wallet
-        response = {
-          frames: [{
-            image: "https://www.move10k.xyz/frame-connect.png",
-            buttons: [
-              { label: "Open App", action: "post_redirect" },
-              { label: "Back", action: "post" }
-            ],
-            postUrl: "https://www.move10k.xyz/api/frame"
-          }]
-        };
-        break;
-        
-      case 2: // View Leaderboard
-        response = {
-          frames: [{
-            image: "https://www.move10k.xyz/frame-leaderboard.png",
-            buttons: [
-              { label: "Join Challenge", action: "post_redirect" },
-              { label: "Back", action: "post" }
-            ],
-            postUrl: "https://www.move10k.xyz/api/frame"
-          }]
-        };
-        break;
-        
-      case 3: // Join Community
-        response = {
-          frames: [{
-            image: "https://www.move10k.xyz/frame-community.png",
-            buttons: [
-              { label: "Join Discord", action: "post_redirect" },
-              { label: "Back", action: "post" }
-            ],
-            postUrl: "https://www.move10k.xyz/api/frame"
-          }]
-        };
-        break;
-        
-      default:
-        response = {
-          frames: [{
-            image: "https://www.move10k.xyz/frame-image.png",
-            buttons: [
-              { label: "Connect Wallet", action: "post" },
-              { label: "View Leaderboard", action: "post" },
-              { label: "Join Community", action: "post" }
-            ],
-            postUrl: "https://www.move10k.xyz/api/frame"
-          }]
-        };
-    }
-    
-    res.json(response);
-    
-  } catch (error) {
-    console.error('Frame processing error:', error);
-    res.status(500).json({ error: 'Frame processing failed' });
-  }
 });
 
 const PORT = process.env.PORT || 3001;

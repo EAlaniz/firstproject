@@ -3,9 +3,9 @@
   "description": "Inclusive 8-bit wellness app for step tracking, social connection, and token rewards",
   "version": "1.0.0",
   "startUrl": "https://www.move10k.xyz",
-  "splashImageUrl": "https://www.move10k.xyz/frame-image.png",
+  "splashImageUrl": "https://www.move10k.xyz/frame-image.png?v=4",
   "splashBackgroundColor": "#667eea",
-  "iconUrl": "https://www.move10k.xyz/frame-image.png",
+  "iconUrl": "https://www.move10k.xyz/10k-icon.png",
   "permissions": [
     "wallet",
     "notifications"
@@ -15,5 +15,17 @@
     "token_rewards",
     "social_feed",
     "achievements"
-  ]
+  ],
+  "frame": {
+    "version": "vNext",
+    "image": "https://www.move10k.xyz/frame-image.png?v=3",
+    "aspectRatio": "1.91:1",
+    "buttons": [
+      {
+        "label": "Move. Earn. Connect.",
+        "action": "post"
+      }
+    ],
+    "postUrl": "https://www.move10k.xyz/api/frame"
+  }
 }
