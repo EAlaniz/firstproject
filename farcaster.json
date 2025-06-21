@@ -15,17 +15,5 @@
     "token_rewards",
     "social_feed",
     "achievements"
-  ],
-  "frame": {
-    "version": "vNext",
-    "image": "https://www.move10k.xyz/frame-image.png?v=3",
-    "aspectRatio": "1.91:1",
-    "buttons": [
-      {
-        "label": "Move. Earn. Connect.",
-        "action": "post"
-      }
-    ],
-    "postUrl": "https://www.move10k.xyz/api/frame"
-  }
+  ]
 }

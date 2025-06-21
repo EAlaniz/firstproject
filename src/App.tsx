@@ -293,11 +293,11 @@ function App() {
         <header className="border-b border-gray-200 px-4 sm:px-6 py-4">
           <div className="max-w-6xl mx-auto flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              {/* 10K Icon */}
+              {/* 10K Icon - match mobile version */}
               <img
                 src="/10k-icon.png"
                 alt="10K Icon"
-                className="w-10 h-10 rounded-full border border-gray-300 bg-white"
+                className="w-8 h-8 rounded-full border border-gray-300 bg-white"
                 style={{ objectFit: 'cover' }}
               />
               <span className="text-xl font-medium">10K</span>
@@ -365,9 +365,13 @@ function App() {
       <header className="border-b border-gray-200 px-4 py-3 sm:px-6 sm:py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-black rounded-full flex items-center justify-center">
-              <Activity className="w-5 h-5 text-white" />
-            </div>
+            {/* 10K Icon - match mobile version */}
+            <img
+              src="/10k-icon.png"
+              alt="10K Icon"
+              className="w-8 h-8 rounded-full border border-gray-300 bg-white"
+              style={{ objectFit: 'cover' }}
+            />
             <span className="text-xl font-medium">10K</span>
           </div>
           
