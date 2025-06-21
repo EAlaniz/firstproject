@@ -7,7 +7,6 @@ export const config = createConfig({
   connectors: [
     coinbaseWallet({
       appName: '10K - Move. Earn. Connect.',
-      preference: 'smartWalletOnly',
     }),
   ],
   transports: {
@@ -15,6 +14,7 @@ export const config = createConfig({
   },
 });
 
+// TypeScript module augmentation for Wagmi config
 declare module 'wagmi' {
   interface Register {
     config: typeof config;

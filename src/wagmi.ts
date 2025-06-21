@@ -1,15 +1,12 @@
-import { createConfig, http } from 'wagmi';
+import { http, createConfig } from 'wagmi';
 import { base } from 'wagmi/chains';
-import { coinbaseWallet } from "wagmi/connectors";
+import { coinbaseWallet } from 'wagmi/connectors';
 
-const config = createConfig({
+export const config = createConfig({
   chains: [base],
   connectors: [
     coinbaseWallet({
-      appName: "10K - Move. Earn. Connect.",
-      preference: {
-        options: "smartWalletOnly",
-      },
+      appName: '10K - Move. Earn. Connect.',
     }),
   ],
   transports: {
@@ -17,10 +14,9 @@ const config = createConfig({
   },
 });
 
+// TypeScript module augmentation for Wagmi config
 declare module 'wagmi' {
   interface Register {
     config: typeof config;
   }
 }
-
-export { config };
