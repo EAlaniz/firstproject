@@ -1,0 +1,13 @@
+{
+  "functions": {
+    "api/frame.js": {
+      "runtime": "nodejs18.x"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/frame",
+      "destination": "/api/frame.js"
+    }
+  ]
+} 
