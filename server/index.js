@@ -183,6 +183,36 @@ io.on('connection', (socket) => {
   });
 });
 
+// Profile validation endpoint for smart wallet callbacks
+app.post('/api/profile-validation', (req, res) => {
+  console.log('Profile validation callback received:', req.body);
+  
+  // In a real implementation, you would:
+  // 1. Validate the callback signature
+  // 2. Process the profile data
+  // 3. Store verified data securely
+  // 4. Update user profile in database
+  
+  const { email, physicalAddress } = req.body;
+  
+  // For demo purposes, we'll just log the data
+  console.log('Verified profile data:', {
+    email,
+    physicalAddress,
+    verifiedAt: new Date().toISOString()
+  });
+  
+  res.json({
+    success: true,
+    message: 'Profile data received and validated',
+    data: {
+      email,
+      physicalAddress,
+      verifiedAt: new Date().toISOString()
+    }
+  });
+});
+
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
   console.log(`Webhook server running on port ${PORT}`);

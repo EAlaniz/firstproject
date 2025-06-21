@@ -16,8 +16,36 @@ import {
 } from '@coinbase/onchainkit/identity';
 import { color } from '@coinbase/onchainkit/theme';
 import { base } from 'wagmi/chains';
-import { Activity, Target, Trophy, Users, Zap, ArrowRight, Circle, CheckCircle2, X, Share2, Copy, MessageCircle, Gift, Menu, Bell, Lock, Heart, ThumbsUp, Send, Plus } from 'lucide-react';
+import { 
+  Activity, 
+  Trophy, 
+  Users, 
+  MessageCircle, 
+  Settings, 
+  ChevronDown, 
+  ChevronUp, 
+  X, 
+  CheckCircle2, 
+  Smartphone,
+  User,
+  Loader2,
+  ArrowRight,
+  Zap,
+  Circle,
+  Menu,
+  Lock,
+  Share2,
+  Copy,
+  Gift,
+  Bell,
+  Heart,
+  ThumbsUp,
+  Send,
+  Plus
+} from 'lucide-react';
+import { encodeFunctionData, parseUnits, numberToHex, erc20Abi } from 'viem';
 import MessagingPanel from './components/MessagingPanel';
+import { useBalance, useWaitForTransactionReceipt } from 'wagmi';
 
 // Contract ABI (simplified for demo)
 const stepTrackerAbi = [
@@ -69,6 +97,7 @@ function App() {
   const [showRewardsModal, setShowRewardsModal] = useState(false);
   const [showMessagingPanel, setShowMessagingPanel] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
   
   // Social component state
@@ -76,7 +105,7 @@ function App() {
   const [activeTab, setActiveTab] = useState<'share' | 'feed' | 'achievements'>('share');
   
   // Extract data from contract
-  const currentStreak = userStats ? Number(userStats[1]) : 12;
+  const currentStreak = userStats && Array.isArray(userStats) && userStats.length > 1 ? Number(userStats[1]) : 12;
   const totalTokens = 156;
   
   const isGoalReached = currentSteps >= dailyGoal;
@@ -316,8 +345,9 @@ function App() {
           
           <Wallet>
             <ConnectWallet>
-              <div className="bg-black text-white px-6 py-3 rounded-full hover:bg-gray-800 transition-colors cursor-pointer w-full">
-                Switch Network
+              <div className="bg-black text-white px-6 py-3 rounded-full hover:bg-gray-800 transition-colors cursor-pointer w-full flex items-center justify-center space-x-2">
+                <Zap className="w-4 h-4" />
+                <span>Switch Network</span>
               </div>
             </ConnectWallet>
             <WalletDropdown>
@@ -335,7 +365,23 @@ function App() {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Wallet
+                Manage Wallet
+              </WalletDropdownLink>
+              <WalletDropdownLink
+                icon="wallet"
+                href="https://www.coinbase.com/settings"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Account Settings
+              </WalletDropdownLink>
+              <WalletDropdownLink
+                icon="wallet"
+                href="https://www.coinbase.com/security"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Security
               </WalletDropdownLink>
               <WalletDropdownDisconnect />
             </WalletDropdown>
@@ -377,17 +423,27 @@ function App() {
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => setShowMessagingPanel(true)}
-                className="relative p-2 hover:bg-gray-100 rounded-full transition-colors"
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
                 title="Messages"
               >
                 <MessageCircle className="w-5 h-5" />
               </button>
               
+              {/* Settings */}
+              <button
+                onClick={() => setShowSettingsModal(true)}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                title="Settings"
+              >
+                <Settings className="w-5 h-5" />
+              </button>
+              
               {/* Wallet */}
               <Wallet>
                 <ConnectWallet>
-                  <div className="bg-gray-100 text-black px-4 py-2 rounded-full hover:bg-gray-200 transition-colors cursor-pointer text-sm">
-                    Wallet
+                  <div className="bg-gray-100 text-black px-4 py-2 rounded-full hover:bg-gray-200 transition-colors cursor-pointer text-sm flex items-center space-x-2">
+                    <User className="w-4 h-4" />
+                    <span>Wallet</span>
                   </div>
                 </ConnectWallet>
                 <WalletDropdown>
@@ -405,7 +461,23 @@ function App() {
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    Wallet
+                    Manage Wallet
+                  </WalletDropdownLink>
+                  <WalletDropdownLink
+                    icon="wallet"
+                    href="https://www.coinbase.com/settings"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Account Settings
+                  </WalletDropdownLink>
+                  <WalletDropdownLink
+                    icon="wallet"
+                    href="https://www.coinbase.com/security"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Security
                   </WalletDropdownLink>
                   <WalletDropdownDisconnect />
                 </WalletDropdown>
@@ -640,7 +712,7 @@ function App() {
 
         {/* Footer */}
         <footer className="text-center text-xs sm:text-sm text-gray-500 space-y-2">
-          <p>Connected to Base Chain</p>
+          <p>Connected to Base</p>
           {address && (
             <div className="flex justify-center">
               {address && (
@@ -680,7 +752,7 @@ function App() {
                 <MessageCircle className="w-5 h-5" />
                 <div className="text-left">
                   <p className="font-medium">Messages</p>
-                  <p className="text-sm text-gray-600">Chat with community</p>
+                  <p className="text-sm text-gray-600">Connect with community</p>
                 </div>
               </button>
 
@@ -721,8 +793,9 @@ function App() {
               <div className="pt-4 border-t border-gray-200">
                 <Wallet>
                   <ConnectWallet>
-                    <div className="w-full bg-gray-100 text-black p-3 rounded-lg hover:bg-gray-200 transition-colors cursor-pointer text-center font-medium">
-                      Wallet Settings
+                    <div className="w-full bg-gray-100 text-black p-3 rounded-lg hover:bg-gray-200 transition-colors cursor-pointer text-center font-medium flex items-center justify-center space-x-2">
+                      <User className="w-4 h-4" />
+                      <span>Wallet Settings</span>
                     </div>
                   </ConnectWallet>
                   <WalletDropdown>
@@ -740,7 +813,23 @@ function App() {
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      Wallet
+                      Manage Wallet
+                    </WalletDropdownLink>
+                    <WalletDropdownLink
+                      icon="wallet"
+                      href="https://www.coinbase.com/settings"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Account Settings
+                    </WalletDropdownLink>
+                    <WalletDropdownLink
+                      icon="wallet"
+                      href="https://www.coinbase.com/security"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Security
                     </WalletDropdownLink>
                     <WalletDropdownDisconnect />
                   </WalletDropdown>
@@ -874,7 +963,7 @@ function App() {
                       <span>{copySuccess ? 'Copied!' : 'Copy Link'}</span>
                     </button>
                     
-                    {navigator.share && (
+                    {typeof navigator !== 'undefined' && 'share' in navigator && (
                       <button
                         onClick={() => handleShare('native')}
                         className="w-full flex items-center justify-center space-x-3 p-3 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors"

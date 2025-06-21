@@ -1,24 +1,32 @@
-import { http, createConfig } from 'wagmi';
-import { base, baseSepolia } from 'wagmi/chains';
-import { coinbaseWallet, metaMask } from 'wagmi/connectors';
+import { http, cookieStorage, createConfig, createStorage } from "wagmi";
+import { base } from "wagmi/chains";
+import { coinbaseWallet } from "wagmi/connectors";
 
-export const config = createConfig({
-  chains: [base, baseSepolia],
-  connectors: [
-    coinbaseWallet({
-      appName: '10K - Move. Earn. Connect.',
-      preference: 'all', // Support both smart wallet and extension
-    }),
-    metaMask(),
-  ],
-  transports: {
-    [base.id]: http(),
-    [baseSepolia.id]: http(),
+const cbWalletConnector = coinbaseWallet({
+  appName: "10K - Move. Earn. Connect.",
+  preference: {
+    options: "smartWalletOnly",
   },
 });
 
-declare module 'wagmi' {
+export function getConfig() {
+  return createConfig({
+    chains: [base],
+    connectors: [cbWalletConnector],
+    storage: createStorage({
+      storage: cookieStorage,
+    }),
+    ssr: true,
+    transports: {
+      [base.id]: http(),
+    },
+  });
+}
+
+export const config = getConfig();
+
+declare module "wagmi" {
   interface Register {
-    config: typeof config;
+    config: ReturnType<typeof getConfig>;
   }
 }
