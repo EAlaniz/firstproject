@@ -1,0 +1,16 @@
+{
+  "name": "10K - Move. Earn. Connect.",
+  "short_name": "10K Wellness",
+  "description": "Inclusive 8-bit wellness app for step tracking, social connection, and token rewards",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#667eea",
+  "theme_color": "#667eea",
+  "icons": [
+    {
+      "src": "/vite.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+} 
