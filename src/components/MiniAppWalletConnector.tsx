@@ -26,12 +26,14 @@ interface MiniAppWalletConnectorProps {
   className?: string;
   children?: React.ReactNode;
   variant?: 'button' | 'icon' | 'text';
+  onOpenModal?: () => void;
 }
 
 export const MiniAppWalletConnector: React.FC<MiniAppWalletConnectorProps> = ({
   className = '',
   children,
-  variant = 'button'
+  variant = 'button',
+  onOpenModal
 }) => {
   const { address, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
@@ -73,6 +75,19 @@ export const MiniAppWalletConnector: React.FC<MiniAppWalletConnectorProps> = ({
         </div>
       );
     }
+  }
+
+  // If onOpenModal is provided, render a button that opens the modal
+  if (onOpenModal) {
+    return (
+      <button
+        onClick={onOpenModal}
+        className={`bg-gray-100 text-black px-4 py-2 rounded-full hover:bg-gray-200 transition-colors cursor-pointer text-sm flex items-center space-x-2 ${className}`}
+      >
+        <User className="w-4 h-4" />
+        <span>Wallet</span>
+      </button>
+    );
   }
 
   // In web environment, use the normal ConnectWallet component

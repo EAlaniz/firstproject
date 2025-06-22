@@ -931,7 +931,10 @@ function App() {
               </button>
               
               {/* Wallet */}
-              <MiniAppWalletConnector className="bg-gray-100 text-black px-4 py-2 rounded-full hover:bg-gray-200 transition-colors cursor-pointer text-sm" />
+              <MiniAppWalletConnector
+                className="bg-gray-100 text-black px-4 py-2 rounded-full hover:bg-gray-200 transition-colors cursor-pointer text-sm"
+                onOpenModal={() => setShowMobileWalletModal(true)}
+              />
             </div>
           </div>
 
