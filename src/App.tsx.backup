@@ -90,11 +90,11 @@ function App() {
           setIsMiniAppReady(true);
           
           // Listen for mini app events
-          sdk.on('miniAppAdded', () => {
+          sdk.on('frameAdded', () => {
             console.log('Mini app added by user');
           });
           
-          sdk.on('miniAppRemoved', () => {
+          sdk.on('frameRemoved', () => {
             console.log('Mini app removed by user');
           });
           

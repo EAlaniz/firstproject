@@ -18,7 +18,7 @@ export default function handler(req, res) {
     console.log('Received Farcaster webhook event:', decodedPayload);
 
     switch (decodedPayload.event) {
-      case 'mini_app_added':
+      case 'frame_added':
         console.log('User added the mini app');
         // Store user data and notification tokens
         if (decodedPayload.notificationDetails) {
@@ -28,7 +28,7 @@ export default function handler(req, res) {
         }
         break;
 
-      case 'mini_app_removed':
+      case 'frame_removed':
         console.log('User removed the mini app');
         // Clean up user data and invalidate notification tokens
         break;
