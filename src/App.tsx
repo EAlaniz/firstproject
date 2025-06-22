@@ -25,7 +25,6 @@ import {
 import MessagingPanel from './components/MessagingPanel';
 import FarcasterMiniApp from './components/FarcasterMiniApp';
 import MiniAppWalletConnector from './components/MiniAppWalletConnector';
-import { useProfile, useSignIn, SignInButton } from '@farcaster/auth-kit';
 import { sdk } from '@farcaster/frame-sdk';
 
 // Contract ABI (simplified for demo)
@@ -59,10 +58,6 @@ function App() {
     address,
     chainId: base.id,
   });
-  
-  // Farcaster mini app hooks
-  const { profile, isAuthenticated } = useProfile();
-  const { signIn } = useSignIn({});
   
   // Mini app detection
   const [isMiniApp, setIsMiniApp] = useState(false);
@@ -291,17 +286,6 @@ function App() {
       comments: 5
     }
   ];
-
-  // Add a handler for sharing to Farcaster
-  const handleShareToFarcaster = async () => {
-    if (!isAuthenticated) {
-      signIn();
-      return;
-    }
-    const shareText = `Just hit ${currentSteps.toLocaleString()} steps today on 10K! 🚶‍♂️ Join me in earning tokens for staying active. #10K #MoveToEarn`;
-    // Simulate posting to Farcaster (replace with actual API call if needed)
-    alert('Shared to Farcaster: ' + shareText);
-  };
 
   // Modal component
   const Modal = ({ isOpen, onClose, title, children }: { 
@@ -871,7 +855,6 @@ function App() {
           isGoalReached={isGoalReached}
           currentStreak={currentStreak}
           totalTokens={totalTokens}
-          onShareAchievement={handleShareToFarcaster}
         />
       </Modal>
 

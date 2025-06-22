@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useProfile } from '@farcaster/auth-kit';
 import { sdk } from '@farcaster/frame-sdk';
 import { 
   User, 
@@ -28,7 +27,6 @@ interface FarcasterMiniAppProps {
   isGoalReached: boolean;
   currentStreak: number;
   totalTokens: number;
-  onShareAchievement: (achievement: any) => void;
 }
 
 const FarcasterMiniApp: React.FC<FarcasterMiniAppProps> = ({
@@ -36,11 +34,8 @@ const FarcasterMiniApp: React.FC<FarcasterMiniAppProps> = ({
   dailyGoal,
   isGoalReached,
   currentStreak,
-  totalTokens,
-  onShareAchievement
+  totalTokens
 }) => {
-  const { profile } = useProfile();
-  
   const [activeTab, setActiveTab] = useState<'profile' | 'social' | 'achievements' | 'leaderboard'>('profile');
   const [showProfileEdit, setShowProfileEdit] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -62,14 +57,6 @@ const FarcasterMiniApp: React.FC<FarcasterMiniAppProps> = ({
           setIsReady(true);
           
           // Listen for mini app events
-          sdk.on('miniAppAdded', () => {
-            console.log('Mini app added by user');
-          });
-          
-          sdk.on('miniAppRemoved', () => {
-            console.log('Mini app removed by user');
-          });
-          
           sdk.on('notificationsEnabled', () => {
             console.log('Notifications enabled');
           });
@@ -229,8 +216,8 @@ const FarcasterMiniApp: React.FC<FarcasterMiniAppProps> = ({
               <User className="w-5 h-5 text-purple-600" />
             </div>
             <div>
-              <p className="font-medium">{profile?.displayName || profile?.username || '10K User'}</p>
-              <p className="text-sm text-gray-600">FID: {profile?.fid || 'Connected'}</p>
+              <p className="font-medium">{'10K User'}</p>
+              <p className="text-sm text-gray-600">FID: Connected</p>
             </div>
           </div>
           <div className="flex items-center space-x-2">
