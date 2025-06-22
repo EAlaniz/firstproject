@@ -26,7 +26,7 @@
     "iconUrl": "https://www.move10k.xyz/10k-icon.png",
     "homeUrl": "https://www.move10k.xyz",
     "imageUrl": "https://www.move10k.xyz/frame-image.png",
-    "aspectRatio": "1.91.1",
+    "aspectRatio": "1.91:1",
     "button": {
       "title": "🚶‍♂️ Start Walking",
       "action": {
@@ -52,7 +52,8 @@
       "fitness",
       "wellness",
       "steps",
-      "social",
+      "tokens",
+      "social"
     ],
     "heroImageUrl": "https://www.move10k.xyz/frame-image.png",
     "tagline": "Move. Earn. Connect.",

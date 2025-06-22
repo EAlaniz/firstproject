@@ -27,7 +27,17 @@
     "iconUrl": "https://www.move10k.xyz/10k-icon.png",
     "homeUrl": "https://www.move10k.xyz",
     "imageUrl": "https://www.move10k.xyz/frame-image.png",
-    "buttonTitle": "🚶‍♂️ Start Walking",
+    "aspectRatio": "1.91",
+    "button": {
+      "title": "🚶‍♂️ Start Walking",
+      "action": {
+        "type": "launch_frame",
+        "name": "10K - Move. Earn. Connect.",
+        "url": "https://www.move10k.xyz",
+        "splashImageUrl": "https://www.move10k.xyz/10k-icon.png",
+        "splashBackgroundColor": "#667eea"
+      }
+    },
     "splashImageUrl": "https://www.move10k.xyz/10k-icon.png",
     "splashBackgroundColor": "#667eea",
     "webhookUrl": "https://www.move10k.xyz/api/webhook",
@@ -44,7 +54,7 @@
       "wellness",
       "steps",
       "social",
-      "move-to-earn",
+      "move-to-earn"
     ],
     "heroImageUrl": "https://www.move10k.xyz/frame-image.png",
     "tagline": "Move. Earn. Connect.",
