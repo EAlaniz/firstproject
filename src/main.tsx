@@ -9,6 +9,19 @@ import { AuthKitProvider } from '@farcaster/auth-kit';
 import App from './App';
 import './index.css';
 
+// Detect if we're in a Farcaster mini app environment
+const isFarcasterMiniApp = () => {
+  return (
+    window.location.hostname.includes('farcaster.xyz') ||
+    window.location.hostname.includes('warpcast.com') ||
+    window.location.hostname.includes('wrpcd.net') ||
+    window.location.search.includes('fid=') ||
+    window.location.search.includes('farcaster=') ||
+    window.navigator.userAgent.includes('Farcaster') ||
+    window.navigator.userAgent.includes('Warpcast')
+  );
+};
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -34,7 +47,7 @@ createRoot(rootElement).render(
               enableLogging: true,
             },
             miniApp: {
-              enabled: true,
+              enabled: isFarcasterMiniApp(),
               walletConnection: {
                 type: 'native',
                 fallback: 'popup',
@@ -48,6 +61,8 @@ createRoot(rootElement).render(
             options={{
               timeout: 30000,
               enableLogging: true,
+              // Disable popup in mini app environment
+              disablePopup: isFarcasterMiniApp(),
             }}
           >
             <App />
