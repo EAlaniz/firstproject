@@ -1,4 +1,4 @@
-import { StrictMode } from 'react';
+import React, { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { OnchainKitProvider } from '@coinbase/onchainkit';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -20,8 +20,8 @@ createRoot(rootElement).render(
       <QueryClientProvider client={queryClient}>
         <AuthKitProvider
           config={{
-            domain: 'https://www.move10k.xyz',
-            redirectUrl: 'https://www.move10k.xyz',
+            domain: 'move10k.xyz',
+            redirectUrl: window.location.origin,
           }}
         >
           <OnchainKitProvider
