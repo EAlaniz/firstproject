@@ -7,7 +7,7 @@
   <title>10K - Move. Earn. Connect.</title>
   <meta name="description" content="Inclusive wellness app for step tracking, social connection, and token rewards" />
 
-  <!-- Content Security Policy -->
+  <!-- Content Security Policy - Fixed for WalletConnect -->
   <meta
     http-equiv="Content-Security-Policy"
     content="default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://farcaster.xyz https://client.farcaster.xyz https://warpcast.com https://client.warpcast.com https://wrpcd.net https://*.wrpcd.net https://privy.farcaster.xyz https://privy.warpcast.com https://auth.privy.io https://*.rpc.privy.systems https://cloudflareinsights.com https://explorer-api.walletconnect.com https://*.walletconnect.com https://www.walletlink.org wss://www.walletlink.org https://*.walletlink.org https://*.walletconnect.org https://flashy-convincing-paper.base-mainnet.quiknode.pro; frame-src 'self' https://farcaster.xyz https://warpcast.com; object-src 'none'; base-uri 'self'; form-action 'self';"
@@ -43,26 +43,6 @@
   <meta name="robots" content="index, follow" />
   <meta name="author" content="10K Wellness" />
   <meta name="keywords" content="wellness, fitness, step tracking, blockchain, rewards, community" />
-
-  <!-- ✅ Valid Farcaster Frame Meta Tag -->
-  <meta
-    name="fc:frame"
-    content='{
-      "version": "1",
-      "imageUrl": "https://www.move10k.xyz/frame-image.png",
-      "aspectRatio": "1.91:1",
-      "button": {
-        "title": "🚶‍♂️ Start Walking",
-        "action": {
-          "type": "launch_frame",
-          "name": "10K - Move. Earn. Connect.",
-          "url": "https://www.move10k.xyz",
-          "splashImageUrl": "https://www.move10k.xyz/10k-icon.png",
-          "splashBackgroundColor": "#667eea"
-        }
-      }
-    }'
-  />
 
   <!-- Cache Control -->
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
