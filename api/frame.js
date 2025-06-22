@@ -45,13 +45,13 @@ export default async function handler(req, res) {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>10K - Move. Earn. Connect.</title>
-        <meta property="fc:frame" content="vNext" />
-        <meta property="fc:frame:image" content="${frameImage}" />
-        <meta property="fc:frame:button:1" content="🚶‍♂️ Log Steps" />
-        <meta property="fc:frame:button:2" content="📊 View Stats" />
-        <meta property="fc:frame:button:3" content="💰 Earn Tokens" />
-        <meta property="fc:frame:button:4" content="🎯 Set Goal" />
-        <meta property="fc:frame:post_url" content="https://www.move10k.xyz/api/frame" />
+        <meta name="fc:frame" content="vNext" />
+        <meta name="fc:frame:image" content="${frameImage}" />
+        <meta name="fc:frame:button:1" content="🚶‍♂️ Log Steps" />
+        <meta name="fc:frame:button:2" content="📊 View Stats" />
+        <meta name="fc:frame:button:3" content="💰 Earn Tokens" />
+        <meta name="fc:frame:button:4" content="🎯 Set Goal" />
+        <meta name="fc:frame:post_url" content="https://www.move10k.xyz/api/frame" />
         <style>body{background:#000;color:#fff;text-align:center;font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;}h1{color:#22c55e;}</style>
       </head>
       <body>
