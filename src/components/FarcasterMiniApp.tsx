@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useProfile, useSignIn } from '@farcaster/auth-kit';
+import { useProfile } from '@farcaster/auth-kit';
 import { sdk } from '@farcaster/frame-sdk';
 import { 
   User, 
@@ -9,7 +9,6 @@ import {
   Trophy, 
   Users, 
   Settings,
-  LogOut,
   Plus,
   Camera,
   Edit3,
@@ -40,8 +39,7 @@ const FarcasterMiniApp: React.FC<FarcasterMiniAppProps> = ({
   totalTokens,
   onShareAchievement
 }) => {
-  const { profile, isAuthenticated } = useProfile();
-  const { signIn } = useSignIn({});
+  const { profile } = useProfile();
   
   const [activeTab, setActiveTab] = useState<'profile' | 'social' | 'achievements' | 'leaderboard'>('profile');
   const [showProfileEdit, setShowProfileEdit] = useState(false);
@@ -221,40 +219,6 @@ const FarcasterMiniApp: React.FC<FarcasterMiniAppProps> = ({
     return `${days}d`;
   };
 
-  if (!isAuthenticated) {
-    return (
-      <div className="bg-white rounded-xl p-6 shadow-sm border">
-        <div className="text-center">
-          <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <User className="w-8 h-8 text-purple-600" />
-          </div>
-          <h3 className="text-lg font-medium mb-2">Connect to Farcaster</h3>
-          <p className="text-gray-600 mb-6">Sign in to access social features and share your achievements</p>
-          <button 
-            onClick={async () => {
-              try {
-                console.log('Attempting Farcaster sign-in...');
-                console.log('Current origin:', window.location.origin);
-                signIn();
-                console.log('Sign-in initiated successfully');
-              } catch (error) {
-                console.error('Farcaster sign-in error:', error);
-                alert('Sign-in failed. Please check the console for details.');
-              }
-            }}
-            className="bg-purple-600 text-white px-6 py-3 rounded-xl hover:bg-purple-700 transition-colors"
-          >
-            Sign in with Farcaster
-          </button>
-          <div className="mt-4 text-xs text-gray-500">
-            <p>Domain: {window.location.hostname}</p>
-            <p>Origin: {window.location.origin}</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="bg-white rounded-xl shadow-sm border">
       {/* Header */}
@@ -265,8 +229,8 @@ const FarcasterMiniApp: React.FC<FarcasterMiniAppProps> = ({
               <User className="w-5 h-5 text-purple-600" />
             </div>
             <div>
-              <p className="font-medium">{profile?.displayName || profile?.username}</p>
-              <p className="text-sm text-gray-600">FID: {profile?.fid}</p>
+              <p className="font-medium">{profile?.displayName || profile?.username || '10K User'}</p>
+              <p className="text-sm text-gray-600">FID: {profile?.fid || 'Connected'}</p>
             </div>
           </div>
           <div className="flex items-center space-x-2">
@@ -275,12 +239,6 @@ const FarcasterMiniApp: React.FC<FarcasterMiniAppProps> = ({
               className="p-2 text-gray-600 hover:text-gray-800 transition-colors"
             >
               <Settings className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => signIn()}
-              className="p-2 text-gray-600 hover:text-red-600 transition-colors"
-            >
-              <LogOut className="w-4 h-4" />
             </button>
           </div>
         </div>
