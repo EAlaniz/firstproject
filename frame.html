@@ -6,21 +6,23 @@
   <title>10K - Move. Earn. Connect.</title>
   
   <!-- Basic metadata -->
-  <meta name="description" content="Inclusive wellness app for step tracking, social connection, and token rewards on Base Chain">
+  <meta name="description" content="Track your steps, earn tokens, and connect with friends on Base Chain">
   
-  <!-- Farcaster Frame metadata -->
+  <!-- Farcaster Frame metadata - Interactive -->
   <meta property="fc:frame" content="vNext" />
-  <meta property="fc:frame:image" content="https://images.pexels.com/photos/2526878/pexels-photo-2526878.jpeg?auto=compress&cs=tinysrgb&w=1200" />
-  <meta property="fc:frame:button:1" content="Visit 10K App" />
-  <meta property="fc:frame:button:1:action" content="link" />
-  <meta property="fc:frame:button:1:target" content="https://www.move10k.xyz" />
+  <meta property="fc:frame:image" content="https://www.move10k.xyz/frame-image.png" />
+  <meta property="fc:frame:button:1" content="🚶‍♂️ Log Steps" />
+  <meta property="fc:frame:button:2" content="📊 View Stats" />
+  <meta property="fc:frame:button:3" content="💰 Earn Tokens" />
+  <meta property="fc:frame:button:4" content="🎯 Set Goal" />
+  <meta property="fc:frame:post_url" content="https://www.move10k.xyz/api/frame" />
   
   <!-- Open Graph metadata -->
   <meta property="og:title" content="10K - Move. Earn. Connect." />
-  <meta property="og:description" content="Inclusive wellness app for step tracking, social connection, and token rewards on Base Chain" />
+  <meta property="og:description" content="Track your steps, earn tokens, and connect with friends on Base Chain" />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://www.move10k.xyz" />
-  <meta property="og:image" content="https://images.pexels.com/photos/2526878/pexels-photo-2526878.jpeg?auto=compress&cs=tinysrgb&w=1200" />
+  <meta property="og:image" content="https://www.move10k.xyz/frame-image.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:site_name" content="10K" />
@@ -28,8 +30,8 @@
   <!-- Twitter Card metadata -->
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="10K - Move. Earn. Connect." />
-  <meta name="twitter:description" content="Inclusive wellness app for step tracking, social connection, and token rewards on Base Chain" />
-  <meta name="twitter:image" content="https://images.pexels.com/photos/2526878/pexels-photo-2526878.jpeg?auto=compress&cs=tinysrgb&w=1200" />
+  <meta name="twitter:description" content="Track your steps, earn tokens, and connect with friends on Base Chain" />
+  <meta name="twitter:image" content="https://www.move10k.xyz/frame-image.png" />
   
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="/10k-icon.png" />
@@ -66,21 +68,6 @@
       color: #d1d5db;
     }
     
-    .cta {
-      display: inline-block;
-      background-color: #22c55e;
-      color: #000;
-      font-weight: bold;
-      padding: 1rem 2rem;
-      border-radius: 0.25rem;
-      text-decoration: none;
-      transition: background-color 0.2s;
-    }
-    
-    .cta:hover {
-      background-color: #16a34a;
-    }
-    
     .stats {
       display: flex;
       justify-content: center;
@@ -102,14 +89,21 @@
       font-size: 0.875rem;
       color: #9ca3af;
     }
+    
+    .frame-info {
+      background-color: #1f2937;
+      border-radius: 0.5rem;
+      padding: 1rem;
+      margin-top: 2rem;
+      font-size: 0.875rem;
+      color: #9ca3af;
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>10K</h1>
     <p>Move. Earn. Connect.</p>
-    
-    <a href="https://www.move10k.xyz" class="cta">START TRACKING</a>
     
     <div class="stats">
       <div class="stat">
@@ -124,6 +118,11 @@
         <div class="stat-value">100</div>
         <div class="stat-label">TOKENS</div>
       </div>
+    </div>
+    
+    <div class="frame-info">
+      <p>🎯 <strong>Interactive Frame:</strong> Use the buttons above to interact with 10K directly in Farcaster!</p>
+      <p>🚶‍♂️ Log your steps • 📊 View your stats • 💰 Earn tokens • 🎯 Set goals</p>
     </div>
   </div>
 </body>
