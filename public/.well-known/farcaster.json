@@ -3,7 +3,6 @@
   "short_name": "10K",
   "description": "Inclusive wellness app for step tracking, social connection, and token rewards on Base Chain",
   "version": "1.0.0",
-  "manifest_version": 3,
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
@@ -21,13 +20,44 @@
     "embed_title": "10K - Move. Earn. Connect.",
     "embed_description": "Inclusive wellness app for step tracking, social connection, and token rewards"
   },
+  "miniApp": {
+    "version": "1.0.0",
+    "name": "10K - Move. Earn. Connect.",
+    "description": "Track your steps, earn tokens, and connect with friends on Base Chain",
+    "iconUrl": "https://www.move10k.xyz/10k-icon.png",
+    "homeUrl": "https://www.move10k.xyz",
+    "splashImageUrl": "https://www.move10k.xyz/10k-icon.png",
+    "splashBackgroundColor": "#667eea",
+    "webhookUrl": "https://www.move10k.xyz/api/webhook",
+    "requiredChains": [
+      "eip155:8453"
+    ],
+    "requiredCapabilities": [
+      "actions.signIn",
+      "wallet.getEthereumProvider",
+      "actions.composeCast",
+      "actions.addMiniApp"
+    ],
+    "permissions": [
+      "wallet",
+      "notifications",
+      "storage"
+    ],
+    "features": [
+      "step_tracking",
+      "token_rewards",
+      "social_feed",
+      "achievements",
+      "streak_tracking"
+    ]
+  },
   "frame": {
     "version": "1",
     "name": "10K - Move. Earn. Connect.",
     "iconUrl": "https://www.move10k.xyz/10k-icon.png",
     "homeUrl": "https://www.move10k.xyz",
     "imageUrl": "https://www.move10k.xyz/frame-image.png",
-    "aspectRatio": "1.91",
+    "aspectRatio": "1.91:1",
     "button": {
       "title": "🚶‍♂️ Start Walking",
       "action": {

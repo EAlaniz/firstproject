@@ -57,6 +57,8 @@ const FarcasterMiniApp: React.FC<FarcasterMiniAppProps> = ({
         const isMiniApp = await sdk.isInMiniApp();
         
         if (isMiniApp) {
+          console.log('Initializing Farcaster Mini App...');
+          
           // Hide splash screen when ready
           await sdk.actions.ready();
           setIsReady(true);
@@ -77,9 +79,14 @@ const FarcasterMiniApp: React.FC<FarcasterMiniAppProps> = ({
           sdk.on('notificationsDisabled', () => {
             console.log('Notifications disabled');
           });
+          
+        } else {
+          console.log('Not in mini app environment, running as web app');
+          setIsReady(true);
         }
       } catch (error) {
         console.error('Error initializing mini app:', error);
+        setIsReady(true); // Fallback to web app mode
       }
     };
     
