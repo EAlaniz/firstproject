@@ -26,6 +26,7 @@ import {
 import MessagingPanel from './components/MessagingPanel';
 import FarcasterMiniApp from './components/FarcasterMiniApp';
 import { useProfile, useSignIn, SignInButton } from '@farcaster/auth-kit';
+import { sdk } from '@farcaster/frame-sdk';
 
 // Contract ABI (simplified for demo)
 const stepTrackerAbi = [
@@ -61,7 +62,35 @@ function App() {
   
   // Farcaster mini app hooks
   const { profile, isAuthenticated } = useProfile();
-  const { signIn } = useSignIn();
+  const { signIn } = useSignIn({});
+  
+  // Mini app detection
+  const [isMiniApp, setIsMiniApp] = useState(false);
+  const [isMiniAppReady, setIsMiniAppReady] = useState(false);
+  
+  // Initialize mini app detection
+  useEffect(() => {
+    const detectMiniApp = async () => {
+      try {
+        const miniAppStatus = await sdk.isInMiniApp();
+        setIsMiniApp(miniAppStatus);
+        
+        if (miniAppStatus) {
+          console.log('Running as Farcaster Mini App');
+          await sdk.actions.ready();
+          setIsMiniAppReady(true);
+        } else {
+          console.log('Running as web app');
+          setIsMiniAppReady(true);
+        }
+      } catch (error) {
+        console.error('Error detecting mini app:', error);
+        setIsMiniAppReady(true);
+      }
+    };
+    
+    detectMiniApp();
+  }, []);
   
   // Contract addresses
   const STEP_TRACKER_CONTRACT = import.meta.env.VITE_STEP_TRACKER_CONTRACT as `0x${string}`;
@@ -240,7 +269,7 @@ function App() {
   // Add a handler for sharing to Farcaster
   const handleShareToFarcaster = async () => {
     if (!isAuthenticated) {
-      signIn({});
+      signIn();
       return;
     }
     const shareText = `Just hit ${currentSteps.toLocaleString()} steps today on 10K! 🚶‍♂️ Join me in earning tokens for staying active. #10K #MoveToEarn`;
@@ -323,6 +352,40 @@ function App() {
             </div>
           </div>
         </main>
+      </div>
+    );
+  }
+  
+  // Show mini app interface if running as mini app
+  if (isMiniApp && isMiniAppReady) {
+    return (
+      <div className="min-h-screen bg-white">
+        <FarcasterMiniApp
+          currentSteps={currentSteps}
+          dailyGoal={dailyGoal}
+          isGoalReached={isGoalReached}
+          currentStreak={currentStreak}
+          totalTokens={totalTokens}
+          onShareAchievement={handleShareToFarcaster}
+        />
+      </div>
+    );
+  }
+  
+  // Show loading while detecting mini app
+  if (!isMiniAppReady) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto">
+            <img
+              src="/10k-icon.png"
+              alt="10K Icon"
+              className="w-8 h-8"
+            />
+          </div>
+          <p className="text-gray-600">Loading 10K...</p>
+        </div>
       </div>
     );
   }
