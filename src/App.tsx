@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useAccount, useReadContract, useDisconnect, useBalance } from 'wagmi';
-import { ConnectWallet } from '@coinbase/onchainkit/wallet';
 import { base } from 'wagmi/chains';
 import { 
   Trophy, 
@@ -25,6 +24,7 @@ import {
 } from 'lucide-react';
 import MessagingPanel from './components/MessagingPanel';
 import FarcasterMiniApp from './components/FarcasterMiniApp';
+import MiniAppWalletConnector from './components/MiniAppWalletConnector';
 import { useProfile, useSignIn, SignInButton } from '@farcaster/auth-kit';
 import { sdk } from '@farcaster/frame-sdk';
 
@@ -90,14 +90,6 @@ function App() {
           setIsMiniAppReady(true);
           
           // Listen for mini app events
-          sdk.on('miniAppAdded', () => {
-            console.log('Mini app added by user');
-          });
-          
-          sdk.on('miniAppRemoved', () => {
-            console.log('Mini app removed by user');
-          });
-          
           sdk.on('notificationsEnabled', () => {
             console.log('Notifications enabled');
           });
@@ -391,12 +383,12 @@ function App() {
             </div>
             
             <div className="flex justify-center px-4">
-              <ConnectWallet>
+              <MiniAppWalletConnector>
                 <div className="bg-black text-white px-6 sm:px-8 py-3 sm:py-4 rounded-full hover:bg-gray-800 transition-colors cursor-pointer font-medium flex items-center space-x-2 w-full sm:w-auto justify-center">
                   <span>Get Started</span>
                   <ArrowRight className="w-4 h-4" />
                 </div>
-              </ConnectWallet>
+              </MiniAppWalletConnector>
             </div>
             
             <div className="pt-8 sm:pt-12 text-sm text-gray-500">
@@ -421,12 +413,12 @@ function App() {
             <p className="text-gray-600">Please switch to Base network to continue</p>
           </div>
           
-          <ConnectWallet>
+          <MiniAppWalletConnector>
             <div className="bg-black text-white px-6 py-3 rounded-full hover:bg-gray-800 transition-colors cursor-pointer w-full flex items-center justify-center space-x-2">
               <Zap className="w-4 h-4" />
               <span>Switch Network</span>
             </div>
-          </ConnectWallet>
+          </MiniAppWalletConnector>
         </div>
       </div>
     );
@@ -860,11 +852,11 @@ function App() {
                 <h3 className="text-lg font-medium mb-2">Connect Your Wallet</h3>
                 <p className="text-gray-600 mb-6">Connect your wallet to access all features</p>
                 
-                <ConnectWallet>
+                <MiniAppWalletConnector>
                   <button className="w-full bg-black text-white py-3 rounded-xl hover:bg-gray-800 transition-colors">
                     Connect Wallet
                   </button>
-                </ConnectWallet>
+                </MiniAppWalletConnector>
               </div>
             </>
           )}
@@ -939,13 +931,7 @@ function App() {
               </button>
               
               {/* Wallet */}
-              <button
-                onClick={() => setShowMobileWalletModal(true)}
-                className="bg-gray-100 text-black px-4 py-2 rounded-full hover:bg-gray-200 transition-colors cursor-pointer text-sm flex items-center space-x-2"
-              >
-                <User className="w-4 h-4" />
-                <span>Wallet</span>
-              </button>
+              <MiniAppWalletConnector className="bg-gray-100 text-black px-4 py-2 rounded-full hover:bg-gray-200 transition-colors cursor-pointer text-sm" />
             </div>
           </div>
 
