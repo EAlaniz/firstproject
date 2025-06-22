@@ -2,7 +2,7 @@
   "name": "10K - Move. Earn. Connect.",
   "short_name": "10K",
   "description": "Inclusive wellness app for step tracking, social connection, and token rewards on Base Chain",
-  "version": "1.0.0",
+  "version": "1",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
@@ -14,9 +14,9 @@
     "signature": "MHg0MGU1NGZmN2RhOTY1NTQ0ZjVmYmE3NGMxYTdiZTY5YmMwZmE4MWE4MzBkNDFhNzEwNTk5ODg4NDZiMjIxZWNkMmQ1NzhjNTVjYTVjNzhkY2Y2YjlmNGUzZjMyYWIxZDQ1NTBlNmIwZTE5ODU5ZGFiNDE0YTgxZDRiM2RmODQyYTFj"
   },
   "miniApp": {
-    "version": "1.0.0",
+    "version": "1",
     "name": "10K - Move. Earn. Connect.",
-    "description": "Track your steps, earn tokens, and connect with friends on Base Chain",
+    "description": "Track your steps, earn tokens, and connect with friends on Base Chain. Join the 10K movement for a healthier lifestyle.",
     "iconUrl": "https://www.move10k.xyz/10k-icon.png",
     "homeUrl": "https://www.move10k.xyz",
     "splashImageUrl": "https://www.move10k.xyz/10k-icon.png",
@@ -53,9 +53,13 @@
       "fitness",
       "wellness",
       "steps",
-      "social",
-      "move-to-earn"
-    ]
+      "social"
+    ],
+    "heroImageUrl": "https://www.move10k.xyz/10k-icon.png",
+    "tagline": "Move. Earn. Connect.",
+    "ogTitle": "10K - Move. Earn. Connect.",
+    "ogDescription": "Track your steps, earn tokens, and connect with friends on Base Chain",
+    "ogImageUrl": "https://www.move10k.xyz/10k-icon.png"
   },
   "icons": [
     {
