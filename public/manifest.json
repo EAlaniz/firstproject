@@ -1,7 +1,7 @@
 {
   "name": "10K - Move. Earn. Connect.",
   "short_name": "10K Wellness",
-  "description": "Inclusive 8-bit wellness app for step tracking, social connection, and token rewards",
+  "description": "Inclusive wellness app for step tracking, social connection, and token rewards",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#667eea",
@@ -13,15 +13,8 @@
       "type": "image/png"
     }
   ],
-  "farcaster": {
-    "app_id": "10k-wellness",
-    "embed_url": "https://www.move10k.xyz",
-    "embed_image": "https://www.move10k.xyz/frame-image.png",
-    "embed_title": "10K - Move. Earn. Connect.",
-    "embed_description": "Inclusive wellness app for step tracking, social connection, and token rewards"
-  },
   "frame": {
-    "version": "next",
+    "version": "1",
     "name": "10K - Move. Earn. Connect.",
     "iconUrl": "https://www.move10k.xyz/10k-icon.png",
     "homeUrl": "https://www.move10k.xyz",
@@ -40,6 +33,7 @@
     "splashImageUrl": "https://www.move10k.xyz/10k-icon.png",
     "splashBackgroundColor": "#667eea",
     "webhookUrl": "https://www.move10k.xyz/api/webhook",
+    "postUrl": "https://www.move10k.xyz/api/webhook",
     "subtitle": "Move. Earn. Connect.",
     "description": "Track your steps, earn tokens, and connect with friends on Base Chain. Join the 10K movement for a healthier lifestyle.",
     "screenshotUrls": [
