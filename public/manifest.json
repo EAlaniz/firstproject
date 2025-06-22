@@ -12,5 +12,27 @@
       "sizes": "192x192",
       "type": "image/png"
     }
+  ],
+  "farcaster": {
+    "app_id": "10k-wellness",
+    "embed_url": "https://www.move10k.xyz",
+    "embed_image": "https://www.move10k.xyz/frame-image.png",
+    "embed_title": "10K - Move. Earn. Connect.",
+    "embed_description": "Inclusive wellness app for step tracking, social connection, and token rewards"
+  },
+  "permissions": [
+    "wallet",
+    "notifications"
+  ],
+  "features": [
+    "step_tracking",
+    "token_rewards",
+    "social_feed",
+    "achievements",
+    "streak_tracking"
+  ],
+  "integrations": [
+    "farcaster",
+    "wallet"
   ]
-} 
+}
