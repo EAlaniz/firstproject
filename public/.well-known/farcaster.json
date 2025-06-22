@@ -59,7 +59,12 @@
     "tagline": "Move. Earn. Connect.",
     "ogTitle": "10K - Move. Earn. Connect.",
     "ogDescription": "Track your steps, earn tokens, and connect with friends on Base Chain",
-    "ogImageUrl": "https://www.move10k.xyz/10k-icon.png"
+    "ogImageUrl": "https://www.move10k.xyz/10k-icon.png",
+    "walletConnection": {
+      "type": "native",
+      "fallback": "popup",
+      "timeout": 30000
+    }
   },
   "icons": [
     {

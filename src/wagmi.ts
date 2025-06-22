@@ -7,6 +7,12 @@ export const config = createConfig({
   connectors: [
     coinbaseWallet({
       appName: '10K - Move. Earn. Connect.',
+      appLogoUrl: 'https://www.move10k.xyz/10k-icon.png',
+      options: {
+        timeout: 30000,
+        enableLogging: true,
+        walletLinkUrl: 'https://www.walletlink.org',
+      },
     }),
   ],
   transports: {

@@ -9,7 +9,14 @@ import { AuthKitProvider } from '@farcaster/auth-kit';
 import App from './App';
 import './index.css';
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 3,
+      retryDelay: 1000,
+    },
+  },
+});
 
 const rootElement = document.getElementById('root');
 if (!rootElement) throw new Error('Root element not found');
@@ -20,13 +27,28 @@ createRoot(rootElement).render(
       <QueryClientProvider client={queryClient}>
         <AuthKitProvider
           config={{
-            domain: 'move10k.xyz',
+            domain: 'www.move10k.xyz',
             redirectUrl: window.location.origin,
+            options: {
+              timeout: 30000,
+              enableLogging: true,
+            },
+            miniApp: {
+              enabled: true,
+              walletConnection: {
+                type: 'native',
+                fallback: 'popup',
+              },
+            },
           }}
         >
           <OnchainKitProvider
-            apiKey={import.meta.env.VITE_ONCHAINKIT_API_KEY}
+            apiKey={import.meta.env.VITE_ONCHAINKIT_API_KEY || ''}
             chain={base}
+            options={{
+              timeout: 30000,
+              enableLogging: true,
+            }}
           >
             <App />
           </OnchainKitProvider>

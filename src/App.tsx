@@ -67,8 +67,9 @@ function App() {
   // Mini app detection
   const [isMiniApp, setIsMiniApp] = useState(false);
   const [isMiniAppReady, setIsMiniAppReady] = useState(false);
+  const [walletError, setWalletError] = useState<string | null>(null);
   
-  // Initialize mini app detection
+  // Initialize mini app detection with better error handling
   useEffect(() => {
     const detectMiniApp = async () => {
       try {
@@ -77,8 +78,34 @@ function App() {
         
         if (miniAppStatus) {
           console.log('Running as Farcaster Mini App');
-          await sdk.actions.ready();
+          
+          // Initialize mini app with proper error handling
+          try {
+            await sdk.actions.ready();
+            console.log('Mini app ready');
+          } catch (readyError) {
+            console.error('Error calling sdk.actions.ready():', readyError);
+          }
+          
           setIsMiniAppReady(true);
+          
+          // Listen for mini app events
+          sdk.on('frameAdded', () => {
+            console.log('Mini app added by user');
+          });
+          
+          sdk.on('frameRemoved', () => {
+            console.log('Mini app removed by user');
+          });
+          
+          sdk.on('notificationsEnabled', () => {
+            console.log('Notifications enabled');
+          });
+          
+          sdk.on('notificationsDisabled', () => {
+            console.log('Notifications disabled');
+          });
+          
         } else {
           console.log('Running as web app');
           setIsMiniAppReady(true);
@@ -91,6 +118,13 @@ function App() {
     
     detectMiniApp();
   }, []);
+  
+  // Add wallet connection error handling
+  useEffect(() => {
+    if (isMiniApp && !isConnected) {
+      console.log('In mini app environment - wallet not connected');
+    }
+  }, [isMiniApp, isConnected]);
   
   // Contract addresses
   const STEP_TRACKER_CONTRACT = import.meta.env.VITE_STEP_TRACKER_CONTRACT as `0x${string}`;
