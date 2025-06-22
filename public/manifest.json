@@ -75,5 +75,11 @@
   "integrations": [
     "farcaster",
     "wallet"
-  ]
+  ]{
+    "accountAssociation": {
+      "header": "eyJmaWQiOjM4NDkxMiwidHlwZSI6ImN1c3RvZHkiLCJrZXkiOiIweDA2MDk1MEU2N2YwRUM3YThDMkI2MzBkYjQzOTYxODdDNWU5M0E5NkYifQ",
+      "payload": "eyJkb21haW4iOiJtb3ZlMTBrLnh5eiJ9",
+      "signature": "MHhhY2UzYjNlN2M1ODJjNGJlYTNkOGM2MzMyNjkxMTgxMGY0ZThiNjdiNTc4YjE2ZDkxZDMyZWFiN2M4MTliYzc0MGNjYTMyODAxNWNhNzEyMTQ2MGYxYjEyZjE5NTA4MDRkZWY0ZWFmNTc4YmY5YjA4Mjg5NDdkMDU0OTcxMjg5YTFj"
+    }
+  }
 }
