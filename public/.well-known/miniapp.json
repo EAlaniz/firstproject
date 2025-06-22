@@ -12,7 +12,7 @@
   "farcaster": {
     "app_id": "10k-wellness",
     "embed_url": "https://www.move10k.xyz",
-    "embed_image": "https://www.move10k.xyz/frame-image.png",
+    "embed_image": "https://www.move10k.xyz/10k-icon.png",
     "embed_title": "10K - Move. Earn. Connect.",
     "embed_description": "Inclusive wellness app for step tracking, social connection, and token rewards"
   },

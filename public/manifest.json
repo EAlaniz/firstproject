@@ -18,8 +18,8 @@
     "name": "10K - Move. Earn. Connect.",
     "iconUrl": "https://www.move10k.xyz/10k-icon.png",
     "homeUrl": "https://www.move10k.xyz",
-    "imageUrl": "https://www.move10k.xyz/frame-image.png",
-    "aspectRatio": "1.91:1",
+    "imageUrl": "https://www.move10k.xyz/10k-icon.png",
+    "aspectRatio": "1:1",
     "button": {
       "title": "🚶‍♂️ Start Walking",
       "action": {
@@ -49,11 +49,11 @@
       "tokens",
       "social"
     ],
-    "heroImageUrl": "https://www.move10k.xyz/frame-image.png",
+    "heroImageUrl": "https://www.move10k.xyz/10k-icon.png",
     "tagline": "Move. Earn. Connect.",
     "ogTitle": "10K - Move. Earn. Connect.",
     "ogDescription": "Track your steps, earn tokens, and connect with friends on Base Chain",
-    "ogImageUrl": "https://www.move10k.xyz/frame-image.png",
+    "ogImageUrl": "https://www.move10k.xyz/10k-icon.png",
     "requiredChains": [
       "eip155:8453"
     ],
