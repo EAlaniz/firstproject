@@ -52,7 +52,7 @@
     "coinbase_wallet"
   ],
   "farcaster": {
-    "auth_domain": "move10k.xyz",
-    "redirect_url": "https://move10k.xyz"
+    "auth_domain": "www.move10k.xyz",
+    "redirect_url": "https://www.move10k.xyz"
   }
 } 
