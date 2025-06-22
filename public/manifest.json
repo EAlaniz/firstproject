@@ -21,12 +21,22 @@
     "embed_description": "Inclusive wellness app for step tracking, social connection, and token rewards"
   },
   "frame": {
-    "version": "1",
+    "version": "next",
     "name": "10K - Move. Earn. Connect.",
     "iconUrl": "https://www.move10k.xyz/10k-icon.png",
     "homeUrl": "https://www.move10k.xyz",
     "imageUrl": "https://www.move10k.xyz/frame-image.png",
-    "buttonTitle": "🚶‍♂️ Start Walking",
+    "aspectRatio": "1.91:1",
+    "button": {
+      "title": "🚶‍♂️ Start Walking",
+      "action": {
+        "type": "launch_frame",
+        "name": "10K - Move. Earn. Connect.",
+        "url": "https://www.move10k.xyz",
+        "splashImageUrl": "https://www.move10k.xyz/10k-icon.png",
+        "splashBackgroundColor": "#667eea"
+      }
+    },
     "splashImageUrl": "https://www.move10k.xyz/10k-icon.png",
     "splashBackgroundColor": "#667eea",
     "webhookUrl": "https://www.move10k.xyz/api/webhook",
@@ -75,11 +85,5 @@
   "integrations": [
     "farcaster",
     "wallet"
-  ]{
-    "accountAssociation": {
-      "header": "eyJmaWQiOjM4NDkxMiwidHlwZSI6ImN1c3RvZHkiLCJrZXkiOiIweDA2MDk1MEU2N2YwRUM3YThDMkI2MzBkYjQzOTYxODdDNWU5M0E5NkYifQ",
-      "payload": "eyJkb21haW4iOiJtb3ZlMTBrLnh5eiJ9",
-      "signature": "MHhhY2UzYjNlN2M1ODJjNGJlYTNkOGM2MzMyNjkxMTgxMGY0ZThiNjdiNTc4YjE2ZDkxZDMyZWFiN2M4MTliYzc0MGNjYTMyODAxNWNhNzEyMTQ2MGYxYjEyZjE5NTA4MDRkZWY0ZWFmNTc4YmY5YjA4Mjg5NDdkMDU0OTcxMjg5YTFj"
-    }
-  }
+  ]
 }
