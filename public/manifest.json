@@ -9,6 +9,10 @@
   "orientation": "portrait",
   "theme_color": "#22c55e",
   "background_color": "#000000",
+  "app_info": {
+    "title": "10K - Move. Earn. Connect.",
+    "author": "errnsterr"
+  },
   "icons": [
     {
       "src": "/10k-icon.png",
