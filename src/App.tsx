@@ -306,6 +306,24 @@ function App() {
     );
   };
 
+  // Show loading while detecting mini app
+  if (!isMiniAppReady) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto">
+            <img
+              src="/10k-icon.png"
+              alt="10K Icon"
+              className="w-8 h-8"
+            />
+          </div>
+          <p className="text-gray-600">Loading 10K...</p>
+        </div>
+      </div>
+    );
+  }
+  
   // Show wallet connection if not connected
   if (!isConnected) {
     return (
@@ -356,40 +374,6 @@ function App() {
     );
   }
   
-  // Show mini app interface if running as mini app
-  if (isMiniApp && isMiniAppReady) {
-    return (
-      <div className="min-h-screen bg-white">
-        <FarcasterMiniApp
-          currentSteps={currentSteps}
-          dailyGoal={dailyGoal}
-          isGoalReached={isGoalReached}
-          currentStreak={currentStreak}
-          totalTokens={totalTokens}
-          onShareAchievement={handleShareToFarcaster}
-        />
-      </div>
-    );
-  }
-  
-  // Show loading while detecting mini app
-  if (!isMiniAppReady) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto">
-            <img
-              src="/10k-icon.png"
-              alt="10K Icon"
-              className="w-8 h-8"
-            />
-          </div>
-          <p className="text-gray-600">Loading 10K...</p>
-        </div>
-      </div>
-    );
-  }
-  
   // Show wrong network if not on Base
   if (chain && chain.id !== base.id) {
     return (
@@ -414,380 +398,9 @@ function App() {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-white text-black">
-      {/* Mobile Header */}
-      <header className="border-b border-gray-200 px-4 py-3 sm:px-6 sm:py-4">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            {/* 10K Icon - match mobile version */}
-            <img
-              src="/10k-icon.png"
-              alt="10K Icon"
-              className="w-8 h-8 rounded-full border border-gray-300 bg-white"
-              style={{ objectFit: 'cover' }}
-            />
-            <span className="text-xl font-medium">10K</span>
-          </div>
-          
-          {/* Desktop Navigation */}
-          <div className="hidden sm:flex items-center space-x-6">
-            {/* Stats */}
-            <div className="flex items-center space-x-6 text-sm">
-              <div className="flex items-center space-x-2">
-                <Trophy className="w-4 h-4 text-amber-500" />
-                <span className="font-medium">{currentStreak}</span>
-                <span className="text-gray-600 hidden lg:inline">day streak</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Circle className="w-4 h-4 text-purple-500 fill-current" />
-                <span className="font-medium">{totalTokens}</span>
-                <span className="text-gray-600 hidden lg:inline">tokens</span>
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => setShowMessagingPanel(true)}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                title="Messages"
-              >
-                <MessageCircle className="w-5 h-5" />
-              </button>
-              
-              {/* Wallet */}
-              <button
-                onClick={() => setShowMobileWalletModal(true)}
-                className="bg-gray-100 text-black px-4 py-2 rounded-full hover:bg-gray-200 transition-colors cursor-pointer text-sm flex items-center space-x-2"
-              >
-                <User className="w-4 h-4" />
-                <span>Wallet</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Mobile Menu Button */}
-          <div className="flex items-center space-x-2 sm:hidden">
-            <button
-              onClick={() => setShowMobileMenu(true)}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* Mobile Stats Bar */}
-      <div className="sm:hidden border-b border-gray-200 px-4 py-3">
-        <div className="flex items-center justify-center space-x-8 text-sm">
-          <div className="flex items-center space-x-2">
-            <Trophy className="w-4 h-4 text-amber-500" />
-            <span className="font-medium">{currentStreak}</span>
-            <span className="text-gray-600">streak</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Circle className="w-4 h-4 text-purple-500 fill-current" />
-            <span className="font-medium">{totalTokens}</span>
-            <span className="text-gray-600">tokens</span>
-          </div>
-        </div>
-      </div>
-      
-      {/* Main Content */}
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
-        {/* Today's Progress */}
-        <section className="mb-8 sm:mb-16">
-          <div className="text-center space-y-6 sm:space-y-8">
-            <div className="space-y-2">
-              <h1 className="text-4xl sm:text-5xl font-light tracking-tight">
-                {currentSteps.toLocaleString()}
-              </h1>
-              <p className="text-gray-600">
-                of {dailyGoal.toLocaleString()} steps today
-              </p>
-            </div>
-            
-            {/* Progress Circle */}
-            <div className="relative w-40 h-40 sm:w-48 sm:h-48 mx-auto">
-              <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                <circle
-                  cx="50"
-                  cy="50"
-                  r="45"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  fill="none"
-                  className="text-gray-200"
-                />
-                <circle
-                  cx="50"
-                  cy="50"
-                  r="45"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  fill="none"
-                  strokeDasharray={`${2 * Math.PI * 45}`}
-                  strokeDashoffset={`${2 * Math.PI * 45 * (1 - progress / 100)}`}
-                  className={`transition-all duration-1000 ${
-                    isGoalReached ? 'text-green-500' : 'text-black'
-                  }`}
-                  strokeLinecap="round"
-                />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="text-center">
-                  <div className="text-xl sm:text-2xl font-medium">
-                    {Math.round(progress)}%
-                  </div>
-                  {isGoalReached && (
-                    <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 text-green-500 mx-auto mt-1" />
-                  )}
-                </div>
-              </div>
-            </div>
-            
-            {/* Goal Selector */}
-            <div className="flex justify-center">
-              <select 
-                value={dailyGoal}
-                onChange={(e) => setDailyGoal(Number(e.target.value))}
-                className="bg-gray-100 border-0 rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
-              >
-                <option value={5000}>5K Steps</option>
-                <option value={7500}>7.5K Steps</option>
-                <option value={10000}>10K Steps</option>
-                <option value={12500}>12.5K Steps</option>
-                <option value={15000}>15K Steps</option>
-              </select>
-            </div>
-          </div>
-        </section>
-
-        {/* Quick Actions */}
-        <section className="mb-8 sm:mb-16">
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
-            {/* Social Component - Gated by daily goal */}
-            <button 
-              onClick={() => setShowSocialModal(true)}
-              className={`p-4 sm:p-6 border-2 rounded-xl sm:rounded-2xl transition-colors text-left group relative ${
-                isGoalReached 
-                  ? 'border-green-400 hover:border-green-500 bg-green-50' 
-                  : 'border-gray-200 hover:border-gray-300 opacity-60'
-              }`}
-            >
-              <div className="flex items-center justify-between mb-2 sm:mb-3">
-                <div className="flex items-center space-x-2">
-                  {isGoalReached ? (
-                    <Users className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
-                  ) : (
-                    <Lock className="w-5 h-5 sm:w-6 sm:h-6 text-gray-400" />
-                  )}
-                  {isGoalReached && (
-                    <CheckCircle2 className="w-3 h-3 sm:w-4 sm:h-4 text-green-600" />
-                  )}
-                </div>
-                <ArrowRight className={`w-3 h-3 sm:w-4 sm:h-4 transition-opacity ${
-                  isGoalReached ? 'opacity-0 group-hover:opacity-100' : 'opacity-0'
-                }`} />
-              </div>
-              <h3 className={`font-medium mb-1 text-sm sm:text-base ${
-                isGoalReached ? 'text-green-800' : 'text-gray-500'
-              }`}>
-                {isGoalReached ? 'Social Hub' : 'Social Hub'}
-              </h3>
-              <p className="text-xs sm:text-sm text-gray-600 hidden sm:block">
-                {isGoalReached 
-                  ? 'Share achievements and connect with community' 
-                  : `Complete your goal to unlock (${(dailyGoal - currentSteps).toLocaleString()} steps left)`
-                }
-              </p>
-              {!isGoalReached && (
-                <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-80 rounded-xl sm:rounded-2xl">
-                  <div className="text-center">
-                    <Lock className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400 mx-auto mb-2" />
-                    <p className="text-xs text-gray-500 font-medium">Goal Required</p>
-                  </div>
-                </div>
-              )}
-            </button>
-            
-            <button 
-              onClick={() => setShowMessagingPanel(true)}
-              className="p-4 sm:p-6 border border-gray-200 rounded-xl sm:rounded-2xl hover:border-gray-300 transition-colors text-left group relative"
-            >
-              <div className="flex items-center justify-between mb-2 sm:mb-3">
-                <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6" />
-                <ArrowRight className="w-3 h-3 sm:w-4 sm:h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
-              </div>
-              <h3 className="font-medium mb-1 text-sm sm:text-base">Messages</h3>
-              <p className="text-xs sm:text-sm text-gray-600 hidden sm:block">Chat with other movers</p>
-            </button>
-            
-            <button 
-              onClick={() => setShowRewardsModal(true)}
-              className="p-4 sm:p-6 border border-gray-200 rounded-xl sm:rounded-2xl hover:border-gray-300 transition-colors text-left group"
-            >
-              <div className="flex items-center justify-between mb-2 sm:mb-3">
-                <Zap className="w-5 h-5 sm:w-6 sm:w-6" />
-                <ArrowRight className="w-3 h-3 sm:w-4 sm:h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
-              </div>
-              <h3 className="font-medium mb-1 text-sm sm:text-base">Earn Rewards</h3>
-              <p className="text-xs sm:text-sm text-gray-600 hidden sm:block">Get tokens for completing goals</p>
-            </button>
-          </div>
-        </section>
-
-        {/* Recent Activity */}
-        <section className="mb-8 sm:mb-16">
-          <h2 className="text-xl sm:text-2xl font-light mb-6 sm:mb-8">Recent Activity</h2>
-          <div className="space-y-3 sm:space-y-4">
-            <div className="flex items-center justify-between p-3 sm:p-4 border border-gray-200 rounded-lg sm:rounded-xl">
-              <div className="flex items-center space-x-3 sm:space-x-4 flex-1 min-w-0">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                  <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="font-medium text-sm sm:text-base">Daily goal completed</p>
-                  <p className="text-xs sm:text-sm text-gray-600 truncate">12,450 steps • 2 hours ago</p>
-                </div>
-              </div>
-              <div className="text-right flex-shrink-0">
-                <p className="font-medium text-sm sm:text-base">+10 tokens</p>
-                <p className="text-xs sm:text-sm text-gray-600">Reward earned</p>
-              </div>
-            </div>
-            
-            <div className="flex items-center justify-between p-3 sm:p-4 border border-gray-200 rounded-lg sm:rounded-xl">
-              <div className="flex items-center space-x-3 sm:space-x-4 flex-1 min-w-0">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
-                  <Trophy className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="font-medium text-sm sm:text-base">7-day streak achieved</p>
-                  <p className="text-xs sm:text-sm text-gray-600 truncate">Consistency bonus unlocked</p>
-                </div>
-              </div>
-              <div className="text-right flex-shrink-0">
-                <p className="font-medium text-sm sm:text-base">+25 tokens</p>
-                <p className="text-xs sm:text-sm text-gray-600">Streak bonus</p>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between p-3 sm:p-4 border border-gray-200 rounded-lg sm:rounded-xl">
-              <div className="flex items-center space-x-3 sm:space-x-4 flex-1 min-w-0">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
-                  <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="font-medium text-sm sm:text-base">New message from Alex Walker</p>
-                  <p className="text-xs sm:text-sm text-gray-600 truncate">Just hit 15K steps! 🚶‍♂️</p>
-                </div>
-              </div>
-              <div className="text-right flex-shrink-0">
-                <p className="text-xs sm:text-sm text-gray-600">5 min ago</p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Footer */}
-        <footer className="text-center text-xs sm:text-sm text-gray-500 space-y-2">
-          <p>Connected to Base</p>
-          {address && (
-            <div className="flex justify-center">
-              <div className="inline-flex items-center space-x-1">
-                <span className="text-sm font-medium">
-                  {address.slice(0, 6)}...{address.slice(-4)}
-                </span>
-              </div>
-            </div>
-          )}
-          <p>Secure • Decentralized • Community-driven</p>
-        </footer>
-      </main>
-
-      {/* Mobile Menu */}
-      {showMobileMenu && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 sm:hidden">
-          <div className="fixed inset-y-0 right-0 w-80 bg-white shadow-xl">
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
-              <h2 className="text-lg font-medium">Menu</h2>
-              <button
-                onClick={() => setShowMobileMenu(false)}
-                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            
-            <div className="p-4 space-y-4">
-              <button
-                onClick={() => {
-                  setShowMessagingPanel(true);
-                  setShowMobileMenu(false);
-                }}
-                className="w-full flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors"
-              >
-                <MessageCircle className="w-5 h-5" />
-                <div className="text-left">
-                  <p className="font-medium">Messages</p>
-                  <p className="text-sm text-gray-600">Connect with community</p>
-                </div>
-              </button>
-
-              <button
-                onClick={() => {
-                  setShowSocialModal(true);
-                  setShowMobileMenu(false);
-                }}
-                disabled={!isGoalReached}
-                className="w-full flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors disabled:opacity-50"
-              >
-                {isGoalReached ? <Users className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
-                <div className="text-left">
-                  <p className="font-medium">Social Hub</p>
-                  <p className="text-sm text-gray-600">
-                    {isGoalReached ? 'Share and connect' : 'Complete goal to unlock'}
-                  </p>
-                </div>
-                {isGoalReached && (
-                  <CheckCircle2 className="w-4 h-4 text-green-500 ml-auto" />
-                )}
-              </button>
-
-              <button
-                onClick={() => {
-                  setShowRewardsModal(true);
-                  setShowMobileMenu(false);
-                }}
-                className="w-full flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors"
-              >
-                <Gift className="w-5 h-5" />
-                <div className="text-left">
-                  <p className="font-medium">Rewards</p>
-                  <p className="text-sm text-gray-600">Earn tokens</p>
-                </div>
-              </button>
-
-              <div className="pt-4 border-t border-gray-200">
-                <button
-                  onClick={() => {
-                    setShowMobileWalletModal(true);
-                    setShowMobileMenu(false);
-                  }}
-                  className="w-full bg-gray-100 text-black p-3 rounded-lg hover:bg-gray-200 transition-colors text-center font-medium flex items-center justify-center space-x-2"
-                >
-                  <User className="w-4 h-4" />
-                  <span>Wallet Settings</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
+  // --- MODALS AND OVERLAYS (always rendered) ---
+  const ModalsAndOverlays = (
+    <>
       {/* Messaging Panel */}
       <MessagingPanel
         isOpen={showMessagingPanel}
@@ -1246,6 +859,384 @@ function App() {
           <MessageCircle className="w-6 h-6" />
         </button>
       </div>
+    </>
+  );
+
+  return (
+    <div className="min-h-screen bg-white text-black">
+      {/* Mobile Header */}
+      <header className="border-b border-gray-200 px-4 py-3 sm:px-6 sm:py-4">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            {/* 10K Icon - match mobile version */}
+            <img
+              src="/10k-icon.png"
+              alt="10K Icon"
+              className="w-8 h-8 rounded-full border border-gray-300 bg-white"
+              style={{ objectFit: 'cover' }}
+            />
+            <span className="text-xl font-medium">10K</span>
+          </div>
+          
+          {/* Desktop Navigation */}
+          <div className="hidden sm:flex items-center space-x-6">
+            {/* Stats */}
+            <div className="flex items-center space-x-6 text-sm">
+              <div className="flex items-center space-x-2">
+                <Trophy className="w-4 h-4 text-amber-500" />
+                <span className="font-medium">{currentStreak}</span>
+                <span className="text-gray-600 hidden lg:inline">day streak</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Circle className="w-4 h-4 text-purple-500 fill-current" />
+                <span className="font-medium">{totalTokens}</span>
+                <span className="text-gray-600 hidden lg:inline">tokens</span>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setShowMessagingPanel(true)}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                title="Messages"
+              >
+                <MessageCircle className="w-5 h-5" />
+              </button>
+              
+              {/* Wallet */}
+              <button
+                onClick={() => setShowMobileWalletModal(true)}
+                className="bg-gray-100 text-black px-4 py-2 rounded-full hover:bg-gray-200 transition-colors cursor-pointer text-sm flex items-center space-x-2"
+              >
+                <User className="w-4 h-4" />
+                <span>Wallet</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Mobile Menu Button */}
+          <div className="flex items-center space-x-2 sm:hidden">
+            <button
+              onClick={() => setShowMobileMenu(true)}
+              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Mobile Stats Bar */}
+      <div className="sm:hidden border-b border-gray-200 px-4 py-3">
+        <div className="flex items-center justify-center space-x-8 text-sm">
+          <div className="flex items-center space-x-2">
+            <Trophy className="w-4 h-4 text-amber-500" />
+            <span className="font-medium">{currentStreak}</span>
+            <span className="text-gray-600">streak</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Circle className="w-4 h-4 text-purple-500 fill-current" />
+            <span className="font-medium">{totalTokens}</span>
+            <span className="text-gray-600">tokens</span>
+          </div>
+        </div>
+      </div>
+      
+      {/* Main Content */}
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
+        {/* Today's Progress */}
+        <section className="mb-8 sm:mb-16">
+          <div className="text-center space-y-6 sm:space-y-8">
+            <div className="space-y-2">
+              <h1 className="text-4xl sm:text-5xl font-light tracking-tight">
+                {currentSteps.toLocaleString()}
+              </h1>
+              <p className="text-gray-600">
+                of {dailyGoal.toLocaleString()} steps today
+              </p>
+            </div>
+            
+            {/* Progress Circle */}
+            <div className="relative w-40 h-40 sm:w-48 sm:h-48 mx-auto">
+              <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="45"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  fill="none"
+                  className="text-gray-200"
+                />
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="45"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  fill="none"
+                  strokeDasharray={`${2 * Math.PI * 45}`}
+                  strokeDashoffset={`${2 * Math.PI * 45 * (1 - progress / 100)}`}
+                  className={`transition-all duration-1000 ${
+                    isGoalReached ? 'text-green-500' : 'text-black'
+                  }`}
+                  strokeLinecap="round"
+                />
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="text-center">
+                  <div className="text-xl sm:text-2xl font-medium">
+                    {Math.round(progress)}%
+                  </div>
+                  {isGoalReached && (
+                    <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 text-green-500 mx-auto mt-1" />
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            {/* Goal Selector */}
+            <div className="flex justify-center">
+              <select 
+                value={dailyGoal}
+                onChange={(e) => setDailyGoal(Number(e.target.value))}
+                className="bg-gray-100 border-0 rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
+              >
+                <option value={5000}>5K Steps</option>
+                <option value={7500}>7.5K Steps</option>
+                <option value={10000}>10K Steps</option>
+                <option value={12500}>12.5K Steps</option>
+                <option value={15000}>15K Steps</option>
+              </select>
+            </div>
+          </div>
+        </section>
+
+        {/* Quick Actions */}
+        <section className="mb-8 sm:mb-16">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+            {/* Social Component - Gated by daily goal */}
+            <button 
+              onClick={() => setShowSocialModal(true)}
+              className={`p-4 sm:p-6 border-2 rounded-xl sm:rounded-2xl transition-colors text-left group relative ${
+                isGoalReached 
+                  ? 'border-green-400 hover:border-green-500 bg-green-50' 
+                  : 'border-gray-200 hover:border-gray-300 opacity-60'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-2 sm:mb-3">
+                <div className="flex items-center space-x-2">
+                  {isGoalReached ? (
+                    <Users className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
+                  ) : (
+                    <Lock className="w-5 h-5 sm:w-6 sm:h-6 text-gray-400" />
+                  )}
+                  {isGoalReached && (
+                    <CheckCircle2 className="w-3 h-3 sm:w-4 sm:h-4 text-green-600" />
+                  )}
+                </div>
+                <ArrowRight className={`w-3 h-3 sm:w-4 sm:h-4 transition-opacity ${
+                  isGoalReached ? 'opacity-0 group-hover:opacity-100' : 'opacity-0'
+                }`} />
+              </div>
+              <h3 className={`font-medium mb-1 text-sm sm:text-base ${
+                isGoalReached ? 'text-green-800' : 'text-gray-500'
+              }`}>
+                {isGoalReached ? 'Social Hub' : 'Social Hub'}
+              </h3>
+              <p className="text-xs sm:text-sm text-gray-600 hidden sm:block">
+                {isGoalReached 
+                  ? 'Share achievements and connect with community' 
+                  : `Complete your goal to unlock (${(dailyGoal - currentSteps).toLocaleString()} steps left)`
+                }
+              </p>
+              {!isGoalReached && (
+                <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-80 rounded-xl sm:rounded-2xl">
+                  <div className="text-center">
+                    <Lock className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400 mx-auto mb-2" />
+                    <p className="text-xs text-gray-500 font-medium">Goal Required</p>
+                  </div>
+                </div>
+              )}
+            </button>
+            
+            <button 
+              onClick={() => setShowMessagingPanel(true)}
+              className="p-4 sm:p-6 border border-gray-200 rounded-xl sm:rounded-2xl hover:border-gray-300 transition-colors text-left group relative"
+            >
+              <div className="flex items-center justify-between mb-2 sm:mb-3">
+                <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6" />
+                <ArrowRight className="w-3 h-3 sm:w-4 sm:h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
+              <h3 className="font-medium mb-1 text-sm sm:text-base">Messages</h3>
+              <p className="text-xs sm:text-sm text-gray-600 hidden sm:block">Chat with other movers</p>
+            </button>
+            
+            <button 
+              onClick={() => setShowRewardsModal(true)}
+              className="p-4 sm:p-6 border border-gray-200 rounded-xl sm:rounded-2xl hover:border-gray-300 transition-colors text-left group"
+            >
+              <div className="flex items-center justify-between mb-2 sm:mb-3">
+                <Zap className="w-5 h-5 sm:w-6 sm:w-6" />
+                <ArrowRight className="w-3 h-3 sm:w-4 sm:h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
+              <h3 className="font-medium mb-1 text-sm sm:text-base">Earn Rewards</h3>
+              <p className="text-xs sm:text-sm text-gray-600 hidden sm:block">Get tokens for completing goals</p>
+            </button>
+          </div>
+        </section>
+
+        {/* Recent Activity */}
+        <section className="mb-8 sm:mb-16">
+          <h2 className="text-xl sm:text-2xl font-light mb-6 sm:mb-8">Recent Activity</h2>
+          <div className="space-y-3 sm:space-y-4">
+            <div className="flex items-center justify-between p-3 sm:p-4 border border-gray-200 rounded-lg sm:rounded-xl">
+              <div className="flex items-center space-x-3 sm:space-x-4 flex-1 min-w-0">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-sm sm:text-base">Daily goal completed</p>
+                  <p className="text-xs sm:text-sm text-gray-600 truncate">12,450 steps • 2 hours ago</p>
+                </div>
+              </div>
+              <div className="text-right flex-shrink-0">
+                <p className="font-medium text-sm sm:text-base">+10 tokens</p>
+                <p className="text-xs sm:text-sm text-gray-600">Reward earned</p>
+              </div>
+            </div>
+            
+            <div className="flex items-center justify-between p-3 sm:p-4 border border-gray-200 rounded-lg sm:rounded-xl">
+              <div className="flex items-center space-x-3 sm:space-x-4 flex-1 min-w-0">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Trophy className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-sm sm:text-base">7-day streak achieved</p>
+                  <p className="text-xs sm:text-sm text-gray-600 truncate">Consistency bonus unlocked</p>
+                </div>
+              </div>
+              <div className="text-right flex-shrink-0">
+                <p className="font-medium text-sm sm:text-base">+25 tokens</p>
+                <p className="text-xs sm:text-sm text-gray-600">Streak bonus</p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between p-3 sm:p-4 border border-gray-200 rounded-lg sm:rounded-xl">
+              <div className="flex items-center space-x-3 sm:space-x-4 flex-1 min-w-0">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-sm sm:text-base">New message from Alex Walker</p>
+                  <p className="text-xs sm:text-sm text-gray-600 truncate">Just hit 15K steps! 🚶‍♂️</p>
+                </div>
+              </div>
+              <div className="text-right flex-shrink-0">
+                <p className="text-xs sm:text-sm text-gray-600">5 min ago</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Footer */}
+        <footer className="text-center text-xs sm:text-sm text-gray-500 space-y-2">
+          <p>Connected to Base</p>
+          {address && (
+            <div className="flex justify-center">
+              <div className="inline-flex items-center space-x-1">
+                <span className="text-sm font-medium">
+                  {address.slice(0, 6)}...{address.slice(-4)}
+                </span>
+              </div>
+            </div>
+          )}
+          <p>Secure • Decentralized • Community-driven</p>
+        </footer>
+      </main>
+
+      {/* Mobile Menu */}
+      {showMobileMenu && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 sm:hidden">
+          <div className="fixed inset-y-0 right-0 w-80 bg-white shadow-xl">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <h2 className="text-lg font-medium">Menu</h2>
+              <button
+                onClick={() => setShowMobileMenu(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-4 space-y-4">
+              <button
+                onClick={() => {
+                  setShowMessagingPanel(true);
+                  setShowMobileMenu(false);
+                }}
+                className="w-full flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors"
+              >
+                <MessageCircle className="w-5 h-5" />
+                <div className="text-left">
+                  <p className="font-medium">Messages</p>
+                  <p className="text-sm text-gray-600">Connect with community</p>
+                </div>
+              </button>
+
+              <button
+                onClick={() => {
+                  setShowSocialModal(true);
+                  setShowMobileMenu(false);
+                }}
+                disabled={!isGoalReached}
+                className="w-full flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors disabled:opacity-50"
+              >
+                {isGoalReached ? <Users className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
+                <div className="text-left">
+                  <p className="font-medium">Social Hub</p>
+                  <p className="text-sm text-gray-600">
+                    {isGoalReached ? 'Share and connect' : 'Complete goal to unlock'}
+                  </p>
+                </div>
+                {isGoalReached && (
+                  <CheckCircle2 className="w-4 h-4 text-green-500 ml-auto" />
+                )}
+              </button>
+
+              <button
+                onClick={() => {
+                  setShowRewardsModal(true);
+                  setShowMobileMenu(false);
+                }}
+                className="w-full flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors"
+              >
+                <Gift className="w-5 h-5" />
+                <div className="text-left">
+                  <p className="font-medium">Rewards</p>
+                  <p className="text-sm text-gray-600">Earn tokens</p>
+                </div>
+              </button>
+
+              <div className="pt-4 border-t border-gray-200">
+                <button
+                  onClick={() => {
+                    setShowMobileWalletModal(true);
+                    setShowMobileMenu(false);
+                  }}
+                  className="w-full bg-gray-100 text-black p-3 rounded-lg hover:bg-gray-200 transition-colors text-center font-medium flex items-center justify-center space-x-2"
+                >
+                  <User className="w-4 h-4" />
+                  <span>Wallet Settings</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {ModalsAndOverlays}
     </div>
   );
 }
