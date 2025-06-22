@@ -10,6 +10,11 @@
   "theme_color": "#22c55e",
   "background_color": "#000000",
   "scope": "/",
+  "app_info": {
+    "name": "10K - Move. Earn. Connect.",
+    "description": "Inclusive wellness app for step tracking, social connection, and token rewards on Base Chain",
+    "author": "errnsterr"
+  },
   "categories": [
     "health",
     "fitness",

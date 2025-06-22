@@ -4,6 +4,11 @@
     "payload": "eyJkb21haW4iOiJ3d3cubW92ZTEway54eXoifQ",
     "signature": "MHg0MGU1NGZmN2RhOTY1NTQ0ZjVmYmE3NGMxYTdiZTY5YmMwZmE4MWE4MzBkNDFhNzEwNTk5ODg4NDZiMjIxZWNkMmQ1NzhjNTVjYTVjNzhkY2Y2YjlmNGUzZjMyYWIxZDQ1NTBlNmIwZTE5ODU5ZGFiNDE0YTgxZDRiM2RmODQyYTFj"
   },
+  "app_info": {
+    "name": "10K - Move. Earn. Connect.",
+    "description": "Inclusive wellness app for step tracking, social connection, and token rewards on Base Chain",
+    "author": "errnsterr"
+  },
   "frame": {
     "version": "1",
     "name": "10K - Move. Earn. Connect.",
