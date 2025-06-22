@@ -1,3 +1,5 @@
+<!DOCTYPE html>
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="/10k-icon.png" />
@@ -36,10 +38,24 @@
   <meta name="author" content="10K Wellness" />
   <meta name="keywords" content="wellness, fitness, step tracking, blockchain, rewards, community" />
 
-  <!-- Farcaster Frame Meta Tag (validated) -->
+  <!-- ✅ Valid Farcaster Frame Meta Tag -->
   <meta
     name="fc:frame"
-    content="{&quot;version&quot;:&quot;1&quot;,&quot;imageUrl&quot;:&quot;https://www.move10k.xyz/frame-image.png&quot;,&quot;aspectRatio&quot;:&quot;1.91:1&quot;,&quot;button&quot;:{&quot;title&quot;:&quot;🚶‍♂️ Start Walking&quot;,&quot;action&quot;:{&quot;type&quot;:&quot;launch_frame&quot;,&quot;name&quot;:&quot;10K - Move. Earn. Connect.&quot;,&quot;url&quot;:&quot;https://www.move10k.xyz&quot;,&quot;splashImageUrl&quot;:&quot;https://www.move10k.xyz/10k-icon.png&quot;,&quot;splashBackgroundColor&quot;:&quot;#667eea&quot;}}}"
+    content='{
+      "version": "1",
+      "imageUrl": "https://www.move10k.xyz/frame-image.png",
+      "aspectRatio": "1.91:1",
+      "button": {
+        "title": "🚶‍♂️ Start Walking",
+        "action": {
+          "type": "launch_frame",
+          "name": "10K - Move. Earn. Connect.",
+          "url": "https://www.move10k.xyz",
+          "splashImageUrl": "https://www.move10k.xyz/10k-icon.png",
+          "splashBackgroundColor": "#667eea"
+        }
+      }
+    }'
   />
 
   <!-- Cache Control -->
@@ -47,3 +63,10 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
 </head>
+<body>
+  <div id="root"></div>
+
+  <!-- React app entrypoint -->
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+</html>
