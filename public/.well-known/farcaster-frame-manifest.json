@@ -9,7 +9,7 @@
     "description": "Inclusive wellness app for step tracking, social connection, and token rewards on Base Chain",
     "author": "errnsterr"
   },
-  "frame": {
+  "miniApp": {
     "version": "1",
     "name": "10K - Move. Earn. Connect.",
     "description": "Track your steps, earn tokens, and connect with friends on Base Chain. Join the 10K movement for a healthier lifestyle.",
