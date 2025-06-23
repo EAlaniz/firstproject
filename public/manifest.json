@@ -9,6 +9,7 @@
   "orientation": "portrait",
   "theme_color": "#22c55e",
   "background_color": "#000000",
+  "homeUrl": "https://www.move10k.xyz",
   "app_info": {
     "title": "10K - Move. Earn. Connect.",
     "author": "errnsterr"
