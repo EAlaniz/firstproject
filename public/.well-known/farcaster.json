@@ -1,44 +1,38 @@
 {
-  "app_info": {
-    "title": "10K - Move. Earn. Connect.",
-    "author": "errnsterr"
-  },
-  "miniApp": {
-    "version": "1",
-    "name": "10K - Move. Earn. Connect.",
-    "description": "Track your steps, earn tokens, and connect with friends on Base Chain. Join the 10K movement for a healthier lifestyle.",
-    "iconUrl": "https://www.move10k.xyz/10k-icon.png",
-    "homeUrl": "https://www.move10k.xyz",
-    "imageUrl": "https://www.move10k.xyz/10k-icon.png",
-    "buttonTitle": "🚶‍♂️ Start 10K",
-    "splashImageUrl": "https://www.move10k.xyz/10k-icon.png",
-    "splashBackgroundColor": "#667eea",
-    "requiredChains": [
-      "eip155:8453"
-    ],
-    "requiredCapabilities": [
-      "actions.signIn",
-      "wallet.getEthereumProvider",
-      "actions.composeCast",
-      "actions.addMiniApp"
-    ],
-    "subtitle": "Move. Earn. Connect.",
-    "screenshotUrls": [
-      "https://www.move10k.xyz/screenshot1.png",
-      "https://www.move10k.xyz/screenshot2.png",
-      "https://www.move10k.xyz/screenshot3.png"
-    ],
-    "primaryCategory": "health-fitness",
-    "tags": [
-      "fitness",
-      "wellness",
-      "steps",
-      "social"
-    ],
-    "heroImageUrl": "https://www.move10k.xyz/10k-icon.png",
-    "tagline": "Move. Earn. Connect.",
-    "ogTitle": "10K - Move. Earn. Connect.",
-    "ogDescription": "Track your steps, earn tokens, and connect with friends on Base Chain",
-    "ogImageUrl": "https://www.move10k.xyz/10k-icon.png"
-  }
-} 
+  "version": "1",
+  "name": "10K - Move. Earn. Connect.",
+  "description": "Track your steps, earn tokens, and connect with friends on Base Chain. Join the 10K movement for a healthier lifestyle.",
+  "iconUrl": "https://www.move10k.xyz/10k-icon.png",
+  "homeUrl": "https://www.move10k.xyz",
+  "imageUrl": "https://www.move10k.xyz/10k-icon.png",
+  "buttonTitle": "🚶‍♂️ Start 10K",
+  "splashImageUrl": "https://www.move10k.xyz/10k-icon.png",
+  "splashBackgroundColor": "#667eea",
+  "requiredChains": [
+    "eip155:8453"
+  ],
+  "requiredCapabilities": [
+    "actions.signIn",
+    "wallet.getEthereumProvider",
+    "actions.composeCast",
+    "actions.addMiniApp"
+  ],
+  "subtitle": "Move. Earn. Connect.",
+  "screenshotUrls": [
+    "https://www.move10k.xyz/screenshot1.png",
+    "https://www.move10k.xyz/screenshot2.png",
+    "https://www.move10k.xyz/screenshot3.png"
+  ],
+  "primaryCategory": "health-fitness",
+  "tags": [
+    "fitness",
+    "wellness",
+    "steps",
+    "social"
+  ],
+  "heroImageUrl": "https://www.move10k.xyz/10k-icon.png",
+  "tagline": "Move. Earn. Connect.",
+  "ogTitle": "10K - Move. Earn. Connect.",
+  "ogDescription": "Track your steps, earn tokens, and connect with friends on Base Chain",
+  "ogImageUrl": "https://www.move10k.xyz/10k-icon.png"
+}
