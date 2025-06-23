@@ -1,46 +1,26 @@
 {
+  "version": "1",
   "name": "10K - Move. Earn. Connect.",
-  "short_name": "10K",
-  "description": "Inclusive wellness app for step tracking, social connection, and token rewards on Base Chain",
-  "version": "1.0.0",
-  "manifest_version": 3,
-  "start_url": "/",
-  "display": "standalone",
-  "orientation": "portrait",
-  "theme_color": "#667eea",
-  "background_color": "#ffffff",
-  "app_info": {
-    "title": "10K - Move. Earn. Connect.",
-    "author": "errnsterr"
-  },
-  "farcaster": {
-    "app_id": "10k-wellness",
-    "embed_url": "https://www.move10k.xyz",
-    "embed_image": "https://www.move10k.xyz/10k-icon.png",
-    "embed_title": "10K - Move. Earn. Connect.",
-    "embed_description": "Inclusive wellness app for step tracking, social connection, and token rewards"
-  },
-  "icons": [
-    {
-      "src": "/10k-icon.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    }
+  "description": "Track your steps, earn tokens, and connect with friends on Base Chain",
+  "iconUrl": "https://www.move10k.xyz/10k-icon.png",
+  "homeUrl": "https://www.move10k.xyz",
+  "imageUrl": "https://www.move10k.xyz/10k-icon.png",
+  "buttonTitle": "🚶‍♂️ Start 10K",
+  "splashImageUrl": "https://www.move10k.xyz/10k-icon.png",
+  "splashBackgroundColor": "#667eea",
+  "requiredChains": ["eip155:8453"],
+  "requiredCapabilities": [
+    "actions.signIn",
+    "wallet.getEthereumProvider",
+    "actions.composeCast",
+    "actions.addMiniApp"
   ],
-  "permissions": [
-    "wallet",
-    "notifications",
-    "storage"
-  ],
-  "features": [
-    "step_tracking",
-    "token_rewards",
-    "social_feed",
-    "achievements",
-    "streak_tracking"
-  ],
-  "integrations": [
-    "farcaster",
-    "wallet"
-  ]
+  "subtitle": "Move. Earn. Connect.",
+  "primaryCategory": "health-fitness",
+  "tags": ["fitness", "wellness", "steps", "social"],
+  "heroImageUrl": "https://www.move10k.xyz/10k-icon.png",
+  "tagline": "Move. Earn. Connect.",
+  "ogTitle": "10K - Move. Earn. Connect.",
+  "ogDescription": "Track your steps, earn tokens, and connect with friends on Base Chain",
+  "ogImageUrl": "https://www.move10k.xyz/10k-icon.png"
 }
