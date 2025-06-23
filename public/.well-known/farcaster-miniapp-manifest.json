@@ -1,1 +1,18 @@
- 
+{
+  "version": "1",
+  "name": "10K - Move. Earn. Connect.",
+  "description": "Track your steps, earn tokens, and connect with friends on Base Chain.",
+  "iconUrl": "https://www.move10k.xyz/10k-icon.png",
+  "homeUrl": "https://www.move10k.xyz",
+  "requiredChains": ["eip155:8453"],
+  "requiredCapabilities": [
+    "actions.signIn",
+    "wallet.getEthereumProvider",
+    "actions.composeCast",
+    "actions.addMiniApp"
+  ],
+  "splashImageUrl": "https://www.move10k.xyz/10k-icon.png",
+  "splashBackgroundColor": "#667eea",
+  "primaryCategory": "health-fitness",
+  "tags": ["fitness", "wellness", "steps", "social"]
+}

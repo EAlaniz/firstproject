@@ -58,6 +58,19 @@
       ]
     },
     {
+      "source": "/.well-known/farcaster-miniapp-manifest.json",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        }
+      ]
+    },
+    {
       "source": "/(.*)",
       "headers": [
         {
