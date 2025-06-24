@@ -29,11 +29,5 @@ export default defineConfig({
   },
   optimizeDeps: {
     exclude: ['lucide-react'],
-    include: ['framer-motion'],
-  },
-  resolve: {
-    alias: {
-      'framer-motion': 'framer-motion',
-    },
   },
 });
