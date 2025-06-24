@@ -11,9 +11,7 @@
     "deploy:base": "vite build && echo 'Deploy to Base Chain'",
     "test:contracts": "forge test",
     "deploy:contracts": "forge script script/Deploy.s.sol --rpc-url base --broadcast",
-    "migrate": "node migrate-to-base.js",
-    "generate:keys": "node scripts/generate-farcaster-keys.js",
-    "generate:opengraph": "node scripts/generate-opengraph.js"
+    "migrate": "node migrate-to-base.js"
   },
   "dependencies": {
     "@coinbase/onchainkit": "^0.31.6",
@@ -22,15 +20,11 @@
     "@farcaster/create-mini-app": "^0.0.8",
     "@farcaster/frame-sdk": "^0.0.64",
     "@farcaster/frame-wagmi-connector": "^0.0.53",
-    "@noble/ed25519": "^2.3.0",
     "@rainbow-me/rainbowkit": "^2.0.0",
     "@tanstack/react-query": "^5.80.7",
-    "base64url": "^3.0.1",
-    "canvas": "^3.1.1",
     "lucide-react": "^0.344.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "tweetnacl": "^1.0.3",
     "viem": "^2.21.0",
     "wagmi": "^2.12.0"
   },
