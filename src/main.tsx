@@ -62,6 +62,7 @@ createRoot(rootElement).render(
             options: {
               timeout: 30000,
               enableLogging: true,
+              rpcUrl: 'https://flashy-convincing-paper.base-mainnet.quiknode.pro/fe55bc09278a1ccc534942fad989695b412ab4ea/',
             },
             miniApp: {
               enabled: isFarcasterMiniApp(),

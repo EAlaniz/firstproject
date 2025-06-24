@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
+import { nodePolyfills } from 'vite-plugin-node-polyfills';
 
 export default defineConfig({
   plugins: [
@@ -12,7 +13,14 @@ export default defineConfig({
           dest: '.well-known'
         }
       ]
-    })
+    }),
+    nodePolyfills({
+      protocolImports: true,
+      globals: {
+        Buffer: true,
+        process: true,
+      },
+    }),
   ],
   server: {
     headers: {
@@ -29,15 +37,14 @@ export default defineConfig({
   },
   optimizeDeps: {
     exclude: ['lucide-react'],
+    include: ['buffer'],
   },
   define: {
-    global: 'globalThis',
+    global: 'window',
   },
   resolve: {
     alias: {
       buffer: 'buffer',
-      process: 'process/browser',
-      util: 'util',
     },
   },
 });

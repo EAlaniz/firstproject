@@ -137,8 +137,41 @@ npm run build
 - ✅ Achievement system
 - ✅ Streak tracking
 - ✅ Coinbase Smart Wallet integration
+- ✅ **XMTP messaging for community chat**
 - ✅ Cross-Origin-Opener-Policy configuration
 - ✅ Base network validation
+
+## XMTP Messaging Integration
+
+The app includes full XMTP messaging functionality for community chat:
+
+### Features
+- **Real-time messaging** between users
+- **Wallet-to-wallet conversations** using XMTP protocol
+- **Message history** and conversation management
+- **Automatic registration check** for XMTP compatibility
+- **Production-ready** with proper error handling
+
+### How It Works
+1. Users connect their wallet (Coinbase Smart Wallet, MetaMask, etc.)
+2. App checks if wallet is registered on XMTP using `Client.canMessage()`
+3. If registered, initializes XMTP client for messaging
+4. Users can start conversations with any wallet address
+5. Real-time message polling ensures reliable delivery
+
+### Technical Implementation
+- **XMTP Client**: Production environment with proper app versioning
+- **Message Polling**: 3-second intervals for reliable message delivery
+- **Error Handling**: Comprehensive error states and user feedback
+- **State Management**: React Context with proper cleanup and subscriptions
+- **Wallet Integration**: Seamless integration with wagmi and ethers
+
+### User Experience
+- **Initialize XMTP**: One-click setup for new users
+- **Conversation List**: View all active conversations
+- **Real-time Chat**: Send and receive messages instantly
+- **Address Formatting**: Clean display of wallet addresses
+- **Message Timestamps**: Relative time display for messages
 
 ## Troubleshooting
 
@@ -152,7 +185,12 @@ npm run build
    - Verify contract addresses in `.env`
    - Check network connection (Base vs Base Sepolia)
 
-3. **Build Errors**
+3. **XMTP Initialization Fails**
+   - Ensure wallet is registered on XMTP
+   - Check browser console for detailed error messages
+   - Verify wallet connection before initializing XMTP
+
+4. **Build Errors**
    - Run `npm install` to ensure all dependencies
    - Check TypeScript configuration
 

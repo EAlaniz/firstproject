@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useXMTP } from '../contexts/XMTPContext';
 import { Conversation, DecodedMessage } from '@xmtp/xmtp-js';
 import { Send, Users, Plus, X, MessageCircle, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
+import { useAccount, useWalletClient } from 'wagmi';
 
 interface XMTPMessagingProps {
   isOpen: boolean;
@@ -9,6 +10,9 @@ interface XMTPMessagingProps {
 }
 
 const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
+  const { address } = useAccount();
+  const { data: walletClient } = useWalletClient();
+  
   const {
     client,
     conversations,
@@ -17,7 +21,7 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
     error,
     isRegistered,
     isInitializing,
-    manualInitialize,
+    initializeClient,
     sendMessage,
     createConversation,
     loadMessages,
@@ -50,6 +54,24 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
       };
     }
   }, [selectedConversation, loadMessages, subscribeToMessages, unsubscribeFromMessages]);
+
+  const handleInitializeXMTP = async () => {
+    if (!walletClient) {
+      console.error('No wallet client available');
+      return;
+    }
+    
+    try {
+      // Create a signer from the wallet client using ethers
+      const { ethers } = await import('ethers');
+      const provider = new ethers.BrowserProvider(walletClient);
+      const signer = await provider.getSigner();
+      
+      await initializeClient(signer);
+    } catch (err) {
+      console.error('Failed to initialize XMTP:', err);
+    }
+  };
 
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
@@ -185,12 +207,17 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
                 <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
                 <p className="text-sm">Loading conversations...</p>
               </div>
+            ) : !address ? (
+              <div className="p-4 text-center text-gray-500">
+                <MessageCircle className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                <p className="text-sm">Please connect your wallet first</p>
+              </div>
             ) : !isRegistered ? (
               <div className="p-4 text-center text-gray-500">
                 <MessageCircle className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                <p className="text-sm">Connect your wallet to start messaging</p>
+                <p className="text-sm">Initialize XMTP to start messaging</p>
                 <button
-                  onClick={manualInitialize}
+                  onClick={handleInitializeXMTP}
                   disabled={isInitializing}
                   className="mt-3 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                 >
