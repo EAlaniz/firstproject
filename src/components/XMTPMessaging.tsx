@@ -66,9 +66,14 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
   }, [isRegistered, isInitializing]);
 
   const handleInitializeXMTP = async () => {
+    console.log('walletClient:', walletClient);
+
     if (!walletClient) {
-      console.error('No wallet client available');
-      alert('Please connect your wallet first before initializing XMTP.');
+      if (isFarcasterMiniApp()) {
+        alert('Wallet client not detected in mini app. Please reconnect your wallet or reload the app.');
+      } else {
+        alert('Please connect your wallet first before initializing XMTP.');
+      }
       return;
     }
 
