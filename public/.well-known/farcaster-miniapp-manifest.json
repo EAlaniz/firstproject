@@ -15,5 +15,18 @@
   "splashImageUrl": "https://www.move10k.xyz/10k-icon.png",
   "splashBackgroundColor": "#667eea",
   "primaryCategory": "health-fitness",
-  "tags": ["fitness", "wellness", "steps", "social"]
+  "tags": ["fitness", "wellness", "steps", "social"],
+  "accountAssociation": {
+    "header": "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9",
+    "payload": "eyJkb21haW4iOiJ3d3cubW92ZTEway54eXoiLCJ0aW1lc3RhbXAiOjE3NTA3MzEzNTksImV4cGlyZXNBdCI6MTc1MDgxNzc1OX0",
+    "signature": "PBGm6DusT0ijrR6uvoNawpSf1LSoOW8JudZbL00GkiWfvMc5jaq1FySjtcJ3qywPlF7X0-SysvTdNU1t9yQcDw"
+  },
+  "frame": {
+    "version": "vNext",
+    "name": "10K - Move. Earn. Connect.",
+    "iconUrl": "https://www.move10k.xyz/10k-icon.png",
+    "homeUrl": "https://www.move10k.xyz",
+    "imageUrl": "https://www.move10k.xyz/opengraph-image.png",
+    "buttonTitle": "🚶 Start Moving"
+  }
 }

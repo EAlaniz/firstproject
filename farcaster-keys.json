@@ -1,0 +1,11 @@
+{
+  "privateKey": "L36gUlzxFgC/5frflByf8s1FL6nYPhrGxaYRBYtJ2vV9kGF5jrtZCXB0g9auL5TRuk8XGeZnylAGTJgf/9Z9ZQ==",
+  "publicKey": "fZBheY67WQlwdIPWri+U0bpPFxnmZ8pQBkyYH//WfWU=",
+  "accountAssociation": {
+    "header": "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9",
+    "payload": "eyJkb21haW4iOiJ3d3cubW92ZTEway54eXoiLCJ0aW1lc3RhbXAiOjE3NTA3MzEzNTksImV4cGlyZXNBdCI6MTc1MDgxNzc1OX0",
+    "signature": "PBGm6DusT0ijrR6uvoNawpSf1LSoOW8JudZbL00GkiWfvMc5jaq1FySjtcJ3qywPlF7X0-SysvTdNU1t9yQcDw"
+  },
+  "generatedAt": "2025-06-24T02:15:59.658Z",
+  "domain": "www.move10k.xyz"
+}
