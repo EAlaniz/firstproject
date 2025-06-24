@@ -60,13 +60,19 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
       console.error('No wallet client available');
       return;
     }
-    
+
+    // Try to get connector id from walletClient
+    const connectorId = (walletClient as any)?.connector?.id || (walletClient as any)?.id;
+    if (connectorId !== 'metaMask' && connectorId !== 'coinbaseWallet') {
+      alert('Please use MetaMask or Coinbase Wallet for XMTP messaging. Other wallets are not supported for secure messaging.');
+      return;
+    }
+
     try {
-      // Create a signer from the wallet client using ethers
       const { ethers } = await import('ethers');
       const provider = new ethers.BrowserProvider(walletClient);
       const signer = await provider.getSigner();
-      
+
       await initializeClient(signer);
     } catch (err) {
       console.error('Failed to initialize XMTP:', err);

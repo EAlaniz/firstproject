@@ -51,6 +51,8 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   // Use ref to track if we've already initialized for this address
   const initializedAddressRef = useRef<string | null>(null);
 
+  const xmtpEnv = import.meta.env.VITE_XMTP_ENV || 'production';
+
   const clearError = useCallback(() => {
     setError(null);
   }, []);
@@ -71,6 +73,23 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     }
   }, [client]);
 
+  const handleXMTPRegistration = async (signer: Signer) => {
+    // Debug: log signature
+    try {
+      const testSig = await signer.signMessage('XMTP test');
+      console.log('XMTP test signature:', testSig);
+    } catch (e) {
+      console.error('Error signing XMTP test message:', e);
+    }
+    // Create client
+    const xmtpClient = await Client.create(signer, { env: xmtpEnv, appVersion: '10k-move-earn-connect/1.0.0' });
+    // Explicitly register if needed
+    if (!xmtpClient.address) {
+      await xmtpClient.register();
+    }
+    return xmtpClient;
+  };
+
   const initializeClient = useCallback(async (signer: Signer) => {
     if (!address) {
       setError('No wallet address available');
@@ -89,7 +108,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       console.log('Initializing XMTP client for address:', address);
 
       // Check if user is registered on XMTP
-      const canMessage = await Client.canMessage(address, { env: 'production' });
+      const canMessage = await Client.canMessage(address, { env: xmtpEnv });
       console.log('Can message check result:', canMessage);
       
       if (!canMessage) {
@@ -99,10 +118,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         // Attempt to register the user on XMTP
         try {
           // This will prompt the user to sign a message to register
-          const xmtpClient = await Client.create(signer, { 
-            env: 'production',
-            appVersion: '10k-move-earn-connect/1.0.0'
-          });
+          const xmtpClient = await handleXMTPRegistration(signer);
           
           setClient(xmtpClient);
           setIsRegistered(true);
@@ -123,10 +139,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       }
 
       // User is already registered, create XMTP client
-      const xmtpClient = await Client.create(signer, { 
-        env: 'production',
-        appVersion: '10k-move-earn-connect/1.0.0'
-      });
+      const xmtpClient = await handleXMTPRegistration(signer);
       
       setClient(xmtpClient);
       setIsRegistered(true);
@@ -189,7 +202,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     // Check if recipient is registered on XMTP
     let canMessage = false;
     try {
-      canMessage = await Client.canMessage(address, { env: 'production' });
+      canMessage = await Client.canMessage(address, { env: xmtpEnv });
     } catch (err) {
       setError('Error checking recipient XMTP registration.');
       return null;
