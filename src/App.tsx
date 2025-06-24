@@ -858,8 +858,8 @@ function App() {
         />
       </Modal>
 
-      {/* Farcaster Integration Button */}
-      <div className="fixed bottom-4 right-4 z-40">
+      {/* Farcaster Integration Button - Hidden on mobile */}
+      <div className="fixed bottom-4 right-4 z-40 hidden sm:block">
         <button
           onClick={() => setShowFarcasterModal(true)}
           className="bg-purple-600 text-white p-3 rounded-full shadow-lg hover:bg-purple-700 transition-colors"
