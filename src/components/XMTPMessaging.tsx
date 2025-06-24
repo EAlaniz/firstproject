@@ -5,6 +5,15 @@ import { Send, Users, Plus, X, MessageCircle, Loader2, AlertCircle, CheckCircle 
 import { useAccount, useWalletClient } from 'wagmi';
 import { isFarcasterMiniApp } from './MiniAppWalletConnector'; // Fixed: use named import
 
+// Extend the Window type to include farcaster (if present)
+declare global {
+  interface Window {
+    farcaster?: {
+      getProvider?: () => Promise<any>;
+    };
+  }
+}
+
 interface XMTPMessagingProps {
   isOpen: boolean;
   onClose: () => void;
@@ -29,7 +38,8 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
     subscribeToMessages,
     unsubscribeFromMessages,
     clearError,
-  } = useXMTP();
+  } = useXMTP() as any;
+  const setError = (window as any).setError || ((msg: string) => { if (typeof clearError === 'function') clearError(); }); // fallback
 
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [newMessage, setNewMessage] = useState('');
@@ -66,10 +76,34 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
   }, [isRegistered, isInitializing]);
 
   const handleInitializeXMTP = async () => {
-    console.log('walletClient:', walletClient);
+    // Detailed logging for debugging
+    console.log('[XMTP] handleInitializeXMTP called');
+    console.log('[XMTP] address:', address);
+    console.log('[XMTP] isFarcasterMiniApp:', isFarcasterMiniApp());
+    console.log('[XMTP] walletClient:', walletClient);
 
-    if (!walletClient) {
-      alert('Wallet client not detected. Please connect your wallet.');
+    let effectiveWalletClient = walletClient;
+
+    // In mini app, if walletClient is undefined, try to get provider from Farcaster SDK
+    if (isFarcasterMiniApp() && !walletClient && window?.farcaster) {
+      try {
+        // Try to get provider from Farcaster SDK (if available)
+        // This is a placeholder; actual SDK method may differ
+        if (window.farcaster.getProvider) {
+          effectiveWalletClient = await window.farcaster.getProvider();
+          console.log('[XMTP] Got wallet provider from Farcaster SDK:', effectiveWalletClient);
+        }
+      } catch (sdkErr) {
+        console.error('[XMTP] Failed to get provider from Farcaster SDK:', sdkErr);
+        setError('Failed to get wallet provider from Farcaster mini app. Please reconnect your wallet or reload.');
+        return;
+      }
+    }
+
+    if (!effectiveWalletClient) {
+      const errMsg = 'Wallet client not detected. Please connect your wallet.';
+      console.error('[XMTP]', errMsg);
+      setError(errMsg);
       return;
     }
 
@@ -77,41 +111,42 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
       // In mini app, just use the walletClient as the signer (skip connector check)
       try {
         const { ethers } = await import('ethers');
-        const provider = new ethers.BrowserProvider(walletClient);
+        const provider = new ethers.BrowserProvider(effectiveWalletClient);
         const signer = await provider.getSigner();
-        console.log('Mini app: signer created, initializing XMTP client...');
+        console.log('[XMTP] Mini app: signer created, initializing XMTP client...');
         await initializeClient(signer);
       } catch (err) {
-        console.error('Failed to initialize XMTP in mini app:', err);
+        console.error('[XMTP] Failed to initialize XMTP in mini app:', err);
         const errorMessage = err instanceof Error 
           ? err.message 
           : 'Failed to initialize XMTP. Please try again.';
-        alert(`XMTP Initialization Failed: ${errorMessage}`);
+        setError(`XMTP Initialization Failed: ${errorMessage}`);
       }
       return;
     }
 
     // Web context: check for supported wallets
-    const connectorId = (walletClient as any)?.connector?.id || (walletClient as any)?.id;
-    console.log('Wallet connector ID:', connectorId);
+    const connectorId = (effectiveWalletClient as any)?.connector?.id || (effectiveWalletClient as any)?.id;
+    console.log('[XMTP] Wallet connector ID:', connectorId);
 
     if (connectorId !== 'metaMask' && connectorId !== 'coinbaseWallet') {
       const message = `Please use MetaMask or Coinbase Wallet for XMTP messaging. \n\nCurrent wallet: ${connectorId || 'Unknown'}\nSupported wallets: MetaMask, Coinbase Wallet\n\nXMTP requires EIP-191 signature support which is only available in these wallets.`;
-      alert(message);
+      console.error('[XMTP]', message);
+      setError(message);
       return;
     }
-    console.log('Initializing XMTP with compatible wallet:', connectorId);
+    console.log('[XMTP] Initializing XMTP with compatible wallet:', connectorId);
     try {
       const { ethers } = await import('ethers');
-      const provider = new ethers.BrowserProvider(walletClient);
+      const provider = new ethers.BrowserProvider(effectiveWalletClient);
       const signer = await provider.getSigner();
       await initializeClient(signer);
     } catch (err) {
-      console.error('Failed to initialize XMTP:', err);
+      console.error('[XMTP] Failed to initialize XMTP:', err);
       const errorMessage = err instanceof Error 
         ? err.message 
         : 'Failed to initialize XMTP. Please try again.';
-      alert(`XMTP Initialization Failed: ${errorMessage}`);
+      setError(`XMTP Initialization Failed: ${errorMessage}`);
     }
   };
 
@@ -301,7 +336,7 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
                 </button>
               </div>
             ) : (
-              conversations.map((conversation) => (
+              conversations.map((conversation: Conversation) => (
                 <div
                   key={conversation.peerAddress}
                   onClick={() => setSelectedConversation(conversation)}
@@ -359,7 +394,7 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
 
               {/* Messages */}
               <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {messages.map((message, index) => (
+                {messages.map((message: DecodedMessage, index: number) => (
                   <div
                     key={index}
                     className={`flex ${
