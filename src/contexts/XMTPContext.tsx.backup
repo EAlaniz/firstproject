@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Client, Conversation, DecodedMessage } from '@xmtp/xmtp-js';
-import { useAccount, useWalletClient } from 'wagmi';
+import { useAccount } from 'wagmi';
 import { Signer } from 'ethers';
 
 interface XMTPContextType {
@@ -33,7 +33,6 @@ interface XMTPProviderProps {
 
 export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   const { address } = useAccount();
-  const { data: walletClient } = useWalletClient();
   const [client, setClient] = useState<Client | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messages, setMessages] = useState<DecodedMessage[]>([]);
@@ -51,8 +50,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       if (!isRegistered) {
         // User needs to register for XMTP
         console.log('User not registered on XMTP, prompting registration...');
-        // For now, we'll just return without initializing
-        // In a real app, you'd show a modal to prompt registration
+        // You can show a modal here to prompt user registration
         return;
       }
 
@@ -136,23 +134,11 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
 
   // Initialize client when wallet connects
   useEffect(() => {
-    if (address && walletClient && !client) {
-      const initClient = async () => {
-        try {
-          // Get the signer from the wallet client
-          const signer = await walletClient.request({ method: 'eth_requestAccounts' });
-          if (signer) {
-            await initializeClient(walletClient as any);
-          }
-        } catch (error) {
-          console.error('Failed to initialize XMTP client:', error);
-          // Don't set error here to avoid breaking the app
-        }
-      };
-      
-      initClient();
+    if (address && !client) {
+      // You'll need to get the signer from your wallet connection
+      // This depends on your wallet setup (wagmi, etc.)
     }
-  }, [address, walletClient, client]);
+  }, [address, client]);
 
   const value: XMTPContextType = {
     client,
@@ -173,4 +159,4 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       {children}
     </XMTPContext.Provider>
   );
-};
+}; 
