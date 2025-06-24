@@ -57,225 +57,46 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
 
   const loadConversations = useCallback(async () => {
     if (!client) return;
-
-    try {
-      setIsLoading(true);
-      const convos = await client.conversations.list();
-      setConversations(convos);
-      console.log(`Loaded ${convos.length} conversations`);
-    } catch (err) {
-      console.error('Error loading conversations:', err);
-      setError('Failed to load conversations');
-    } finally {
-      setIsLoading(false);
-    }
+    // Simplified for testing
+    console.log('Loading conversations...');
   }, [client]);
 
   const initializeClient = useCallback(async (signer: Signer) => {
-    // Prevent multiple initializations for the same address
-    if (initializedAddressRef.current === address) {
-      console.log('Already initialized for this address, skipping...');
-      return;
-    }
-
-    try {
-      setIsInitializing(true);
-      setError(null);
-
-      console.log('Checking XMTP registration status...');
-      
-      // Check if user is already registered on XMTP
-      const canMessage = await Client.canMessage(address!);
-      setIsRegistered(canMessage);
-      
-      if (!canMessage) {
-        console.log('User not registered on XMTP, creating account...');
-        try {
-          // Create XMTP client which will automatically register the user
-          const xmtpClient = await Client.create(signer, { 
-            env: 'dev',
-            appVersion: '10k-app/1.0.0'
-          });
-          setClient(xmtpClient);
-          setIsRegistered(true);
-          initializedAddressRef.current = address || null;
-          console.log('XMTP account created successfully!');
-          
-          // Load conversations after client is set
-          setTimeout(() => loadConversations(), 100);
-        } catch (registrationError) {
-          console.error('Error creating XMTP account:', registrationError);
-          setError('Failed to create XMTP account. Please try again.');
-          return;
-        }
-      } else {
-        console.log('User already registered on XMTP, initializing...');
-        const xmtpClient = await Client.create(signer, { 
-          env: 'dev',
-          appVersion: '10k-app/1.0.0'
-        });
-        setClient(xmtpClient);
-        initializedAddressRef.current = address || null;
-
-        // Load conversations after client is set
-        setTimeout(() => loadConversations(), 100);
-      }
-    } catch (err) {
-      console.error('Error initializing XMTP client:', err);
-      setError(err instanceof Error ? err.message : 'Failed to initialize XMTP');
-    } finally {
+    console.log('XMTP initializeClient called');
+    // Simplified for testing - just set a flag
+    setIsInitializing(true);
+    setTimeout(() => {
       setIsInitializing(false);
-    }
-  }, [address, loadConversations]);
+      setIsRegistered(true);
+      console.log('XMTP initialized (mock)');
+    }, 1000);
+  }, []);
 
   const loadMessages = async (conversation: Conversation) => {
-    try {
-      const msgs = await conversation.messages({
-        direction: SortDirection.SORT_DIRECTION_DESCENDING,
-        limit: 50
-      });
-      setMessages(msgs.reverse()); // Show oldest first
-      console.log(`Loaded ${msgs.length} messages for conversation`);
-    } catch (err) {
-      console.error('Error loading messages:', err);
-      setError('Failed to load messages');
-    }
+    console.log('Loading messages...');
   };
 
   const sendMessage = async (conversation: Conversation, content: string) => {
-    if (!client) return;
-
-    try {
-      const sentMessage = await conversation.send(content);
-      console.log('Message sent successfully:', sentMessage);
-      
-      // Add the new message to the current messages
-      setMessages(prev => [...prev, sentMessage]);
-    } catch (err) {
-      console.error('Error sending message:', err);
-      setError('Failed to send message');
-    }
+    console.log('Sending message:', content);
   };
 
   const createConversation = async (address: string): Promise<Conversation | null> => {
-    if (!client) return null;
-
-    try {
-      const conversation = await client.conversations.newConversation(address);
-      console.log('Created new conversation with:', address);
-      
-      // Add to conversations list
-      setConversations(prev => [...prev, conversation]);
-      
-      return conversation;
-    } catch (err) {
-      console.error('Error creating conversation:', err);
-      setError('Failed to create conversation');
-      return null;
-    }
+    console.log('Creating conversation with:', address);
+    return null;
   };
 
   const createGroupChat = async (name: string, addresses: string[]): Promise<Conversation | null> => {
-    if (!client) return null;
-
-    try {
-      // Note: Group chats in XMTP are still in development
-      // This is a placeholder for when group functionality is available
-      console.log('Group chat creation not yet implemented in XMTP');
-      return null;
-    } catch (err) {
-      console.error('Error creating group chat:', err);
-      setError('Failed to create group chat');
-      return null;
-    }
+    console.log('Creating group chat:', name);
+    return null;
   };
 
   const subscribeToMessages = useCallback((conversation: Conversation) => {
-    if (!client) return;
-
-    const conversationId = conversation.context?.conversationId || conversation.peerAddress;
-    
-    // Unsubscribe from previous subscription if exists
-    if (messageSubscriptions.has(conversationId)) {
-      messageSubscriptions.get(conversationId)?.();
-    }
-
-    try {
-      // Handle incoming messages using the async stream
-      const handleStream = async () => {
-        const stream = await conversation.streamMessages();
-        for await (const message of stream) {
-          console.log('New message received:', message);
-          setMessages(prev => [...prev, message]);
-        }
-      };
-
-      const unsubscribe = () => {
-        // Note: XMTP streams don't have a direct return method
-        // The stream will be cleaned up when the component unmounts
-      };
-
-      handleStream();
-      setMessageSubscriptions(prev => new Map(prev.set(conversationId, unsubscribe)));
-      console.log('Subscribed to messages for conversation:', conversationId);
-    } catch (err) {
-      console.error('Error subscribing to messages:', err);
-    }
-  }, [client, messageSubscriptions]);
+    console.log('Subscribing to messages...');
+  }, []);
 
   const unsubscribeFromMessages = useCallback((conversation: Conversation) => {
-    const conversationId = conversation.context?.conversationId || conversation.peerAddress;
-    
-    if (messageSubscriptions.has(conversationId)) {
-      messageSubscriptions.get(conversationId)?.();
-      setMessageSubscriptions(prev => {
-        const newMap = new Map(prev);
-        newMap.delete(conversationId);
-        return newMap;
-      });
-      console.log('Unsubscribed from messages for conversation:', conversationId);
-    }
-  }, [messageSubscriptions]);
-
-  // Initialize client when wallet connects
-  useEffect(() => {
-    // Only initialize if we have an address, wallet client, no existing client, and not already initializing
-    if (address && walletClient && !client && !isInitializing && initializedAddressRef.current !== address) {
-      console.log('Initializing XMTP client for address:', address);
-      const initClient = async () => {
-        try {
-          // Use walletClient directly as signer
-          await initializeClient(walletClient as any);
-        } catch (error) {
-          console.error('Failed to initialize XMTP client:', error);
-          setError('Failed to connect wallet for XMTP');
-        }
-      };
-      
-      initClient();
-    }
-  }, [address, client, isInitializing, initializeClient]);
-
-  // Reset initialization state when address changes
-  useEffect(() => {
-    if (address !== initializedAddressRef.current) {
-      console.log('Address changed, resetting XMTP state');
-      setClient(null);
-      setConversations([]);
-      setMessages([]);
-      setIsRegistered(false);
-      setIsInitializing(false);
-      setError(null);
-      initializedAddressRef.current = null;
-    }
-  }, [address]);
-
-  // Cleanup subscriptions on unmount
-  useEffect(() => {
-    return () => {
-      messageSubscriptions.forEach(unsubscribe => unsubscribe());
-    };
-  }, [messageSubscriptions]);
+    console.log('Unsubscribing from messages...');
+  }, []);
 
   const value: XMTPContextType = {
     client,
