@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { Client, Conversation, DecodedMessage } from '@xmtp/xmtp-js';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { Client, Conversation, DecodedMessage, SortDirection } from '@xmtp/xmtp-js';
 import { useAccount, useWalletClient } from 'wagmi';
 import { Signer } from 'ethers';
 
@@ -9,12 +9,17 @@ interface XMTPContextType {
   messages: DecodedMessage[];
   isLoading: boolean;
   error: string | null;
+  isRegistered: boolean;
+  isInitializing: boolean;
   initializeClient: (signer: Signer) => Promise<void>;
   sendMessage: (conversation: Conversation, content: string) => Promise<void>;
   createConversation: (address: string) => Promise<Conversation | null>;
   createGroupChat: (name: string, addresses: string[]) => Promise<Conversation | null>;
   loadConversations: () => Promise<void>;
   loadMessages: (conversation: Conversation) => Promise<void>;
+  subscribeToMessages: (conversation: Conversation) => void;
+  unsubscribeFromMessages: (conversation: Conversation) => void;
+  clearError: () => void;
 }
 
 const XMTPContext = createContext<XMTPContextType | undefined>(undefined);
@@ -38,35 +43,61 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messages, setMessages] = useState<DecodedMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isRegistered, setIsRegistered] = useState(false);
+  const [messageSubscriptions, setMessageSubscriptions] = useState<Map<string, () => void>>(new Map());
+
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
 
   const initializeClient = async (signer: Signer) => {
     try {
-      setIsLoading(true);
+      setIsInitializing(true);
       setError(null);
 
-      // Check if user is already registered on XMTP
-      const isRegistered = await Client.canMessage(signer);
+      console.log('Checking XMTP registration status...');
       
-      if (!isRegistered) {
-        // User needs to register for XMTP
-        console.log('User not registered on XMTP, prompting registration...');
-        // For now, we'll just return without initializing
-        // In a real app, you'd show a modal to prompt registration
-        return;
+      // Check if user is already registered on XMTP
+      const canMessage = await Client.canMessage(signer);
+      setIsRegistered(canMessage);
+      
+      if (!canMessage) {
+        console.log('User not registered on XMTP, creating account...');
+        try {
+          // Create XMTP client which will automatically register the user
+          const xmtpClient = await Client.create(signer, { 
+            env: 'production',
+            appVersion: '10k-app/1.0.0'
+          });
+          setClient(xmtpClient);
+          setIsRegistered(true);
+          console.log('XMTP account created successfully!');
+          
+          // Load conversations
+          await loadConversations();
+        } catch (registrationError) {
+          console.error('Error creating XMTP account:', registrationError);
+          setError('Failed to create XMTP account. Please try again.');
+          return;
+        }
+      } else {
+        console.log('User already registered on XMTP, initializing...');
+        const xmtpClient = await Client.create(signer, { 
+          env: 'production',
+          appVersion: '10k-app/1.0.0'
+        });
+        setClient(xmtpClient);
+
+        // Load conversations
+        await loadConversations();
       }
-
-      // Initialize XMTP client
-      const xmtpClient = await Client.create(signer, { env: 'production' });
-      setClient(xmtpClient);
-
-      // Load conversations
-      await loadConversations();
     } catch (err) {
       console.error('Error initializing XMTP client:', err);
       setError(err instanceof Error ? err.message : 'Failed to initialize XMTP');
     } finally {
-      setIsLoading(false);
+      setIsInitializing(false);
     }
   };
 
@@ -74,18 +105,26 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     if (!client) return;
 
     try {
+      setIsLoading(true);
       const convos = await client.conversations.list();
       setConversations(convos);
+      console.log(`Loaded ${convos.length} conversations`);
     } catch (err) {
       console.error('Error loading conversations:', err);
       setError('Failed to load conversations');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const loadMessages = async (conversation: Conversation) => {
     try {
-      const msgs = await conversation.messages();
-      setMessages(msgs);
+      const msgs = await conversation.messages({
+        direction: SortDirection.SORT_DIRECTION_DESCENDING,
+        limit: 50
+      });
+      setMessages(msgs.reverse()); // Show oldest first
+      console.log(`Loaded ${msgs.length} messages for conversation`);
     } catch (err) {
       console.error('Error loading messages:', err);
       setError('Failed to load messages');
@@ -96,9 +135,11 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     if (!client) return;
 
     try {
-      await conversation.send(content);
-      // Reload messages to show the new message
-      await loadMessages(conversation);
+      const sentMessage = await conversation.send(content);
+      console.log('Message sent successfully:', sentMessage);
+      
+      // Add the new message to the current messages
+      setMessages(prev => [...prev, sentMessage]);
     } catch (err) {
       console.error('Error sending message:', err);
       setError('Failed to send message');
@@ -110,7 +151,11 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
 
     try {
       const conversation = await client.conversations.newConversation(address);
-      await loadConversations(); // Refresh conversations list
+      console.log('Created new conversation with:', address);
+      
+      // Add to conversations list
+      setConversations(prev => [...prev, conversation]);
+      
       return conversation;
     } catch (err) {
       console.error('Error creating conversation:', err);
@@ -134,25 +179,69 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     }
   };
 
+  const subscribeToMessages = useCallback((conversation: Conversation) => {
+    if (!client) return;
+
+    const conversationId = conversation.context?.conversationId || conversation.peerAddress;
+    
+    // Unsubscribe from previous subscription if exists
+    if (messageSubscriptions.has(conversationId)) {
+      messageSubscriptions.get(conversationId)?.();
+    }
+
+    try {
+      const unsubscribe = conversation.streamMessages((message) => {
+        console.log('New message received:', message);
+        setMessages(prev => [...prev, message]);
+      });
+
+      setMessageSubscriptions(prev => new Map(prev.set(conversationId, unsubscribe)));
+      console.log('Subscribed to messages for conversation:', conversationId);
+    } catch (err) {
+      console.error('Error subscribing to messages:', err);
+    }
+  }, [client, messageSubscriptions]);
+
+  const unsubscribeFromMessages = useCallback((conversation: Conversation) => {
+    const conversationId = conversation.context?.conversationId || conversation.peerAddress;
+    
+    if (messageSubscriptions.has(conversationId)) {
+      messageSubscriptions.get(conversationId)?.();
+      setMessageSubscriptions(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(conversationId);
+        return newMap;
+      });
+      console.log('Unsubscribed from messages for conversation:', conversationId);
+    }
+  }, [messageSubscriptions]);
+
   // Initialize client when wallet connects
   useEffect(() => {
-    if (address && walletClient && !client) {
+    if (address && walletClient && !client && !isInitializing) {
       const initClient = async () => {
         try {
-          // Get the signer from the wallet client
+          // Convert wallet client to signer
           const signer = await walletClient.request({ method: 'eth_requestAccounts' });
           if (signer) {
             await initializeClient(walletClient as any);
           }
         } catch (error) {
           console.error('Failed to initialize XMTP client:', error);
-          // Don't set error here to avoid breaking the app
+          setError('Failed to connect wallet for XMTP');
         }
       };
       
       initClient();
     }
-  }, [address, walletClient, client]);
+  }, [address, walletClient, client, isInitializing]);
+
+  // Cleanup subscriptions on unmount
+  useEffect(() => {
+    return () => {
+      messageSubscriptions.forEach(unsubscribe => unsubscribe());
+    };
+  }, [messageSubscriptions]);
 
   const value: XMTPContextType = {
     client,
@@ -160,12 +249,17 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     messages,
     isLoading,
     error,
+    isRegistered,
+    isInitializing,
     initializeClient,
     sendMessage,
     createConversation,
     createGroupChat,
     loadConversations,
     loadMessages,
+    subscribeToMessages,
+    unsubscribeFromMessages,
+    clearError,
   };
 
   return (

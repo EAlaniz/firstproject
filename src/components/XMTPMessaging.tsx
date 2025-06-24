@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useXMTP } from '../contexts/XMTPContext';
 import { Conversation, DecodedMessage } from '@xmtp/xmtp-js';
-import { Send, Users, Plus, Search, MessageCircle } from 'lucide-react';
+import { Send, Users, Plus, X, MessageCircle, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
 
 interface XMTPMessagingProps {
   isOpen: boolean;
@@ -15,27 +15,59 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
     messages,
     isLoading,
     error,
+    isRegistered,
+    isInitializing,
     sendMessage,
     createConversation,
     loadMessages,
+    subscribeToMessages,
+    unsubscribeFromMessages,
+    clearError,
   } = useXMTP();
 
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [newMessage, setNewMessage] = useState('');
   const [newContactAddress, setNewContactAddress] = useState('');
   const [showNewChat, setShowNewChat] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  // Subscribe to messages when conversation is selected
   useEffect(() => {
     if (selectedConversation) {
       loadMessages(selectedConversation);
+      subscribeToMessages(selectedConversation);
+      
+      // Unsubscribe when conversation changes
+      return () => {
+        unsubscribeFromMessages(selectedConversation);
+      };
     }
-  }, [selectedConversation, loadMessages]);
+  }, [selectedConversation, loadMessages, subscribeToMessages, unsubscribeFromMessages]);
+
+  const handleBackdropClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
 
   const handleSendMessage = async () => {
-    if (!selectedConversation || !newMessage.trim()) return;
+    if (!selectedConversation || !newMessage.trim() || isSending) return;
 
-    await sendMessage(selectedConversation, newMessage.trim());
-    setNewMessage('');
+    setIsSending(true);
+    try {
+      await sendMessage(selectedConversation, newMessage.trim());
+      setNewMessage('');
+    } catch (err) {
+      console.error('Failed to send message:', err);
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const handleCreateConversation = async () => {
@@ -54,13 +86,23 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
   };
 
   const formatTimestamp = (timestamp: Date) => {
-    return timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const now = new Date();
+    const diff = now.getTime() - timestamp.getTime();
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+
+    if (minutes < 1) return 'Just now';
+    if (minutes < 60) return `${minutes}m ago`;
+    if (hours < 24) return `${hours}h ago`;
+    if (days < 7) return `${days}d ago`;
+    return timestamp.toLocaleDateString();
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={handleBackdropClick}>
       <div className="bg-white w-full max-w-4xl h-[80vh] flex overflow-hidden rounded-2xl">
         {/* Sidebar */}
         <div className="w-80 border-r border-gray-200 flex flex-col">
@@ -68,14 +110,42 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
           <div className="p-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">Messages</h2>
-              <button
-                onClick={() => setShowNewChat(true)}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-              >
-                <Plus className="w-5 h-5" />
-              </button>
+              <div className="flex items-center space-x-2">
+                {isInitializing && (
+                  <div className="flex items-center space-x-1 text-xs text-gray-500">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    <span>Initializing...</span>
+                  </div>
+                )}
+                {isRegistered && (
+                  <div className="flex items-center space-x-1 text-xs text-green-600">
+                    <CheckCircle className="w-3 h-3" />
+                    <span>Connected</span>
+                  </div>
+                )}
+                <button
+                  onClick={() => setShowNewChat(true)}
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                  disabled={!isRegistered}
+                >
+                  <Plus className="w-5 h-5" />
+                </button>
+              </div>
             </div>
           </div>
+
+          {/* Error Display */}
+          {error && (
+            <div className="p-3 bg-red-50 border-b border-red-200">
+              <div className="flex items-center space-x-2 text-red-700">
+                <AlertCircle className="w-4 h-4" />
+                <span className="text-sm">{error}</span>
+                <button onClick={clearError} className="ml-auto">
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* New Chat Modal */}
           {showNewChat && (
@@ -83,21 +153,22 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
               <div className="space-y-3">
                 <input
                   type="text"
-                  placeholder="Enter wallet address"
+                  placeholder="Enter wallet address (0x...)"
                   value={newContactAddress}
                   onChange={(e) => setNewContactAddress(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                 />
                 <div className="flex space-x-2">
                   <button
                     onClick={handleCreateConversation}
-                    className="flex-1 bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                    disabled={!newContactAddress.trim()}
+                    className="flex-1 bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                   >
                     Start Chat
                   </button>
                   <button
                     onClick={() => setShowNewChat(false)}
-                    className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                    className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm"
                   >
                     Cancel
                   </button>
@@ -109,14 +180,22 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
           {/* Conversations List */}
           <div className="flex-1 overflow-y-auto">
             {isLoading ? (
-              <div className="p-4 text-center text-gray-500">Loading conversations...</div>
+              <div className="p-4 text-center text-gray-500">
+                <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
+                <p className="text-sm">Loading conversations...</p>
+              </div>
+            ) : !isRegistered ? (
+              <div className="p-4 text-center text-gray-500">
+                <MessageCircle className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                <p className="text-sm">Connect your wallet to start messaging</p>
+              </div>
             ) : conversations.length === 0 ? (
               <div className="p-4 text-center text-gray-500">
                 <MessageCircle className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                <p>No conversations yet</p>
+                <p className="text-sm">No conversations yet</p>
                 <button
                   onClick={() => setShowNewChat(true)}
-                  className="mt-2 text-blue-600 hover:text-blue-700"
+                  className="mt-2 text-blue-600 hover:text-blue-700 text-sm"
                 >
                   Start your first chat
                 </button>
@@ -197,12 +276,17 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
                       }`}
                     >
                       <p className="text-sm">{message.content}</p>
-                      <p className="text-xs opacity-70 mt-1">
+                      <p className={`text-xs mt-1 ${
+                        message.senderAddress === selectedConversation.peerAddress
+                          ? 'text-gray-500'
+                          : 'text-blue-200'
+                      }`}>
                         {formatTimestamp(message.sent)}
                       </p>
                     </div>
                   </div>
                 ))}
+                <div ref={messagesEndRef} />
               </div>
 
               {/* Message Input */}
@@ -212,16 +296,21 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
                     type="text"
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                    onKeyPress={(e) => e.key === 'Enter' && !isSending && handleSendMessage()}
                     placeholder="Type a message..."
                     className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    disabled={isSending}
                   />
                   <button
                     onClick={handleSendMessage}
-                    disabled={!newMessage.trim()}
+                    disabled={!newMessage.trim() || isSending}
                     className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <Send className="w-4 h-4" />
+                    {isSending ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Send className="w-4 h-4" />
+                    )}
                   </button>
                 </div>
               </div>

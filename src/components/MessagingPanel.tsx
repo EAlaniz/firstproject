@@ -172,10 +172,16 @@ export default function MessagingPanel({
     setShowNewChat(false);
   };
 
+  const handleBackdropClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={handleBackdropClick}>
       <div className="bg-white w-full sm:max-w-4xl h-[90vh] sm:h-[80vh] flex overflow-hidden sm:rounded-2xl rounded-t-2xl">
         {/* Sidebar */}
         <div className="w-full sm:w-80 border-r border-gray-200 flex flex-col">
