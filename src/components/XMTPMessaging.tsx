@@ -35,6 +35,7 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
   const [newContactAddress, setNewContactAddress] = useState('');
   const [showNewChat, setShowNewChat] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom when new messages arrive
@@ -55,27 +56,51 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
     }
   }, [selectedConversation, loadMessages, subscribeToMessages, unsubscribeFromMessages]);
 
+  // Show success message when XMTP is initialized
+  useEffect(() => {
+    if (isRegistered && !isInitializing) {
+      setShowSuccessMessage(true);
+      setTimeout(() => setShowSuccessMessage(false), 3000);
+    }
+  }, [isRegistered, isInitializing]);
+
   const handleInitializeXMTP = async () => {
     if (!walletClient) {
       console.error('No wallet client available');
+      alert('Please connect your wallet first before initializing XMTP.');
       return;
     }
 
-    // Try to get connector id from walletClient
+    // Enhanced wallet compatibility check
     const connectorId = (walletClient as any)?.connector?.id || (walletClient as any)?.id;
+    console.log('Wallet connector ID:', connectorId);
+    
     if (connectorId !== 'metaMask' && connectorId !== 'coinbaseWallet') {
-      alert('Please use MetaMask or Coinbase Wallet for XMTP messaging. Other wallets are not supported for secure messaging.');
+      const message = `Please use MetaMask or Coinbase Wallet for XMTP messaging. 
+      
+Current wallet: ${connectorId || 'Unknown'}
+Supported wallets: MetaMask, Coinbase Wallet
+
+XMTP requires EIP-191 signature support which is only available in these wallets.`;
+      alert(message);
       return;
     }
+
+    console.log('Initializing XMTP with compatible wallet:', connectorId);
 
     try {
       const { ethers } = await import('ethers');
       const provider = new ethers.BrowserProvider(walletClient);
       const signer = await provider.getSigner();
-
+      
+      console.log('Signer created successfully, initializing XMTP client...');
       await initializeClient(signer);
     } catch (err) {
       console.error('Failed to initialize XMTP:', err);
+      const errorMessage = err instanceof Error 
+        ? err.message 
+        : 'Failed to initialize XMTP. Please try again.';
+      alert(`XMTP Initialization Failed: ${errorMessage}`);
     }
   };
 
@@ -161,15 +186,28 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
                 </button>
               </div>
             </div>
+            
+            {/* Success Message */}
+            {showSuccessMessage && (
+              <div className="mt-3 p-2 bg-green-50 border border-green-200 rounded-lg">
+                <div className="flex items-center space-x-2 text-green-700">
+                  <CheckCircle className="w-4 h-4" />
+                  <span className="text-sm font-medium">XMTP initialized successfully! You can now send and receive messages.</span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Error Display */}
           {error && (
             <div className="p-3 bg-red-50 border-b border-red-200">
-              <div className="flex items-center space-x-2 text-red-700">
-                <AlertCircle className="w-4 h-4" />
-                <span className="text-sm">{error}</span>
-                <button onClick={clearError} className="ml-auto">
+              <div className="flex items-start space-x-2 text-red-700">
+                <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <span className="text-sm font-medium">XMTP Error</span>
+                  <p className="text-xs mt-1">{error}</p>
+                </div>
+                <button onClick={clearError} className="flex-shrink-0">
                   <X className="w-3 h-3" />
                 </button>
               </div>
@@ -221,14 +259,17 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
             ) : !isRegistered ? (
               <div className="p-4 text-center text-gray-500">
                 <MessageCircle className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                <p className="text-sm">Initialize XMTP to start messaging</p>
+                <p className="text-sm mb-2">Initialize XMTP to start messaging</p>
+                <p className="text-xs text-gray-400 mb-3">
+                  Requires MetaMask or Coinbase Wallet for secure messaging
+                </p>
                 <button
                   onClick={handleInitializeXMTP}
                   disabled={isInitializing}
-                  className="mt-3 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                  className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                 >
                   {isInitializing ? (
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center justify-center space-x-2">
                       <Loader2 className="w-4 h-4 animate-spin" />
                       <span>Initializing XMTP...</span>
                     </div>

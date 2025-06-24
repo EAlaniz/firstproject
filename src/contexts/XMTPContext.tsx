@@ -74,20 +74,33 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   }, [client]);
 
   const handleXMTPRegistration = async (signer: Signer) => {
-    // Debug: log signature
+    // Debug: log signature for troubleshooting
     try {
       const testSig = await signer.signMessage('XMTP test');
       console.log('XMTP test signature:', testSig);
+      
+      // Validate signature format (should be a hex string)
+      if (!testSig || typeof testSig !== 'string' || !testSig.startsWith('0x')) {
+        throw new Error('Invalid signature format returned from wallet');
+      }
     } catch (e) {
       console.error('Error signing XMTP test message:', e);
+      throw new Error('Wallet signature test failed. Please ensure you are using MetaMask or Coinbase Wallet.');
     }
-    // Create client
-    const xmtpClient = await Client.create(signer, { env: xmtpEnv, appVersion: '10k-move-earn-connect/1.0.0' });
-    // Explicitly register if needed
-    if (!xmtpClient.address) {
-      await xmtpClient.register();
+    
+    // Create XMTP client with automatic registration
+    try {
+      const xmtpClient = await Client.create(signer, { 
+        env: xmtpEnv, 
+        appVersion: '10k-move-earn-connect/1.0.0' 
+      });
+      
+      console.log('XMTP client created successfully');
+      return xmtpClient;
+    } catch (error) {
+      console.error('Failed to create XMTP client:', error);
+      throw new Error('Failed to initialize XMTP. Please try again with MetaMask or Coinbase Wallet.');
     }
-    return xmtpClient;
   };
 
   const initializeClient = useCallback(async (signer: Signer) => {
@@ -106,6 +119,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       setIsInitializing(true);
       setError(null);
       console.log('Initializing XMTP client for address:', address);
+      console.log('Using XMTP environment:', xmtpEnv);
 
       // Check if user is registered on XMTP
       const canMessage = await Client.canMessage(address, { env: xmtpEnv });
@@ -113,11 +127,10 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       
       if (!canMessage) {
         console.log('User not registered on XMTP, attempting to register...');
-        setError('Registering wallet on XMTP...');
+        setError('Registering wallet on XMTP... This may take a moment.');
         
         // Attempt to register the user on XMTP
         try {
-          // This will prompt the user to sign a message to register
           const xmtpClient = await handleXMTPRegistration(signer);
           
           setClient(xmtpClient);
@@ -132,32 +145,39 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
           return;
         } catch (registrationErr) {
           console.error('Error registering on XMTP:', registrationErr);
-          setError('Failed to register on XMTP. Please try again.');
+          const errorMessage = registrationErr instanceof Error 
+            ? registrationErr.message 
+            : 'Failed to register on XMTP. Please try again with MetaMask or Coinbase Wallet.';
+          setError(errorMessage);
           setIsRegistered(false);
           return;
         }
       }
 
       // User is already registered, create XMTP client
+      console.log('User already registered, creating XMTP client...');
       const xmtpClient = await handleXMTPRegistration(signer);
       
       setClient(xmtpClient);
       setIsRegistered(true);
       initializedAddressRef.current = address;
       
-      console.log('XMTP client initialized successfully');
+      console.log('XMTP client initialized successfully for existing user');
       
       // Load conversations after successful initialization
       await loadConversations();
       
     } catch (err) {
       console.error('Error initializing XMTP client:', err);
-      setError(err instanceof Error ? err.message : 'Failed to initialize XMTP');
+      const errorMessage = err instanceof Error 
+        ? err.message 
+        : 'Failed to initialize XMTP. Please try again.';
+      setError(errorMessage);
       setIsRegistered(false);
     } finally {
       setIsInitializing(false);
     }
-  }, [address, loadConversations]);
+  }, [address, loadConversations, xmtpEnv]);
 
   const loadMessages = useCallback(async (conversation: Conversation) => {
     if (!conversation) return;
