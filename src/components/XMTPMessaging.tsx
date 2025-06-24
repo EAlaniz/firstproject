@@ -17,6 +17,7 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
     error,
     isRegistered,
     isInitializing,
+    manualInitialize,
     sendMessage,
     createConversation,
     loadMessages,
@@ -188,6 +189,20 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
               <div className="p-4 text-center text-gray-500">
                 <MessageCircle className="w-8 h-8 mx-auto mb-2 text-gray-400" />
                 <p className="text-sm">Connect your wallet to start messaging</p>
+                <button
+                  onClick={manualInitialize}
+                  disabled={isInitializing}
+                  className="mt-3 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                >
+                  {isInitializing ? (
+                    <div className="flex items-center space-x-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Initializing XMTP...</span>
+                    </div>
+                  ) : (
+                    'Initialize XMTP'
+                  )}
+                </button>
               </div>
             ) : conversations.length === 0 ? (
               <div className="p-4 text-center text-gray-500">
