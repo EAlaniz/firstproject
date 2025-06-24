@@ -162,7 +162,7 @@ function App() {
     }, 5000);
 
     return (
-  <XMTPProvider>) => clearInterval(interval);
+) => clearInterval(interval);
   }, [dailyGoal]);
 
   const handleShare = async (platform: string) => {
@@ -300,7 +300,6 @@ function App() {
     if (!isOpen) return null;
 
     return (
-  <XMTPProvider>
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
         <div className="bg-white w-full sm:max-w-2xl sm:w-full max-h-[90vh] overflow-y-auto sm:rounded-2xl rounded-t-2xl">
           <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200">
@@ -323,7 +322,6 @@ function App() {
   // Show loading while detecting mini app
   if (!isMiniAppReady) {
     return (
-  <XMTPProvider>
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center space-y-4">
           <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto">
@@ -342,7 +340,6 @@ function App() {
   // Show wallet connection if not connected
   if (!isConnected) {
     return (
-  <XMTPProvider>
       <div className="min-h-screen bg-white text-black">
         {/* Header */}
         <header className="border-b border-gray-200 px-4 sm:px-6 py-4">
@@ -393,7 +390,6 @@ function App() {
   // Show wrong network if not on Base
   if (chain && chain.id !== base.id) {
     return (
-  <XMTPProvider>
       <div className="min-h-screen bg-white text-black flex items-center justify-center p-4">
         <div className="text-center space-y-6 max-w-sm mx-auto">
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto">
@@ -888,7 +884,6 @@ function App() {
   );
 
   return (
-  <XMTPProvider>
     <div className="min-h-screen bg-white text-black">
       {/* Mobile Header */}
       <header className="border-b border-gray-200 px-4 py-3 sm:px-6 sm:py-4">
