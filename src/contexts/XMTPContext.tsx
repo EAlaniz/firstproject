@@ -52,7 +52,23 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     setError(null);
   }, []);
 
-  const initializeClient = async (signer: Signer) => {
+  const loadConversations = useCallback(async () => {
+    if (!client) return;
+
+    try {
+      setIsLoading(true);
+      const convos = await client.conversations.list();
+      setConversations(convos);
+      console.log(`Loaded ${convos.length} conversations`);
+    } catch (err) {
+      console.error('Error loading conversations:', err);
+      setError('Failed to load conversations');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [client]);
+
+  const initializeClient = useCallback(async (signer: Signer) => {
     try {
       setIsInitializing(true);
       setError(null);
@@ -75,8 +91,8 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
           setIsRegistered(true);
           console.log('XMTP account created successfully!');
           
-          // Load conversations
-          await loadConversations();
+          // Load conversations after client is set
+          setTimeout(() => loadConversations(), 100);
         } catch (registrationError) {
           console.error('Error creating XMTP account:', registrationError);
           setError('Failed to create XMTP account. Please try again.');
@@ -90,8 +106,8 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         });
         setClient(xmtpClient);
 
-        // Load conversations
-        await loadConversations();
+        // Load conversations after client is set
+        setTimeout(() => loadConversations(), 100);
       }
     } catch (err) {
       console.error('Error initializing XMTP client:', err);
@@ -99,23 +115,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     } finally {
       setIsInitializing(false);
     }
-  };
-
-  const loadConversations = async () => {
-    if (!client) return;
-
-    try {
-      setIsLoading(true);
-      const convos = await client.conversations.list();
-      setConversations(convos);
-      console.log(`Loaded ${convos.length} conversations`);
-    } catch (err) {
-      console.error('Error loading conversations:', err);
-      setError('Failed to load conversations');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  }, [address, loadConversations]);
 
   const loadMessages = async (conversation: Conversation) => {
     try {
@@ -241,7 +241,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       
       initClient();
     }
-  }, [address, walletClient, client, isInitializing, initializeClient]);
+  }, [address, walletClient, client, isInitializing]);
 
   // Cleanup subscriptions on unmount
   useEffect(() => {
