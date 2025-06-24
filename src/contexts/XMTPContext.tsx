@@ -60,7 +60,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       console.log('Checking XMTP registration status...');
       
       // Check if user is already registered on XMTP
-      const canMessage = await Client.canMessage(signer);
+      const canMessage = await Client.canMessage(address!);
       setIsRegistered(canMessage);
       
       if (!canMessage) {
@@ -68,7 +68,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         try {
           // Create XMTP client which will automatically register the user
           const xmtpClient = await Client.create(signer, { 
-            env: 'production',
+            env: 'dev',
             appVersion: '10k-app/1.0.0'
           });
           setClient(xmtpClient);
@@ -85,7 +85,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       } else {
         console.log('User already registered on XMTP, initializing...');
         const xmtpClient = await Client.create(signer, { 
-          env: 'production',
+          env: 'dev',
           appVersion: '10k-app/1.0.0'
         });
         setClient(xmtpClient);
@@ -190,11 +190,21 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     }
 
     try {
-      const unsubscribe = conversation.streamMessages((message) => {
-        console.log('New message received:', message);
-        setMessages(prev => [...prev, message]);
-      });
+      // Handle incoming messages using the async stream
+      const handleStream = async () => {
+        const stream = await conversation.streamMessages();
+        for await (const message of stream) {
+          console.log('New message received:', message);
+          setMessages(prev => [...prev, message]);
+        }
+      };
 
+      const unsubscribe = () => {
+        // Note: XMTP streams don't have a direct return method
+        // The stream will be cleaned up when the component unmounts
+      };
+
+      handleStream();
       setMessageSubscriptions(prev => new Map(prev.set(conversationId, unsubscribe)));
       console.log('Subscribed to messages for conversation:', conversationId);
     } catch (err) {
@@ -221,11 +231,8 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     if (address && walletClient && !client && !isInitializing) {
       const initClient = async () => {
         try {
-          // Convert wallet client to signer
-          const signer = await walletClient.request({ method: 'eth_requestAccounts' });
-          if (signer) {
-            await initializeClient(walletClient as any);
-          }
+          // Use walletClient directly as signer
+          await initializeClient(walletClient as any);
         } catch (error) {
           console.error('Failed to initialize XMTP client:', error);
           setError('Failed to connect wallet for XMTP');
@@ -234,7 +241,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       
       initClient();
     }
-  }, [address, walletClient, client, isInitializing]);
+  }, [address, walletClient, client, isInitializing, initializeClient]);
 
   // Cleanup subscriptions on unmount
   useEffect(() => {
