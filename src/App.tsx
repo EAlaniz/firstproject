@@ -28,6 +28,7 @@ import MiniAppWalletConnector from './components/MiniAppWalletConnector';
 import { sdk } from '@farcaster/frame-sdk';
 import { XMTPProvider } from './contexts/XMTPContext';
 import XMTPMessaging from './components/XMTPMessaging';
+import InvisibleXMTPSetup from './components/InvisibleXMTPSetup';
 
 // Contract ABI (simplified for demo)
 const stepTrackerAbi = [
@@ -791,6 +792,14 @@ function App() {
   // Main return with conditional rendering
   return (
     <XMTPProvider>
+      {/* Invisible XMTP Setup - handles setup automatically */}
+      <InvisibleXMTPSetup 
+        autoSetup={true}
+        onSetupComplete={(success) => {
+          console.log('XMTP setup completed:', success ? 'success' : 'failed');
+        }}
+      />
+      
       {!isMiniAppReady ? (
         <div className="min-h-screen bg-white flex items-center justify-center">
           <div className="text-center space-y-4">
