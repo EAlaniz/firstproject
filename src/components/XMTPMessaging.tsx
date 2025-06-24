@@ -3,6 +3,7 @@ import { useXMTP } from '../contexts/XMTPContext';
 import { Conversation, DecodedMessage } from '@xmtp/xmtp-js';
 import { Send, Users, Plus, X, MessageCircle, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
 import { useAccount, useWalletClient } from 'wagmi';
+import isFarcasterMiniApp from './MiniAppWalletConnector'; // Use default import
 
 interface XMTPMessagingProps {
   isOpen: boolean;
@@ -71,28 +72,33 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
       return;
     }
 
-    // Enhanced wallet compatibility check
-    const connectorId = (walletClient as any)?.connector?.id || (walletClient as any)?.id;
-    console.log('Wallet connector ID:', connectorId);
-    
-    if (connectorId !== 'metaMask' && connectorId !== 'coinbaseWallet') {
-      const message = `Please use MetaMask or Coinbase Wallet for XMTP messaging. 
-      
+    // Detect mini app environment
+    if (isFarcasterMiniApp()) {
+      console.log('Farcaster mini app detected, assuming Coinbase Wallet.');
+      // Proceed without connector check
+    } else {
+      // Enhanced wallet compatibility check for web
+      const connectorId = (walletClient as any)?.connector?.id || (walletClient as any)?.id;
+      console.log('Wallet connector ID:', connectorId);
+
+      if (connectorId !== 'metaMask' && connectorId !== 'coinbaseWallet') {
+        const message = `Please use MetaMask or Coinbase Wallet for XMTP messaging. 
+        
 Current wallet: ${connectorId || 'Unknown'}
 Supported wallets: MetaMask, Coinbase Wallet
 
 XMTP requires EIP-191 signature support which is only available in these wallets.`;
-      alert(message);
-      return;
+        alert(message);
+        return;
+      }
+      console.log('Initializing XMTP with compatible wallet:', connectorId);
     }
-
-    console.log('Initializing XMTP with compatible wallet:', connectorId);
 
     try {
       const { ethers } = await import('ethers');
       const provider = new ethers.BrowserProvider(walletClient);
       const signer = await provider.getSigner();
-      
+
       console.log('Signer created successfully, initializing XMTP client...');
       await initializeClient(signer);
     } catch (err) {

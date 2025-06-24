@@ -4,7 +4,7 @@ import { useAccount, useDisconnect } from 'wagmi';
 import { User, LogOut } from 'lucide-react';
 
 // Detect if we're in a Farcaster mini app environment
-const isFarcasterMiniApp = () => {
+export const isFarcasterMiniApp = () => {
   return (
     window.location.hostname.includes('farcaster.xyz') ||
     window.location.hostname.includes('warpcast.com') ||
