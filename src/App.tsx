@@ -26,6 +26,7 @@ import MessagingPanel from './components/MessagingPanel';
 import FarcasterMiniApp from './components/FarcasterMiniApp';
 import MiniAppWalletConnector from './components/MiniAppWalletConnector';
 import { sdk } from '@farcaster/frame-sdk';
+import CircularText from './components/CircularText';
 
 // Contract ABI (simplified for demo)
 const stepTrackerAbi = [
@@ -368,9 +369,13 @@ function App() {
             
             <div className="flex justify-center px-4">
               <MiniAppWalletConnector>
-                <div className="bg-black text-white px-6 sm:px-8 py-3 sm:py-4 rounded-full hover:bg-gray-800 transition-colors cursor-pointer font-medium flex items-center space-x-2 w-full sm:w-auto justify-center">
-                  <span>Get Started</span>
-                  <ArrowRight className="w-4 h-4" />
+                <div className="flex justify-center">
+                  <CircularText 
+                    text="CONNECT WALLET"
+                    spinDuration={15}
+                    onHover="speedUp"
+                    className="cursor-pointer"
+                  />
                 </div>
               </MiniAppWalletConnector>
             </div>
@@ -837,9 +842,14 @@ function App() {
                 <p className="text-gray-600 mb-6">Connect your wallet to access all features</p>
                 
                 <MiniAppWalletConnector>
-                  <button className="w-full bg-black text-white py-3 rounded-xl hover:bg-gray-800 transition-colors">
-                    Connect Wallet
-                  </button>
+                  <div className="flex justify-center">
+                    <CircularText 
+                      text="CONNECT WALLET"
+                      spinDuration={15}
+                      onHover="speedUp"
+                      className="cursor-pointer"
+                    />
+                  </div>
                 </MiniAppWalletConnector>
               </div>
             </>
