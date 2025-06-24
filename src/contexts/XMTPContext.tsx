@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { Client, Conversation, DecodedMessage, SortDirection } from '@xmtp/xmtp-js';
 import { useAccount, useWalletClient } from 'wagmi';
 import { Signer } from 'ethers';
@@ -47,6 +47,9 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   const [error, setError] = useState<string | null>(null);
   const [isRegistered, setIsRegistered] = useState(false);
   const [messageSubscriptions, setMessageSubscriptions] = useState<Map<string, () => void>>(new Map());
+  
+  // Use ref to track if we've already initialized for this address
+  const initializedAddressRef = useRef<string | null>(null);
 
   const clearError = useCallback(() => {
     setError(null);
@@ -69,6 +72,12 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   }, [client]);
 
   const initializeClient = useCallback(async (signer: Signer) => {
+    // Prevent multiple initializations for the same address
+    if (initializedAddressRef.current === address) {
+      console.log('Already initialized for this address, skipping...');
+      return;
+    }
+
     try {
       setIsInitializing(true);
       setError(null);
@@ -89,6 +98,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
           });
           setClient(xmtpClient);
           setIsRegistered(true);
+          initializedAddressRef.current = address || null;
           console.log('XMTP account created successfully!');
           
           // Load conversations after client is set
@@ -105,6 +115,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
           appVersion: '10k-app/1.0.0'
         });
         setClient(xmtpClient);
+        initializedAddressRef.current = address || null;
 
         // Load conversations after client is set
         setTimeout(() => loadConversations(), 100);
@@ -228,7 +239,9 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
 
   // Initialize client when wallet connects
   useEffect(() => {
-    if (address && walletClient && !client && !isInitializing) {
+    // Only initialize if we have an address, wallet client, no existing client, and not already initializing
+    if (address && walletClient && !client && !isInitializing && initializedAddressRef.current !== address) {
+      console.log('Initializing XMTP client for address:', address);
       const initClient = async () => {
         try {
           // Use walletClient directly as signer
@@ -241,7 +254,21 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       
       initClient();
     }
-  }, [address, walletClient, client, isInitializing]);
+  }, [address, client, isInitializing, initializeClient]);
+
+  // Reset initialization state when address changes
+  useEffect(() => {
+    if (address !== initializedAddressRef.current) {
+      console.log('Address changed, resetting XMTP state');
+      setClient(null);
+      setConversations([]);
+      setMessages([]);
+      setIsRegistered(false);
+      setIsInitializing(false);
+      setError(null);
+      initializedAddressRef.current = null;
+    }
+  }, [address]);
 
   // Cleanup subscriptions on unmount
   useEffect(() => {
