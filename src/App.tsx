@@ -139,6 +139,7 @@ function App() {
   const [showCommunityModal, setShowCommunityModal] = useState(false);
   const [showRewardsModal, setShowRewardsModal] = useState(false);
   const [showFarcasterModal, setShowFarcasterModal] = useState(false);
+  const [showXMTPMessaging, setShowXMTPMessaging] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
   
   // Social component state
@@ -318,100 +319,89 @@ function App() {
     );
   };
 
-  // Show loading while detecting mini app
-  if (!isMiniAppReady) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto">
-            <img
-              src="/10k-icon.png"
-              alt="10K Icon"
-              className="w-8 h-8"
-            />
-          </div>
-          <p className="text-gray-600">Loading 10K...</p>
-        </div>
-      </div>
-    );
-  }
-  
-  // Show wallet connection if not connected
-  if (!isConnected) {
-    return (
-      <div className="min-h-screen bg-white text-black">
-        {/* Header */}
-        <header className="border-b border-gray-200 px-4 sm:px-6 py-4">
-          <div className="max-w-6xl mx-auto flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              {/* 10K Icon - match mobile version */}
+  // Main return with conditional rendering
+  return (
+    <XMTPProvider>
+      {!isMiniAppReady ? (
+        <div className="min-h-screen bg-white flex items-center justify-center">
+          <div className="text-center space-y-4">
+            <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto">
               <img
                 src="/10k-icon.png"
                 alt="10K Icon"
-                className="w-8 h-8 rounded-full border border-gray-300 bg-white"
-                style={{ objectFit: 'cover' }}
+                className="w-8 h-8"
               />
-              <span className="text-xl font-medium">10K</span>
             </div>
+            <p className="text-gray-600">Loading 10K...</p>
           </div>
-        </header>
-
-        {/* Hero Section */}
-        <main className="max-w-4xl mx-auto px-4 sm:px-6 py-12 sm:py-20">
-          <div className="text-center space-y-6 sm:space-y-8">
-            <div className="space-y-4">
-              <h1 className="text-4xl sm:text-6xl font-light tracking-tight leading-tight">
-                Move. Earn. Connect.
-              </h1>
-              <p className="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed px-4">
-                An inclusive wellness platform that rewards your daily movement with tokens and connects you with a community of movers.
-              </p>
-            </div>
-            
-            <div className="flex justify-center px-4">
-              <MiniAppWalletConnector>
-                <button className="bg-black text-white px-6 py-3 rounded-full hover:bg-gray-800 transition-colors cursor-pointer w-full flex items-center justify-center space-x-2">
-                  <Zap className="w-4 h-4" />
-                  <span>Connect Wallet</span>
-                </button>
-              </MiniAppWalletConnector>
-            </div>
-            
-            <div className="pt-8 sm:pt-12 text-sm text-gray-500">
-              Powered by Base Chain • Low fees • Fast transactions
-            </div>
-          </div>
-        </main>
-      </div>
-    );
-  }
-  
-  // Show wrong network if not on Base
-  if (chain && chain.id !== base.id) {
-    return (
-      <div className="min-h-screen bg-white text-black flex items-center justify-center p-4">
-        <div className="text-center space-y-6 max-w-sm mx-auto">
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto">
-            <Zap className="w-8 h-8 text-red-600" />
-          </div>
-          <div className="space-y-2">
-            <h1 className="text-xl sm:text-2xl font-medium">Wrong Network</h1>
-            <p className="text-gray-600">Please switch to Base network to continue</p>
-          </div>
-          
-          <MiniAppWalletConnector>
-            <div className="bg-black text-white px-6 py-3 rounded-full hover:bg-gray-800 transition-colors cursor-pointer w-full flex items-center justify-center space-x-2">
-              <Zap className="w-4 h-4" />
-              <span>Switch Network</span>
-            </div>
-          </MiniAppWalletConnector>
         </div>
-      </div>
-    );
-  }
+      ) : !isConnected ? (
+        <div className="min-h-screen bg-white text-black">
+          {/* Header */}
+          <header className="border-b border-gray-200 px-4 sm:px-6 py-4">
+            <div className="max-w-6xl mx-auto flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                {/* 10K Icon - match mobile version */}
+                <img
+                  src="/10k-icon.png"
+                  alt="10K Icon"
+                  className="w-8 h-8 rounded-full border border-gray-300 bg-white"
+                  style={{ objectFit: 'cover' }}
+                />
+                <span className="text-xl font-medium">10K</span>
+              </div>
+            </div>
+          </header>
 
-  // Add these state variables
-  const [showXMTPMessaging, setShowXMTPMessaging] = useState(false);
+          {/* Hero Section */}
+          <main className="max-w-4xl mx-auto px-4 sm:px-6 py-12 sm:py-20">
+            <div className="text-center space-y-6 sm:space-y-8">
+              <div className="space-y-4">
+                <h1 className="text-4xl sm:text-6xl font-light tracking-tight leading-tight">
+                  Move. Earn. Connect.
+                </h1>
+                <p className="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed px-4">
+                  An inclusive wellness platform that rewards your daily movement with tokens and connects you with a community of movers.
+                </p>
+              </div>
+              
+              <div className="flex justify-center px-4">
+                <MiniAppWalletConnector>
+                  <button className="bg-black text-white px-6 py-3 rounded-full hover:bg-gray-800 transition-colors cursor-pointer w-full flex items-center justify-center space-x-2">
+                    <Zap className="w-4 h-4" />
+                    <span>Connect Wallet</span>
+                  </button>
+                </MiniAppWalletConnector>
+              </div>
+              
+              <div className="pt-8 sm:pt-12 text-sm text-gray-500">
+                Powered by Base Chain • Low fees • Fast transactions
+              </div>
+            </div>
+          </main>
+        </div>
+      ) : chain && chain.id !== base.id ? (
+        <div className="min-h-screen bg-white text-black flex items-center justify-center p-4">
+          <div className="text-center space-y-6 max-w-sm mx-auto">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto">
+              <Zap className="w-8 h-8 text-red-600" />
+            </div>
+            <div className="space-y-2">
+              <h1 className="text-xl sm:text-2xl font-medium">Wrong Network</h1>
+              <p className="text-gray-600">Please switch to Base network to continue</p>
+            </div>
+            
+            <MiniAppWalletConnector>
+              <div className="bg-black text-white px-6 py-3 rounded-full hover:bg-gray-800 transition-colors cursor-pointer w-full flex items-center justify-center space-x-2">
+                <Zap className="w-4 h-4" />
+                <span>Switch Network</span>
+              </div>
+            </MiniAppWalletConnector>
+          </div>
+        </div>
+      ) : (
+
+
 
   // --- MODALS AND OVERLAYS (always rendered) ---
   const ModalsAndOverlays = (
