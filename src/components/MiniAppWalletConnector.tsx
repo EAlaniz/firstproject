@@ -63,16 +63,21 @@ export const MiniAppWalletConnector: React.FC<MiniAppWalletConnectorProps> = ({
         </div>
       );
     } else {
+      // In mini app but not connected, render the children (CircularText)
       return (
-        <div className={`flex items-center space-x-2 ${className}`}>
-          <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
-            <User className="w-4 h-4 text-gray-400" />
-          </div>
-          <div className="hidden sm:block">
-            <div className="text-sm font-medium">Not Connected</div>
-            <div className="text-xs text-gray-500">Mini App Mode</div>
-          </div>
-        </div>
+        <ConnectWallet>
+          {children || (
+            <div className={`flex items-center space-x-2 ${className}`}>
+              <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                <User className="w-4 h-4 text-gray-400" />
+              </div>
+              <div className="hidden sm:block">
+                <div className="text-sm font-medium">Not Connected</div>
+                <div className="text-xs text-gray-500">Mini App Mode</div>
+              </div>
+            </div>
+          )}
+        </ConnectWallet>
       );
     }
   }
