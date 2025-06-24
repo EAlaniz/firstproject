@@ -2,6 +2,7 @@
 import { Client, Conversation, DecodedMessage, SortDirection } from '@xmtp/xmtp-js';
 import { useAccount, useWalletClient } from 'wagmi';
 import { Signer, isAddress } from 'ethers';
+import { checkXMTPCompatibility, getWalletGuidance } from '../utils/walletCompatibility';
 
 interface XMTPContextType {
   client: Client | null;
@@ -11,6 +12,8 @@ interface XMTPContextType {
   error: string | null;
   isRegistered: boolean;
   isInitializing: boolean;
+  walletCompatibility: ReturnType<typeof checkXMTPCompatibility>;
+  walletGuidance: ReturnType<typeof getWalletGuidance>;
   initializeClient: (signer: Signer) => Promise<void>;
   sendMessage: (conversation: Conversation, content: string) => Promise<void>;
   createConversation: (address: string) => Promise<Conversation | null>;
@@ -51,6 +54,10 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   const initializedAddressRef = useRef<string | null>(null);
   const xmtpEnv = import.meta.env.VITE_XMTP_ENV || 'production';
 
+  // Check wallet compatibility
+  const walletCompatibility = checkXMTPCompatibility();
+  const walletGuidance = getWalletGuidance();
+
   const clearError = useCallback(() => {
     setError(null);
   }, []);
@@ -75,15 +82,24 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       setError('No wallet address available');
       return;
     }
+
+    // Check wallet compatibility before proceeding
+    if (!walletCompatibility.isXMTPCompatible) {
+      setError(walletCompatibility.userMessage);
+      return;
+    }
+
     if (initializedAddressRef.current === address) {
       console.log('Already initialized for this address');
       return;
     }
+
     try {
       setIsInitializing(true);
       setError(null);
       console.log('Initializing XMTP client for address:', address);
       console.log('Using XMTP environment:', xmtpEnv);
+      console.log('Wallet compatibility:', walletCompatibility);
 
       const canMessage = await Client.canMessage(address, { env: xmtpEnv });
       console.log('Can message check result:', canMessage);
@@ -108,7 +124,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
               registrationErr.message?.includes('ACTION_REJECTED')) {
             setError('XMTP setup was cancelled. Please try again and approve the signature request.');
           } else {
-            setError('Failed to register on XMTP. Please ensure you are using MetaMask or Coinbase Wallet.');
+            setError(`Failed to register on XMTP: ${registrationErr.message || 'Unknown error'}`);
           }
           setIsRegistered(false);
           return;
@@ -131,13 +147,13 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
           err.message?.includes('ACTION_REJECTED')) {
         setError('XMTP setup was cancelled. Please try again and approve the signature request.');
       } else {
-        setError('Failed to initialize XMTP. Please try again with MetaMask or Coinbase Wallet.');
+        setError(`Failed to initialize XMTP: ${err.message || 'Unknown error'}`);
       }
       setIsRegistered(false);
     } finally {
       setIsInitializing(false);
     }
-  }, [address, loadConversations, xmtpEnv]);
+  }, [address, loadConversations, xmtpEnv, walletCompatibility]);
 
   const loadMessages = useCallback(async (conversation: Conversation) => {
     if (!conversation) return;
@@ -199,19 +215,43 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
 
   const subscribeToMessages = useCallback((conversation: Conversation) => {
     if (!conversation) return;
+    
     const existingUnsubscribe = messageSubscriptions.get(conversation.peerAddress);
     if (existingUnsubscribe) {
       existingUnsubscribe();
     }
-    const unsubscribe = () => {};
-    setMessageSubscriptions(prev => new Map(prev.set(conversation.peerAddress, unsubscribe)));
-    const messageStream = conversation.streamMessages();
-    messageStream.on('message', async () => {
-      await loadMessages(conversation);
-    });
-    setMessageSubscriptions(prev => new Map(prev.set(conversation.peerAddress, () => {
-      messageStream.off('message');
-    })));
+
+    try {
+      const messageStream = conversation.streamMessages();
+      const unsubscribe = () => {
+        try {
+          messageStream.return?.();
+        } catch (err) {
+          console.error('Error unsubscribing from messages:', err);
+        }
+      };
+
+      setMessageSubscriptions(prev => new Map(prev.set(conversation.peerAddress, unsubscribe)));
+
+      // Handle incoming messages
+      const handleMessage = async () => {
+        await loadMessages(conversation);
+      };
+
+      // Set up polling for messages (XMTP doesn't have real-time events in this version)
+      const pollInterval = setInterval(handleMessage, 3000);
+      
+      // Update unsubscribe to also clear the interval
+      const fullUnsubscribe = () => {
+        clearInterval(pollInterval);
+        unsubscribe();
+      };
+      
+      setMessageSubscriptions(prev => new Map(prev.set(conversation.peerAddress, fullUnsubscribe)));
+      
+    } catch (err) {
+      console.error('Error setting up message subscription:', err);
+    }
   }, [loadMessages, messageSubscriptions]);
 
   const unsubscribeFromMessages = useCallback((conversation: Conversation) => {
@@ -255,6 +295,8 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     error,
     isRegistered,
     isInitializing,
+    walletCompatibility,
+    walletGuidance,
     initializeClient,
     sendMessage,
     createConversation,

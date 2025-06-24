@@ -1,6 +1,6 @@
 import { http, createConfig } from 'wagmi';
 import { base } from 'wagmi/chains';
-import { coinbaseWallet } from 'wagmi/connectors';
+import { coinbaseWallet, metaMask, injected } from 'wagmi/connectors';
 
 // Get RPC URL from environment or use fallback
 const getRpcUrl = () => {
@@ -40,14 +40,51 @@ const isFarcasterMiniApp = () => {
   );
 };
 
-export const config = createConfig({
-  chains: [base],
-  connectors: [
+// Detect if we're on mobile
+const isMobile = () => {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+};
+
+// Get appropriate connectors based on environment
+const getConnectors = () => {
+  const isMiniApp = isFarcasterMiniApp();
+  const isMobileDevice = isMobile();
+  
+  console.log('🔍 Wallet Environment Detection:', {
+    isMiniApp,
+    isMobileDevice,
+    userAgent: navigator.userAgent
+  });
+
+  // For Farcaster mini apps and mobile, use Coinbase Wallet (not smart wallet)
+  if (isMiniApp || isMobileDevice) {
+    return [
+      coinbaseWallet({
+        appName: '10K - Move. Earn. Connect.',
+        appLogoUrl: 'https://www.move10k.xyz/10k-icon.png',
+      }),
+      // Fallback to injected for other mobile wallets
+      injected(),
+    ];
+  }
+
+  // For desktop/URL, prioritize XMTP-compatible wallets
+  return [
+    // MetaMask - fully XMTP compatible
+    metaMask(),
+    // Coinbase Wallet Extension - XMTP compatible
     coinbaseWallet({
       appName: '10K - Move. Earn. Connect.',
       appLogoUrl: 'https://www.move10k.xyz/10k-icon.png',
     }),
-  ],
+    // Injected for other browser extensions
+    injected(),
+  ];
+};
+
+export const config = createConfig({
+  chains: [base],
+  connectors: getConnectors(),
   transports: {
     [base.id]: http(getRpcUrl()),
   },
