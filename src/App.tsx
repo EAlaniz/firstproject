@@ -161,8 +161,7 @@ function App() {
       });
     }, 5000);
 
-    return (
-) => clearInterval(interval);
+    return () => clearInterval(interval);
   }, [dailyGoal]);
 
   const handleShare = async (platform: string) => {
@@ -1266,8 +1265,5 @@ function App() {
   );
 }
 
-  </XMTPProvider>
-);
-}
-
-export default App;// Clean build Mon Jun 23 21:20:26 PDT 2025
+export default App;
+// Clean build Mon Jun 23 21:20:26 PDT 2025
