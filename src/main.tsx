@@ -1,3 +1,11 @@
+// Polyfills for Node.js globals needed by XMTP
+import { Buffer } from 'buffer';
+import process from 'process';
+
+// Make Buffer and process available globally
+window.Buffer = Buffer;
+window.process = process;
+
 import React, { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { OnchainKitProvider } from '@coinbase/onchainkit';
