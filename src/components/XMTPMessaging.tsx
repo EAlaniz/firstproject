@@ -69,42 +69,42 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
     console.log('walletClient:', walletClient);
 
     if (!walletClient) {
-      if (isFarcasterMiniApp()) {
-        alert('Wallet client not detected in mini app. Please reconnect your wallet or reload the app.');
-      } else {
-        alert('Please connect your wallet first before initializing XMTP.');
+      alert('Wallet client not detected. Please connect your wallet.');
+      return;
+    }
+
+    if (isFarcasterMiniApp()) {
+      // In mini app, just use the walletClient as the signer (skip connector check)
+      try {
+        const { ethers } = await import('ethers');
+        const provider = new ethers.BrowserProvider(walletClient);
+        const signer = await provider.getSigner();
+        console.log('Mini app: signer created, initializing XMTP client...');
+        await initializeClient(signer);
+      } catch (err) {
+        console.error('Failed to initialize XMTP in mini app:', err);
+        const errorMessage = err instanceof Error 
+          ? err.message 
+          : 'Failed to initialize XMTP. Please try again.';
+        alert(`XMTP Initialization Failed: ${errorMessage}`);
       }
       return;
     }
 
-    // Detect mini app environment
-    if (isFarcasterMiniApp()) {
-      console.log('Farcaster mini app detected, assuming Coinbase Wallet.');
-      // Proceed without connector check
-    } else {
-      // Enhanced wallet compatibility check for web
-      const connectorId = (walletClient as any)?.connector?.id || (walletClient as any)?.id;
-      console.log('Wallet connector ID:', connectorId);
+    // Web context: check for supported wallets
+    const connectorId = (walletClient as any)?.connector?.id || (walletClient as any)?.id;
+    console.log('Wallet connector ID:', connectorId);
 
-      if (connectorId !== 'metaMask' && connectorId !== 'coinbaseWallet') {
-        const message = `Please use MetaMask or Coinbase Wallet for XMTP messaging. 
-        
-Current wallet: ${connectorId || 'Unknown'}
-Supported wallets: MetaMask, Coinbase Wallet
-
-XMTP requires EIP-191 signature support which is only available in these wallets.`;
-        alert(message);
-        return;
-      }
-      console.log('Initializing XMTP with compatible wallet:', connectorId);
+    if (connectorId !== 'metaMask' && connectorId !== 'coinbaseWallet') {
+      const message = `Please use MetaMask or Coinbase Wallet for XMTP messaging. \n\nCurrent wallet: ${connectorId || 'Unknown'}\nSupported wallets: MetaMask, Coinbase Wallet\n\nXMTP requires EIP-191 signature support which is only available in these wallets.`;
+      alert(message);
+      return;
     }
-
+    console.log('Initializing XMTP with compatible wallet:', connectorId);
     try {
       const { ethers } = await import('ethers');
       const provider = new ethers.BrowserProvider(walletClient);
       const signer = await provider.getSigner();
-
-      console.log('Signer created successfully, initializing XMTP client...');
       await initializeClient(signer);
     } catch (err) {
       console.error('Failed to initialize XMTP:', err);
