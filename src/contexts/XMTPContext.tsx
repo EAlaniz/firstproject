@@ -89,7 +89,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       console.log('Initializing XMTP client for address:', address);
 
       // Check if user is registered on XMTP
-      const canMessage = await Client.canMessage(address);
+      const canMessage = await Client.canMessage(address, { env: 'production' });
       console.log('Can message check result:', canMessage);
       
       if (!canMessage) {
@@ -189,7 +189,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     // Check if recipient is registered on XMTP
     let canMessage = false;
     try {
-      canMessage = await Client.canMessage(address);
+      canMessage = await Client.canMessage(address, { env: 'production' });
     } catch (err) {
       setError('Error checking recipient XMTP registration.');
       return null;
