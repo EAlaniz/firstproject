@@ -28,8 +28,8 @@
     "ogImageUrl": "https://www.move10k.xyz/opengraph-image.png"
   },
   "accountAssociation": {
-    "header": "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9",
-    "payload": "eyJkb21haW4iOiJ3d3cubW92ZTEway54eXoiLCJ0aW1lc3RhbXAiOjE3NTA3MzEzNTksImV4cGlyZXNBdCI6MTc1MDgxNzc1OX0",
-    "signature": "PBGm6DusT0ijrR6uvoNawpSf1LSoOW8JudZbL00GkiWfvMc5jaq1FySjtcJ3qywPlF7X0-SysvTdNU1t9yQcDw"
+    "header": "eyJmaWQiOjM4NDkxMiwidHlwZSI6ImN1c3RvZHkiLCJrZXkiOiIweDA2MDk1MEU2N2YwRUM3YThDMkI2MzBkYjQzOTYxODdDNWU5M0E5NkYifQ",
+    "payload": "eyJkb21haW4iOiJ3d3cubW92ZTEway54eXoifQ",
+    "signature": "MHg0MGU1NGZmN2RhOTY1NTQ0ZjVmYmE3NGMxYTdiZTY5YmMwZmE4MWE4MzBkNDFhNzEwNTk5ODg4NDZiMjIxZWNkMmQ1NzhjNTVjYTVjNzhkY2Y2YjlmNGUzZjMyYWIxZDQ1NTBlNmIwZTE5ODU5ZGFiNDE0YTgxZDRiM2RmODQyYTFj"
   }
 } 
