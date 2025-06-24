@@ -3,7 +3,7 @@ import { useXMTP } from '../contexts/XMTPContext';
 import { Conversation, DecodedMessage } from '@xmtp/xmtp-js';
 import { Send, Users, Plus, X, MessageCircle, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
 import { useAccount, useWalletClient } from 'wagmi';
-import isFarcasterMiniApp from './MiniAppWalletConnector'; // Use default import
+import { isFarcasterMiniApp } from './MiniAppWalletConnector'; // Fixed: use named import
 
 interface XMTPMessagingProps {
   isOpen: boolean;
