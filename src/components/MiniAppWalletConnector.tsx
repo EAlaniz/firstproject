@@ -31,9 +31,9 @@ interface MiniAppWalletConnectorProps {
 
 export const MiniAppWalletConnector: React.FC<MiniAppWalletConnectorProps> = ({
   className = '',
-  children,
+  children = null,
   variant = 'button',
-  onOpenModal
+  onOpenModal = undefined
 }) => {
   const { address, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
