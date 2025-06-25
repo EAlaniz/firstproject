@@ -124,22 +124,34 @@ export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
 
   // Send message via XMTP
   const sendMessage = async () => {
+    console.log('sendMessage called');
     if (!xmtpClient || !recipientResolved || !message.trim()) return;
     setIsLoading(true);
     setError(null);
-
     try {
-      const conversation = await (xmtpClient.conversations as any).newConversation(recipientResolved);
-      await conversation.send(message);
-      setMessages((prev) => [
-        ...prev,
-        {
-          senderAddress: walletClient?.account.address ?? '',
-          content: message,
-          timestamp: new Date(),
-        },
-      ]);
-      setMessage('');
+      // Debug: Log conversations object and method
+      console.log('xmtpClient.conversations:', xmtpClient.conversations);
+      console.log('typeof newConversation:', typeof xmtpClient.conversations?.newConversation);
+      if (
+        xmtpClient.conversations &&
+        typeof xmtpClient.conversations.newConversation === 'function'
+      ) {
+        const conversation = await xmtpClient.conversations.newConversation(recipientResolved);
+        await conversation.send(message);
+        setMessages((prev) => [
+          ...prev,
+          {
+            senderAddress: walletClient?.account.address ?? '',
+            content: message,
+            timestamp: new Date(),
+          },
+        ]);
+        setMessage('');
+      } else {
+        const errMsg = 'XMTP client or newConversation method not available: ' + JSON.stringify(xmtpClient.conversations);
+        console.error(errMsg);
+        setError('XMTP is not fully initialized or compatible. Please check your wallet, network, and XMTP version.');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to send message');
     } finally {
