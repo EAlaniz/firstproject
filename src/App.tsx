@@ -1157,7 +1157,7 @@ function App() {
                 <div className="p-4 space-y-4">
                   <button
                     onClick={() => {
-                      setShowMessagingPanel(true);
+                      setShowXMTPMessaging(true);
                       setShowMobileMenu(false);
                     }}
                     className="w-full flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors"

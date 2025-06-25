@@ -63,7 +63,8 @@ export const EnhancedWalletConnector: React.FC<EnhancedWalletConnectorProps> = (
       // Only attempt auto-initialization once per connection
       if (autoInitAttempted) return;
       
-      if (isConnected && address && walletClient && !isRegistered && !isInitializing && !isAutoInitializing) {
+      // More strict conditions to prevent double initialization
+      if (isConnected && address && walletClient && !isRegistered && !isInitializing && !isAutoInitializing && !error) {
         console.log(`[Wallet] Auto-initializing XMTP for ${environment} environment:`, address);
         setIsAutoInitializing(true);
         setAutoInitAttempted(true);
@@ -93,12 +94,13 @@ export const EnhancedWalletConnector: React.FC<EnhancedWalletConnectorProps> = (
     };
 
     autoInitializeXMTP();
-  }, [isConnected, address, walletClient, isRegistered, isInitializing, isAutoInitializing, autoInitAttempted, initializeClient, environment, isFarcaster, isMobile, isDesktop]);
+  }, [isConnected, address, walletClient, isRegistered, isInitializing, isAutoInitializing, autoInitAttempted, initializeClient, environment, isFarcaster, isMobile, isDesktop, error]);
 
   // Reset auto-init attempt when wallet disconnects
   useEffect(() => {
     if (!isConnected) {
       setAutoInitAttempted(false);
+      setError(null);
     }
   }, [isConnected]);
 
@@ -281,4 +283,4 @@ export const EnhancedWalletConnector: React.FC<EnhancedWalletConnectorProps> = (
   );
 };
 
-export default EnhancedWalletConnector; 
+export default EnhancedWalletConnector;
