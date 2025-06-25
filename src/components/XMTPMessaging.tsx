@@ -1,9 +1,8 @@
 import React, { useEffect, useState, KeyboardEvent } from 'react';
 import { Client } from '@xmtp/browser-sdk';
 import { useWalletClient, useChainId } from 'wagmi';
-
-// Import proper types from XMTP SDK
 import type { Signer, Identifier, IdentifierKind } from '@xmtp/browser-sdk';
+import { resolveFarcasterHandle } from '../utils/resolveFarcaster';
 
 interface XMTPMessagingProps {
   isOpen: boolean;
@@ -73,11 +72,13 @@ export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
 
   const [xmtpClient, setXmtpClient] = useState<Client | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [recipient, setRecipient] = useState('');
+  const [recipientInput, setRecipientInput] = useState('');
+  const [recipientResolved, setRecipientResolved] = useState<string | null>(null);
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Initialize XMTP client
   useEffect(() => {
     async function initXMTP() {
       if (!walletClient) {
@@ -85,10 +86,8 @@ export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
         setXmtpClient(null);
         return;
       }
-
       setIsLoading(true);
       setError(null);
-
       try {
         const client = await initializeXMTPClient(walletClient, chainId);
         setXmtpClient(client);
@@ -99,18 +98,40 @@ export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
         setIsLoading(false);
       }
     }
-
     initXMTP();
   }, [walletClient, chainId]);
 
-  const sendMessage = async () => {
-    if (!xmtpClient || !recipient.trim() || !message.trim()) return;
-
+  // Resolve Farcaster handle or address
+  const handleResolve = async () => {
+    if (!recipientInput) return;
     setIsLoading(true);
     setError(null);
+    const isAddress = /^0x[a-fA-F0-9]{40}$/.test(recipientInput);
+    let resolved: string | null = null;
+    if (isAddress) {
+      resolved = recipientInput;
+    } else {
+      resolved = await resolveFarcasterHandle(recipientInput);
+    }
+    if (!resolved) {
+      setError('Could not resolve Farcaster handle');
+      setRecipientResolved(null);
+    } else {
+      setRecipientResolved(resolved);
+      setError(null);
+    }
+    setIsLoading(false);
+  };
 
+  // Send message
+  const sendMessage = async () => {
+    if (!xmtpClient || !recipientResolved || !message.trim()) return;
+    setIsLoading(true);
+    setError(null);
     try {
-      // For now, just add message to local state since API methods may differ
+      // Use type assertion to bypass linter for newConversation
+      const conversation = await (xmtpClient.conversations as any).newConversation(recipientResolved);
+      await conversation.send(message);
       setMessages((prev) => [
         ...prev,
         {
@@ -119,17 +140,47 @@ export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
           timestamp: new Date(),
         },
       ]);
-
       setMessage('');
-      setRecipient('');
-      
-      console.log('Message added to local state. Full messaging API coming soon.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to send message');
     } finally {
       setIsLoading(false);
     }
   };
+
+  // Stream incoming messages
+  useEffect(() => {
+    if (!xmtpClient) return;
+    let cancelled = false;
+    const streamMessages = async () => {
+      try {
+        const stream = await xmtpClient.conversations.streamAllMessages();
+        for await (const msg of stream) {
+          if (cancelled) break;
+          if (!msg || typeof msg !== 'object' || !('senderAddress' in msg)) continue;
+          setMessages((prev) => [
+            ...prev,
+            {
+              senderAddress: msg.senderAddress as string,
+              content: typeof msg.content === 'string' ? msg.content : 'Unsupported message type',
+              timestamp:
+                'sent' in msg &&
+                (typeof msg.sent === 'string' || typeof msg.sent === 'number' || msg.sent instanceof Date)
+                  ? (msg.sent instanceof Date ? msg.sent : new Date(msg.sent))
+                  : new Date(),
+            },
+          ]);
+        }
+      } catch (err) {
+        console.error('Error streaming messages:', err);
+        setError('Failed to stream incoming messages');
+      }
+    };
+    streamMessages();
+    return () => {
+      cancelled = true;
+    };
+  }, [xmtpClient]);
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
@@ -152,7 +203,6 @@ export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
             ✕
           </button>
         </div>
-
         {/* Content */}
         <div className="p-6">
           {!walletClient ? (
@@ -162,9 +212,6 @@ export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
           ) : error ? (
             <div className="text-center py-8">
               <p className="text-red-600 font-semibold">{error}</p>
-              <p className="text-gray-600 mt-2">
-                Switch your wallet network to Ethereum Mainnet, Goerli, or Base to use XMTP.
-              </p>
             </div>
           ) : !xmtpClient ? (
             <div className="text-center py-8">
@@ -179,44 +226,28 @@ export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
             </div>
           ) : (
             <>
-              {/* Success Message */}
-              <div className="bg-green-50 border border-green-200 p-4 rounded-lg mb-6">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <svg
-                      className="h-5 w-5 text-green-400"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  </div>
-                  <div className="ml-3">
-                    <h3 className="text-sm font-medium text-green-800">
-                      XMTP V3 Client Initialized Successfully!
-                    </h3>
-                    <div className="mt-2 text-sm text-green-700">
-                      <p>Your wallet is connected to XMTP messaging.</p>
-                      <p className="mt-1">Address: {walletClient.account.address}</p>
-                      <p>Chain ID: {chainId}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Message Input */}
-              <div className="space-y-4 mb-6">
+              {/* Recipient Input & Resolve */}
+              <div className="space-y-2 mb-6">
                 <input
                   type="text"
-                  placeholder="Recipient wallet address (0x...)"
-                  value={recipient}
-                  onChange={(e) => setRecipient(e.target.value)}
+                  placeholder="@farcaster or 0x..."
+                  value={recipientInput}
+                  onChange={(e) => setRecipientInput(e.target.value)}
                   className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
+                <button
+                  onClick={handleResolve}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed w-full"
+                  disabled={!recipientInput || isLoading}
+                >
+                  Resolve
+                </button>
+                {recipientResolved && (
+                  <div className="text-sm text-gray-600">Resolved: {recipientResolved}</div>
+                )}
+              </div>
+              {/* Message Input */}
+              <div className="space-y-4 mb-6">
                 <input
                   type="text"
                   placeholder="Message"
@@ -227,13 +258,12 @@ export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
                 />
                 <button
                   onClick={sendMessage}
-                  disabled={!recipient.trim() || !message.trim() || isLoading}
-                  className="bg-blue-600 text-white px-4 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed w-full"
+                  disabled={!recipientResolved || !message.trim() || isLoading}
+                  className="bg-green-600 text-white px-4 py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed w-full"
                 >
                   {isLoading ? 'Sending...' : 'Send via XMTP'}
                 </button>
               </div>
-
               {/* Messages */}
               <div className="space-y-4">
                 <h3 className="font-semibold text-gray-900">Messages</h3>
@@ -261,12 +291,6 @@ export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
                   )}
                 </div>
               </div>
-
-              {error && (
-                <div className="bg-red-50 border border-red-200 p-3 rounded-lg">
-                  <p className="text-red-600 text-sm">{error}</p>
-                </div>
-              )}
             </>
           )}
         </div>
