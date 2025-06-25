@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { Client, Conversation, DecodedMessage, SortDirection } from '@xmtp/xmtp-js';
-import { useAccount } from 'wagmi';
+import { useAccount, useWalletClient } from 'wagmi';
 import { Signer, isAddress } from 'ethers';
 import { ENV_CONFIG } from '../constants';
 
@@ -58,6 +58,7 @@ const loadXMTPState = (address: string) => {
 
 export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   const { address } = useAccount();
+  const { data: walletClient } = useWalletClient();
   const [client, setClient] = useState<Client | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messages, setMessages] = useState<DecodedMessage[]>([]);
@@ -390,6 +391,40 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       }
     }
   }, [address]);
+
+  // Handle client recreation for persisted users
+  useEffect(() => {
+    const recreateClientForPersistedUser = async () => {
+      if (address && isRegistered && !client && walletClient && !isInitializing) {
+        console.log('Recreating XMTP client for persisted user:', address);
+        try {
+          const { ethers } = await import('ethers');
+          const provider = new ethers.BrowserProvider(walletClient);
+          const signer = await provider.getSigner();
+          
+          // Create client without registration (user is already registered)
+          const xmtpClient = await Client.create(signer, { 
+            env: xmtpEnv, 
+            appVersion: '10k-move-earn-connect/1.0.0' 
+          });
+          
+          setClient(xmtpClient);
+          console.log('XMTP client recreated successfully for persisted user');
+          
+          // Load conversations
+          await loadConversations();
+        } catch (error) {
+          console.error('Failed to recreate XMTP client:', error);
+          // If recreation fails, reset the persisted state
+          setIsRegistered(false);
+          initializedAddressRef.current = null;
+          localStorage.removeItem(getStorageKey(address));
+        }
+      }
+    };
+
+    recreateClientForPersistedUser();
+  }, [address, isRegistered, client, walletClient, isInitializing, xmtpEnv, loadConversations]);
 
   // Reset state when address changes
   useEffect(() => {

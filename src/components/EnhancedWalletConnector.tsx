@@ -15,15 +15,16 @@ export const getEnvironmentInfo = () => {
     window.navigator.userAgent.includes('Farcaster') ||
     window.navigator.userAgent.includes('Warpcast') ||
     window.location.search.includes('miniApp=true') ||
-    window.location.pathname.includes('/miniapp') ||
-    window.location.search.includes('frame=') ||
-    window.location.search.includes('embed=') ||
-    window.location.hostname.includes('preview') ||
-    window.location.hostname.includes('debug')
+    window.location.pathname.includes('/mini-app') ||
+    window.location.pathname.includes('/miniapp')
   );
 
-  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  const isDesktop = !isMobile && !isFarcaster;
+  const isMobile = (
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+    window.innerWidth <= 768
+  );
+
+  const isDesktop = !isFarcaster && !isMobile;
 
   return {
     isFarcaster,
@@ -33,7 +34,6 @@ export const getEnvironmentInfo = () => {
   };
 };
 
-// Legacy function for backward compatibility
 export const isFarcasterMiniApp = () => getEnvironmentInfo().isFarcaster;
 
 interface EnhancedWalletConnectorProps {
@@ -47,13 +47,18 @@ export const EnhancedWalletConnector: React.FC<EnhancedWalletConnectorProps> = (
   children = null,
   onOpenModal = undefined
 }) => {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected, disconnect } = useAccount();
   const { data: walletClient } = useWalletClient();
-  const { disconnect } = useDisconnect();
-  const { isRegistered, isInitializing, initializeClient } = useXMTP();
+  const { 
+    isRegistered, 
+    isInitializing, 
+    initializeClient, 
+    error 
+  } = useXMTP();
+  
   const [isAutoInitializing, setIsAutoInitializing] = useState(false);
   const [autoInitAttempted, setAutoInitAttempted] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [lastConnectedAddress, setLastConnectedAddress] = useState<string | null>(null);
   
   const { isFarcaster, isMobile, isDesktop, environment } = getEnvironmentInfo();
 
@@ -63,14 +68,14 @@ export const EnhancedWalletConnector: React.FC<EnhancedWalletConnectorProps> = (
       // Only attempt auto-initialization once per connection
       if (autoInitAttempted) return;
       
-      // More strict conditions to prevent double initialization
       // Only auto-initialize if we're connected, have an address, have a wallet client,
       // are not already registered, not currently initializing, not auto-initializing,
-      // and have no errors
-      if (isConnected && address && walletClient && !isRegistered && !isInitializing && !isAutoInitializing && !error) {
+      // and have no errors, and this is a new connection (address changed)
+      if (isConnected && address && walletClient && !isRegistered && !isInitializing && !isAutoInitializing && !error && address !== lastConnectedAddress) {
         console.log(`[Wallet] Auto-initializing XMTP for ${environment} environment:`, address);
         setIsAutoInitializing(true);
         setAutoInitAttempted(true);
+        setLastConnectedAddress(address);
         
         try {
           const { ethers } = await import('ethers');
@@ -89,7 +94,6 @@ export const EnhancedWalletConnector: React.FC<EnhancedWalletConnectorProps> = (
           } else {
             console.log('[Wallet] Desktop environment - user can manually initialize later');
           }
-          setError(error instanceof Error ? error.message : 'An error occurred');
         } finally {
           setIsAutoInitializing(false);
         }
@@ -97,13 +101,13 @@ export const EnhancedWalletConnector: React.FC<EnhancedWalletConnectorProps> = (
     };
 
     autoInitializeXMTP();
-  }, [isConnected, address, walletClient, isRegistered, isInitializing, isAutoInitializing, autoInitAttempted, initializeClient, environment, isFarcaster, isMobile, isDesktop, error]);
+  }, [isConnected, address, walletClient, isRegistered, isInitializing, isAutoInitializing, autoInitAttempted, initializeClient, environment, isFarcaster, isMobile, isDesktop, error, lastConnectedAddress]);
 
   // Reset auto-init attempt when wallet disconnects
   useEffect(() => {
     if (!isConnected) {
       setAutoInitAttempted(false);
-      setError(null);
+      setLastConnectedAddress(null);
     }
   }, [isConnected]);
 
@@ -263,27 +267,29 @@ export const EnhancedWalletConnector: React.FC<EnhancedWalletConnectorProps> = (
           </button>
         )}
       </ConnectWallet>
-      
-      {/* Status indicator for desktop users */}
-      {isConnected && address && (
-        <div className="absolute -bottom-6 left-0 right-0 text-center">
-          <div className="text-xs text-gray-600 flex items-center justify-center space-x-1">
-            {isAutoInitializing ? (
-              <>
-                <Loader2 className="w-3 h-3 animate-spin" />
-                <span>Setting up messaging...</span>
-              </>
-            ) : isRegistered ? (
-              <>
-                <MessageCircle className="w-3 h-3" />
-                <span>Ready to chat</span>
-              </>
-            ) : null}
-          </div>
+      {/* XMTP Status for Desktop */}
+      {isConnected && (
+        <div className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 w-full text-center">
+          {isInitializing && (
+            <div className="text-xs text-blue-500">
+              <Loader2 className="w-3 h-3 inline-block animate-spin mr-1" /> Setting up messaging...
+            </div>
+          )}
+          {isRegistered && !isInitializing && (
+            <div className="text-xs text-green-600">
+              <MessageCircle className="w-3 h-3 inline-block mr-1" /> Ready to chat on XMTP!
+            </div>
+          )}
+          {!isRegistered && !isInitializing && (
+            <div className="text-xs text-gray-500">
+              Messaging unavailable. Connect wallet and complete setup.
+            </div>
+          )}
+          {error && (
+            <div className="text-xs text-red-500">{error}</div>
+          )}
         </div>
       )}
     </div>
   );
 };
-
-export default EnhancedWalletConnector;
