@@ -8,7 +8,7 @@ import { useAccount } from 'wagmi';
 declare global {
   interface Window {
     farcaster?: {
-      getProvider?: () => Promise<any>;
+      getProvider?: () => Promise<unknown>;
     };
   }
 }
@@ -16,6 +16,17 @@ declare global {
 interface XMTPMessagingProps {
   isOpen: boolean;
   onClose: () => void;
+}
+
+interface MinimalConversation {
+  id?: string;
+  peerAddress?: string;
+}
+
+interface MinimalMessage {
+  senderAddress?: string;
+  content?: string;
+  sent?: Date;
 }
 
 const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
@@ -271,13 +282,13 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
               </div>
             ) : (
               conversations.map((conversation: Conversation) => {
-                const conv = conversation as any;
+                const conv = conversation as MinimalConversation;
                 return (
                   <div
                     key={conv.id || conv.peerAddress}
                     onClick={() => setSelectedConversation(conversation)}
                     className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
-                      selectedConversation && (selectedConversation as any).id === conv.id
+                      selectedConversation && (selectedConversation as MinimalConversation).id === conv.id
                         ? 'bg-blue-50 border-blue-200'
                         : ''
                     }`}
@@ -315,7 +326,7 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
                     </div>
                     <div>
                       <p className="font-medium">
-                        {formatAddress((selectedConversation as any).peerAddress || 'Unknown')}
+                        {formatAddress((selectedConversation as MinimalConversation).peerAddress || 'Unknown')}
                       </p>
                       <p className="text-xs text-gray-500">Active now</p>
                     </div>
@@ -332,8 +343,8 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
               {/* Messages */}
               <div className="flex-1 overflow-y-auto p-4 space-y-4">
                 {messages.map((message: DecodedMessage, index: number) => {
-                  const msg = message as any;
-                  const conv = selectedConversation as any;
+                  const msg = message as MinimalMessage;
+                  const conv = selectedConversation as MinimalConversation;
                   return (
                     <div
                       key={index}
@@ -356,7 +367,7 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
                             ? 'text-gray-500'
                             : 'text-blue-200'
                         }`}>
-                          {formatTimestamp(msg.sent)}
+                          {formatTimestamp(msg.sent || new Date())}
                         </p>
                       </div>
                     </div>

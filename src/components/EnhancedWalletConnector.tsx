@@ -21,7 +21,7 @@ export const getEnvironmentInfo = () => {
   const isFarcaster = window.location.hostname.includes('warpcast.com') || 
                      window.location.hostname.includes('farcaster.xyz') ||
                      window.location.hostname.includes('farcaster.com') ||
-                     (window as any).farcaster !== undefined;
+                     typeof window !== 'undefined' && 'farcaster' in window && window.farcaster !== undefined;
   
   const isDesktop = !isMobile && !isFarcaster;
   const environment = isFarcaster ? 'farcaster' : isMobile ? 'mobile' : 'desktop';
