@@ -26,12 +26,18 @@ const XMTPDiagnostics: React.FC<XMTPDiagnosticsProps> = ({ isOpen, onClose }) =>
     try {
       // 1. Check if user can message (is registered) on production
       console.log('Checking XMTP registration for:', address);
-      const canMessage = await Client.canMessage(address as any, 'production');
+      const canMessage = await Client.canMessage([{
+        identifier: address,
+        identifierKind: 'Ethereum'
+      }], 'production');
       results.canMessage = canMessage;
       console.log('Can message result (production):', canMessage);
 
       // 2. Check if user can message on dev environment
-      const canMessageDev = await Client.canMessage(address as any, 'dev');
+      const canMessageDev = await Client.canMessage([{
+        identifier: address,
+        identifierKind: 'Ethereum'
+      }], 'dev');
       results.canMessageDev = canMessageDev;
       console.log('Can message result (dev):', canMessageDev);
 
@@ -138,7 +144,10 @@ const XMTPDiagnostics: React.FC<XMTPDiagnosticsProps> = ({ isOpen, onClose }) =>
     setTestResults({ loading: true });
 
     try {
-      const canMessage = await Client.canMessage(testRecipient as any, 'production');
+      const canMessage = await Client.canMessage([{
+        identifier: testRecipient,
+        identifierKind: 'Ethereum'
+      }], 'production');
       setTestResults({ 
         recipientCheck: {
           address: testRecipient,
