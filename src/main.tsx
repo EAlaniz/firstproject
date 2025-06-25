@@ -17,6 +17,7 @@ import { AuthKitProvider } from '@farcaster/auth-kit';
 import { ENV_CONFIG } from './constants';
 import { isFarcasterMiniApp } from './components/EnhancedWalletConnector';
 import App from './App';
+import { XMTPProvider } from './contexts/XMTPContext';
 import './index.css';
 
 const queryClient = new QueryClient({
@@ -66,7 +67,9 @@ createRoot(rootElement).render(
               disablePopup: isFarcasterMiniApp(),
             }}
           >
-            <App />
+            <XMTPProvider>
+              <App />
+            </XMTPProvider>
           </OnchainKitProvider>
         </AuthKitProvider>
       </QueryClientProvider>

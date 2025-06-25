@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import { Send, Users, Plus, X, MessageCircle, Loader2, AlertCircle, CheckCircle, Zap } from 'lucide-react';
-import { useFarcasterLifecycle } from '../hooks/useFarcasterLifecycle';
-import { useMessageStream } from '../useMessageStream';
+import { useXMTP } from '../contexts/XMTPContext';
 
 // Extend the Window type to include farcaster (if present)
 declare global {
@@ -31,20 +30,49 @@ interface MinimalMessage {
 
 const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
   const { address } = useAccount();
-  const { client, isReady, error } = useFarcasterLifecycle();
-  
+  const {
+    client,
+    conversations,
+    messages,
+    isLoading,
+    error,
+    isRegistered,
+    isInitializing,
+    sendMessage,
+    createConversation,
+    loadMessages,
+    clearError,
+  } = useXMTP();
+
   const [newContactAddress, setNewContactAddress] = useState('');
   const [selectedPeer, setSelectedPeer] = useState<string>('');
   const [showNewChat, setShowNewChat] = useState(false);
+  const [message, setMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, []);
+  }, [messages]);
 
-  // Use message stream for selected peer
-  const { messages, sendMessage } = useMessageStream(client, selectedPeer);
+  // Load messages for selected peer
+  useEffect(() => {
+    if (client && selectedPeer) {
+      const load = async () => {
+        const convo = await createConversation(selectedPeer);
+        if (convo) await loadMessages(convo);
+      };
+      load();
+    }
+  }, [client, selectedPeer, createConversation, loadMessages]);
+
+  useEffect(() => {
+    if (client) {
+      console.log('XMTP Client:', client);
+      console.log('Conversations:', conversations);
+      console.log('Messages:', messages);
+    }
+  }, [client, conversations, messages]);
 
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
@@ -53,17 +81,14 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
   };
 
   const handleSendMessage = async () => {
-    if (!selectedPeer) return;
-    
-    const input = document.getElementById('message-input') as HTMLInputElement;
-    const content = input?.value?.trim();
-    if (!content) return;
-
+    if (!selectedPeer || !message.trim()) return;
+    const convo = await createConversation(selectedPeer);
+    if (!convo) return;
     try {
-      await sendMessage(content);
-      input.value = '';
+      await sendMessage(convo, message.trim());
+      setMessage('');
     } catch (err) {
-      console.error('Failed to send message:', err);
+      // Error is handled in context
     }
   };
 
@@ -84,7 +109,6 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
     const minutes = Math.floor(diff / 60000);
     const hours = Math.floor(diff / 3600000);
     const days = Math.floor(diff / 86400000);
-
     if (minutes < 1) return 'Just now';
     if (minutes < 60) return `${minutes}m ago`;
     if (hours < 24) return `${hours}h ago`;
@@ -96,21 +120,24 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={handleBackdropClick}>
-      <div className="bg-white w-full max-w-4xl h-[80vh] flex overflow-hidden rounded-2xl">
+      <div className="bg-white w-full max-w-4xl h-[80vh] flex overflow-hidden rounded-2xl relative">
         {/* XMTP Status Indicator */}
         <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10 w-full max-w-md mx-auto">
-          {isReady && (
+          {isRegistered && client && !isInitializing && (
             <div className="text-xs text-green-600 text-center">
               <CheckCircle className="w-3 h-3 inline-block mr-1" /> Ready to chat on XMTP!
             </div>
           )}
-          {!isReady && (
+          {isInitializing && (
             <div className="text-xs text-gray-500 text-center">
-              Messaging unavailable. Connect wallet and complete setup.
+              <Loader2 className="w-3 h-3 inline-block mr-1 animate-spin" /> Setting up messaging...
             </div>
           )}
           {error && (
-            <div className="text-xs text-red-500 text-center">{error}</div>
+            <div className="text-xs text-red-500 text-center flex items-center justify-center">
+              <AlertCircle className="w-3 h-3 inline-block mr-1" /> {error}
+              <button onClick={clearError} className="ml-2 text-xs text-blue-600 underline">Clear</button>
+            </div>
           )}
         </div>
 
@@ -124,7 +151,7 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
                 <button
                   onClick={() => setShowNewChat(true)}
                   className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                  disabled={!isReady}
+                  disabled={!isRegistered || !client}
                 >
                   <Plus className="w-5 h-5" />
                 </button>
@@ -169,7 +196,7 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
                 <MessageCircle className="w-8 h-8 mx-auto mb-2 text-gray-400" />
                 <p className="text-sm">Please connect your wallet first</p>
               </div>
-            ) : !isReady ? (
+            ) : !isRegistered || !client ? (
               <div className="p-4 text-center text-gray-500">
                 <MessageCircle className="w-8 h-8 mx-auto mb-2 text-gray-400" />
                 <p className="text-sm mb-2">
@@ -179,10 +206,10 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
                   Connect your wallet to enable messaging
                 </p>
               </div>
-            ) : !selectedPeer ? (
+            ) : conversations.length === 0 ? (
               <div className="p-4 text-center text-gray-500">
                 <MessageCircle className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                <p className="text-sm">No conversation selected</p>
+                <p className="text-sm">No conversations yet</p>
                 <button
                   onClick={() => setShowNewChat(true)}
                   className="mt-2 text-blue-600 hover:text-blue-700 text-sm"
@@ -191,20 +218,27 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
                 </button>
               </div>
             ) : (
-              <div className="p-4">
-                <div className="flex items-center space-x-3 p-3 bg-blue-50 rounded-lg">
-                  <div className="w-10 h-10 bg-blue-200 rounded-full flex items-center justify-center">
-                    <Users className="w-5 h-5 text-blue-600" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm truncate">
-                      {formatAddress(selectedPeer)}
-                    </p>
-                    <p className="text-xs text-gray-500 truncate">
-                      Active conversation
-                    </p>
-                  </div>
-                </div>
+              <div>
+                {conversations.map((convo, idx) => {
+                  const peer = (convo as any).peerAddress || (convo as any).context?.groupId || `convo-${idx}`;
+                  return (
+                    <button
+                      key={peer}
+                      onClick={() => setSelectedPeer((convo as any).peerAddress || '')}
+                      className={`w-full flex items-center space-x-3 p-3 border-b border-gray-100 hover:bg-gray-50 transition-colors ${selectedPeer === (convo as any).peerAddress ? 'bg-blue-50' : ''}`}
+                    >
+                      <Users className="w-5 h-5 text-blue-600" />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">
+                          {formatAddress((convo as any).peerAddress || (convo as any).context?.groupId || 'Unknown')}
+                        </p>
+                        <p className="text-xs text-gray-500 truncate">
+                          Conversation
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -239,33 +273,25 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
 
               {/* Messages */}
               <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {messages.map((message, index) => (
-                  <div
-                    key={index}
-                    className={`flex ${
-                      (message as any).senderAddress === selectedPeer
-                        ? 'justify-start'
-                        : 'justify-end'
-                    }`}
-                  >
+                {messages.map((msg, index) => {
+                  const sender = (msg as any).sender || (msg as any).senderAddress || 'unknown';
+                  const sent = (msg as any).sent || new Date();
+                  return (
                     <div
-                      className={`max-w-xs px-4 py-2 rounded-lg ${
-                        (message as any).senderAddress === selectedPeer
-                          ? 'bg-gray-100 text-gray-900'
-                          : 'bg-blue-600 text-white'
-                      }`}
+                      key={sent?.toString() + sender + index}
+                      className={`flex ${sender === selectedPeer ? 'justify-start' : 'justify-end'}`}
                     >
-                      <p className="text-sm">{String((message as any).content)}</p>
-                      <p className={`text-xs mt-1 ${
-                        (message as any).senderAddress === selectedPeer
-                          ? 'text-gray-500'
-                          : 'text-blue-200'
-                      }`}>
-                        {formatTimestamp((message as any).sent || new Date())}
-                      </p>
+                      <div
+                        className={`max-w-xs px-4 py-2 rounded-lg ${sender === selectedPeer ? 'bg-gray-100 text-gray-900' : 'bg-blue-600 text-white'}`}
+                      >
+                        <p className="text-sm">{String((msg as any).content) || 'Missing content'}</p>
+                        <p className={`text-xs mt-1 ${sender === selectedPeer ? 'text-gray-500' : 'text-blue-200'}`}>
+                          {formatTimestamp(sent)}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
                 <div ref={messagesEndRef} />
               </div>
 
@@ -276,13 +302,15 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
                   type="text"
                   className="flex-1 border rounded px-3 py-2 mr-2"
                   placeholder="Type your message..."
-                  disabled={!isReady}
-                  onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                  value={message}
+                  onChange={e => setMessage(e.target.value)}
+                  disabled={!isRegistered || !client}
+                  onKeyPress={e => e.key === 'Enter' && handleSendMessage()}
                 />
                 <button
                   onClick={handleSendMessage}
-                  disabled={!isReady}
-                  className={`bg-blue-600 text-white px-4 py-2 rounded-full flex items-center space-x-2 ${(!isReady) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700 transition-colors'}`}
+                  disabled={!isRegistered || !client}
+                  className={`bg-blue-600 text-white px-4 py-2 rounded-full flex items-center space-x-2 ${(!isRegistered || !client) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700 transition-colors'}`}
                 >
                   <Send className="w-4 h-4" />
                   <span>Send</span>
