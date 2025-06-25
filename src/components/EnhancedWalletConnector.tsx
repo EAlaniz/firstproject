@@ -191,14 +191,13 @@ export const EnhancedWalletConnector: React.FC<EnhancedWalletConnectorProps> = (
       );
     } else {
       return (
-        <div className={`flex items-center space-x-2 ${className}`}>
-          <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
-            <Smartphone className="w-4 h-4 text-gray-400" />
-          </div>
-          <div className="hidden sm:block">
-            <div className="text-sm font-medium">Not Connected</div>
-            <div className="text-xs text-gray-500">Mobile Web</div>
-          </div>
+        <div className="relative">
+          <ConnectWallet>
+            <button className={`bg-blue-600 text-white px-4 py-2 rounded-full hover:bg-blue-700 transition-colors flex items-center space-x-2 ${className}`}>
+              <Smartphone className="w-4 h-4" />
+              <span>Connect Wallet</span>
+            </button>
+          </ConnectWallet>
         </div>
       );
     }
