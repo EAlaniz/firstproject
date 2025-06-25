@@ -1,19 +1,22 @@
 import { useEffect, useRef, useState } from "react";
 import type { Client, Conversation, DecodedMessage } from "@xmtp/browser-sdk";
 
-export function useMessageStream(client: Client | null, peer: string) {
+export function useMessageStream(client: Client | null, peerAddress: string) {
   const [messages, setMessages] = useState<DecodedMessage[]>([]);
   const [conversation, setConversation] = useState<Conversation | null>(null);
-  const stop = useRef<() => void>();
+  const stopRef = useRef<() => void>();
 
   useEffect(() => {
-    if (!client || !peer) return;
+    if (!client || !peerAddress) return;
+    
     let active = true;
 
-    async function stream() {
+    async function startStream() {
       try {
+        console.log('Starting message stream for peer:', peerAddress);
+        
         // @ts-expect-error XMTP SDK type mismatch
-        const convo = await client.conversations.newConversation(peer);
+        const convo = await client.conversations.newConversation(peerAddress);
         setConversation(convo);
         
         // Load existing messages
@@ -23,30 +26,32 @@ export function useMessageStream(client: Client | null, peer: string) {
         }
 
         // Stream new messages
-        const msgStream = await convo.streamMessages();
-        stop.current = () => msgStream.return?.();
+        const stream = await convo.streamMessages();
+        stopRef.current = () => stream.return?.();
         
-        for await (const m of msgStream) {
+        for await (const msg of stream) {
           if (!active) break;
-          setMessages((prev) => [...prev, m]);
+          console.log(`[${(msg as any).senderAddress}] ${(msg as any).content}`);
+          setMessages((prev) => [...prev, msg]);
         }
       } catch (error) {
         console.error('Error in message stream:', error);
       }
     }
-    
-    stream();
-    
+
+    startStream();
+
     return () => {
       active = false;
-      stop.current?.();
+      stopRef.current?.();
     };
-  }, [client, peer]);
+  }, [client, peerAddress]);
 
   const sendMessage = async (content: string) => {
     if (!conversation) return;
     try {
       await conversation.send(content);
+      console.log('Message sent successfully');
     } catch (error) {
       console.error('Error sending message:', error);
     }
