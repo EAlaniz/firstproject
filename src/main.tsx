@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { OnchainKitProvider } from '@coinbase/onchainkit';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider } from 'wagmi'; // ✅ FIXED: Import from wagmi library
-import { wagmiConfig } from './wagmi.config'; // ✅ Your custom config
+import { wagmiConfig } from '../wagmi.config'; // ✅ Your custom config
 import { base } from 'wagmi/chains';
 import { AuthKitProvider } from '@farcaster/auth-kit';
 import { ENV_CONFIG } from './constants';
