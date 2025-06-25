@@ -130,6 +130,8 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
         // Send to existing conversation
         await selectedConversation.send(message);
         setMessage('');
+        // Immediately reload messages so the sent message appears
+        await loadMessages(selectedConversation);
       } else if (recipient && recipient.trim()) {
         // Create new conversation and send message
         const conversation = await createConversation(recipient.trim());
@@ -138,6 +140,7 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
           setMessage('');
           setRecipient('');
           setSelectedConversation(conversation);
+          // Immediately reload messages for the new conversation
           await loadMessages(conversation);
           subscribeToMessages(conversation);
           setShowNewMessage(false);
