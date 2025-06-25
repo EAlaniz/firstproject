@@ -28,7 +28,7 @@ export async function initXMTP(walletClient: any) {
     const signer = await createSigner(walletClient);
     console.log('Signer created for address:', await signer.getAddress());
 
-    // Initialize client with signer and environment (production or dev)
+    // Initialize client with signer and production environment for cross-platform compatibility
     xmtpClient = await Client.create(signer as any, { env: 'production' });
 
     console.log('✅ XMTP V3 client created successfully');

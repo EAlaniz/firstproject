@@ -15,8 +15,8 @@ export const ENV_CONFIG = {
   BASE_RPC_URL: import.meta.env.VITE_BASE_RPC_URL || 'https://mainnet.base.org',
   
   // Step Tracker Contract
-  // XMTP Environment
-  XMTP_ENV: import.meta.env.VITE_XMTP_ENV || 'production',
+  // XMTP Environment - Set to production for cross-platform compatibility
+  XMTP_ENV: 'production' as const,
   STEP_TRACKER_CONTRACT: import.meta.env.VITE_STEP_TRACKER_CONTRACT || '0x0000000000000000000000000000000000000000',
   
   // Environment

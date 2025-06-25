@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useConfig, useAccount } from 'wagmi';
+import { useConfig, useAccount, useBalance } from 'wagmi';
 import { APP_CONFIG, ENV_CONFIG } from './constants';
 import Header from './components/Header';
 import StepTracker from './components/StepTracker';
 import Modal from './components/Modal';
 import { EnhancedWalletConnector } from './components/EnhancedWalletConnector';
 import XMTPMessaging from './components/XMTPMessaging';
+import XMTPDiagnostics from './components/XMTPDiagnostics';
 
 function App() {
   // Test wagmi config to ensure provider is working
@@ -21,6 +22,7 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [showXMTPMessaging, setShowXMTPMessaging] = useState(false);
+  const [showXMTPDiagnostics, setShowXMTPDiagnostics] = useState(false);
   const [isWalletConnected, setIsWalletConnected] = useState(false);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [currentSteps, setCurrentSteps] = useState(7240);
@@ -29,6 +31,7 @@ function App() {
   const [totalTokens, setTotalTokens] = useState(156);
 
   const { address, isConnected } = useAccount();
+  const { data: balance } = useBalance({ address: address });
 
   // Update wallet connection state
   useEffect(() => {
@@ -84,38 +87,6 @@ function App() {
     setIsWalletConnected(false);
     setWalletAddress(null);
     setSuccess('Wallet disconnected successfully');
-  };
-
-  const handleShare = async (platform: string, text: string) => {
-    try {
-      switch (platform) {
-        case 'twitter':
-          const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
-          window.open(twitterUrl, '_blank');
-          break;
-        case 'copy':
-          await navigator.clipboard.writeText(text);
-          setSuccess('Link copied to clipboard!');
-          break;
-        case 'native':
-          if (navigator.share) {
-            await navigator.share({
-              title: APP_CONFIG.name,
-              text: text,
-              url: window.location.href,
-            });
-          } else {
-            await navigator.clipboard.writeText(text);
-            setSuccess('Link copied to clipboard!');
-          }
-          break;
-        default:
-          throw new Error('Unsupported platform');
-      }
-    } catch (error) {
-      console.error('Share error:', error);
-      setError('Failed to share. Please try again.');
-    }
   };
 
   const getStepContent = (step: number) => {
@@ -259,6 +230,38 @@ function App() {
     }
   };
 
+  const handleShare = async (platform: string, text: string) => {
+    try {
+      switch (platform) {
+        case 'twitter':
+          const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
+          window.open(twitterUrl, '_blank');
+          break;
+        case 'copy':
+          await navigator.clipboard.writeText(text);
+          setSuccess('Link copied to clipboard!');
+          break;
+        case 'native':
+          if (navigator.share) {
+            await navigator.share({
+              title: APP_CONFIG.name,
+              text: text,
+              url: window.location.href,
+            });
+          } else {
+            await navigator.clipboard.writeText(text);
+            setSuccess('Link copied to clipboard!');
+          }
+          break;
+        default:
+          throw new Error('Unsupported platform');
+      }
+    } catch (error) {
+      console.error('Share error:', error);
+      setError('Failed to share. Please try again.');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       {/* Header */}
@@ -324,6 +327,12 @@ function App() {
                   💬 Open Messaging
                 </button>
                 <button
+                  onClick={() => setShowXMTPDiagnostics(true)}
+                  className="bg-orange-600 text-white px-4 py-3 rounded-lg font-semibold hover:bg-orange-700 transition-colors"
+                >
+                  🔧 XMTP Diagnostics
+                </button>
+                <button
                   onClick={() => handleShare('copy', `Check out my progress on ${APP_CONFIG.name}! 🚶‍♂️`)}
                   className="bg-green-600 text-white px-4 py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors"
                 >
@@ -350,6 +359,12 @@ function App() {
       <XMTPMessaging 
         isOpen={showXMTPMessaging} 
         onClose={() => setShowXMTPMessaging(false)} 
+      />
+
+      {/* XMTP Diagnostics */}
+      <XMTPDiagnostics 
+        isOpen={showXMTPDiagnostics} 
+        onClose={() => setShowXMTPDiagnostics(false)} 
       />
 
       {/* Error Modal */}
