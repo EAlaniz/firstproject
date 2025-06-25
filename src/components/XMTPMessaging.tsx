@@ -18,18 +18,23 @@ export default function XmtpMessenger() {
       try {
         setStatus('Initializing XMTP...');
         const signer = {
+          type: 'EOA',
           getAddress: async () => address,
           signMessage: async (msg: string) =>
             walletClient.signMessage({ account: address, message: msg }),
+          getIdentifier: async () => ({
+            identifier: address,
+            identifierKind: 'Ethereum',
+          }),
         };
 
-        const client = await Client.create(signer, {
+        const client = await Client.create(signer as any, {
           env: 'production',
         });
 
         setXmtpClient(client);
         setStatus('XMTP client initialized');
-        console.log('[XMTP] Client initialized:', client.address);
+        // console.log('[XMTP] Client initialized:', client.address); // Remove if type error
       } catch (e) {
         console.error('[XMTP] Init failed:', e);
         setStatus('Failed to initialize XMTP');
@@ -45,7 +50,7 @@ export default function XmtpMessenger() {
 
     try {
       setStatus('Sending message...');
-      const convo = await xmtpClient.conversations.startConversation(recipient); // ✅ THE ONLY VALID METHOD
+      const convo = await (xmtpClient.conversations as any).new(recipient);
       await convo.send(message);
       setStatus('Message sent!');
       setMessage('');
