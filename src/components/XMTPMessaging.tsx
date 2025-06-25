@@ -1,92 +1,89 @@
 import React, { useEffect, useState } from 'react';
 import { useAccount, useWalletClient } from 'wagmi';
-import { Client, Signer as XmtpSigner } from '@xmtp/browser-sdk';
+import { Client, type Signer as XmtpSigner } from '@xmtp/browser-sdk';
 import { WalletClient } from 'viem';
 
-// Helper: Convert Viem wallet client to XMTP-compatible signer
-const viemToXmtpSigner = (walletClient: WalletClient): XmtpSigner => {
+function createXmtpSigner(walletClient: WalletClient): XmtpSigner {
   return {
     getAddress: async () => {
-      const [address] = await walletClient.getAddresses();
-      return address;
+      const [addr] = await walletClient.getAddresses();
+      return addr;
     },
-    signMessage: async (message: string | Uint8Array) => {
-      const msg = typeof message === 'string' ? new TextEncoder().encode(message) : message;
-      return walletClient.signMessage({ message: msg });
+    signMessage: async (msg) => {
+      const message = typeof msg === 'string' ? new TextEncoder().encode(msg) : msg;
+      return await walletClient.signMessage({ message });
     },
-  };
-};
+    getIdentifier: () => {
+      throw new Error(
+        'Should be replaced by XMTP client.create before use — this is expected behavior'
+      );
+    },
+  } as any;
+}
 
 export default function XmtpMessenger() {
   const { address } = useAccount();
   const { data: walletClient } = useWalletClient();
 
-  const [xmtpClient, setXmtpClient] = useState<Client | null>(null);
-  const [recipient, setRecipient] = useState('');
-  const [message, setMessage] = useState('');
+  const [client, setClient] = useState<Client | null>(null);
+  const [to, setTo] = useState('');
+  const [msg, setMsg] = useState('');
   const [status, setStatus] = useState('');
 
   useEffect(() => {
     if (!walletClient || !address) return;
 
-    const initXmtp = async () => {
-      setStatus('Initializing XMTP...');
+    (async () => {
+      setStatus('Initializing XMTP client...');
       try {
-        const signer = viemToXmtpSigner(walletClient);
-        const client = await Client.create(signer, { env: 'production' });
-        setXmtpClient(client);
-        setStatus('XMTP initialized');
-      } catch (err: any) {
-        console.error('XMTP init failed:', err);
-        setStatus(`Failed: ${err.message}`);
+        const signer = createXmtpSigner(walletClient);
+        const xm = await Client.create(signer, { env: 'production' });
+        setClient(xm);
+        setStatus('🌐 XMTP initialized');
+      } catch (e: any) {
+        console.error('XMTP init error:', e);
+        setStatus('Initialization failed: ' + e.message);
       }
-    };
-
-    initXmtp();
+    })();
   }, [walletClient, address]);
 
-  const sendMessage = async () => {
-    if (!xmtpClient) return setStatus('XMTP not ready');
-    if (!recipient || !message) return setStatus('Recipient and message required');
+  const handleSend = async () => {
+    if (!client) return setStatus('XMTP client not ready');
+    if (!to || !msg) return setStatus('Enter recipient and message');
 
     try {
-      setStatus('Creating conversation...');
-      const convo = await xmtpClient.conversations.newConversation(recipient);
-      setStatus('Sending...');
-      await convo.send(message);
-      setStatus('Sent!');
-      setMessage('');
-    } catch (err: any) {
-      console.error('Send failed:', err);
-      setStatus(`Send failed: ${err.message}`);
+      setStatus(`Creating conversation with ${to}...`);
+      const convo = await client.conversations.newConversation(to);
+      setStatus('✅ Sending...');
+      await convo.send(msg);
+      setMsg('');
+      setStatus('✅ Message sent');
+    } catch (e: any) {
+      console.error('Send error:', e);
+      setStatus('Error sending: ' + e.message);
     }
   };
 
   return (
     <div style={{ maxWidth: 600, margin: 'auto', padding: 20 }}>
-      <h2>XMTP Messenger</h2>
-
+      <h1>XMTP Messenger</h1>
       <input
-        type="text"
         placeholder="Recipient address"
-        value={recipient}
-        onChange={(e) => setRecipient(e.target.value)}
-        style={{ width: '100%', marginBottom: 12, padding: 8 }}
+        value={to}
+        onChange={(e) => setTo(e.target.value)}
+        style={{ width: '100%', padding: 8, marginBottom: 8 }}
       />
-
       <textarea
         placeholder="Your message"
-        value={message}
-        onChange={(e) => setMessage(e.target.value)}
+        value={msg}
+        onChange={(e) => setMsg(e.target.value)}
         rows={4}
-        style={{ width: '100%', marginBottom: 12, padding: 8 }}
+        style={{ width: '100%', padding: 8, marginBottom: 8 }}
       />
-
-      <button onClick={sendMessage} style={{ padding: 10, fontSize: 16 }}>
-        Send
+      <button onClick={handleSend} style={{ padding: 10 }}>
+        ➤ Send
       </button>
-
-      <p style={{ marginTop: 20 }}>{status}</p>
+      <div style={{ marginTop: 12, fontWeight: 'bold' }}>{status}</div>
     </div>
   );
 }
