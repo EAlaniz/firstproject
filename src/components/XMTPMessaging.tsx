@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Client } from '@xmtp/browser-sdk';
-import { useWalletClient } from 'wagmi';
+import { useWalletClient, useNetwork } from 'wagmi';
 
 interface Identifier {
   identifier: string;
@@ -38,6 +38,8 @@ function hexToUint8Array(hex: string): Uint8Array {
 
 export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
   const { data: walletClient } = useWalletClient();
+  const { chain } = useNetwork();
+
   const [xmtpClient, setXmtpClient] = useState<Client | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [recipient, setRecipient] = useState('');
@@ -45,18 +47,45 @@ export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Map chain IDs to XMTP environment names
+  function getXmtpEnv(chainId?: number): 'production' | 'dev' | null {
+    if (!chainId) return null;
+    if (chainId === 1) return 'production';    // Ethereum mainnet
+    if (chainId === 5) return 'dev';           // Goerli testnet
+    if (chainId === 8453) return 'production'; // Base chain uses production env
+    // Add other supported chains if needed (Polygon, Optimism, etc)
+    return null;
+  }
+
   useEffect(() => {
     async function initXMTP() {
-      if (!walletClient) return;
+      if (!walletClient) {
+        setError('Wallet client not connected');
+        setXmtpClient(null);
+        return;
+      }
+
+      const currentChainId = chain?.id;
+      console.log('Detected chainId:', currentChainId);
+
+      const xmtpEnv = getXmtpEnv(currentChainId);
+      if (!xmtpEnv) {
+        setError(
+          `XMTP is not supported on chain ID ${currentChainId}. Please switch to Ethereum mainnet, Goerli, or Base.`
+        );
+        setXmtpClient(null);
+        return;
+      }
 
       setIsLoading(true);
       setError(null);
 
       try {
-        console.log('Initializing XMTP V3 client...');
+        const accountAddress = walletClient.account.address;
+        console.log('Wallet address:', accountAddress);
 
         const accountIdentifier: Identifier = {
-          identifier: walletClient.account.address,
+          identifier: accountAddress,
           identifierKind: 'Ethereum',
         };
 
@@ -65,31 +94,28 @@ export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
           getIdentifier: () => accountIdentifier,
           signMessage: async (message: string): Promise<Uint8Array> => {
             const signature = await walletClient.signMessage({ message });
+            console.log('Signed message:', signature);
             return hexToUint8Array(signature);
           },
         };
 
-        console.log('Signer created for address:', accountIdentifier.identifier);
-
         const client = await Client.create(signer, {
-          env: 'production',
+          env: xmtpEnv,
         });
 
-        console.log('✅ XMTP V3 client created successfully');
+        console.log('✅ XMTP Client created with env:', xmtpEnv);
         setXmtpClient(client);
-
-        console.log('Available client methods:', Object.getOwnPropertyNames(client));
-        console.log('Available conversations methods:', Object.getOwnPropertyNames(client.conversations));
       } catch (err) {
-        console.error('❌ Failed to initialize XMTP V3 client:', err);
+        console.error('❌ Failed to initialize XMTP:', err);
         setError(err instanceof Error ? err.message : 'Failed to initialize XMTP');
+        setXmtpClient(null);
       } finally {
         setIsLoading(false);
       }
     }
 
     initXMTP();
-  }, [walletClient]);
+  }, [walletClient, chain]);
 
   const sendMessage = async () => {
     if (!xmtpClient || !recipient.trim() || !message.trim()) return;
@@ -97,19 +123,18 @@ export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
     try {
       setIsLoading(true);
 
-      // Open conversation with recipient
+      // Create or get conversation with recipient
       const conversation = await xmtpClient.conversations.newConversation(recipient);
-
-      // Send the message
       await conversation.send(message);
 
-      // Add message locally
-      const newMessage: Message = {
-        senderAddress: walletClient?.account.address || '',
-        content: message,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, newMessage]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          senderAddress: walletClient?.account.address || '',
+          content: message,
+          timestamp: new Date(),
+        },
+      ]);
 
       setMessage('');
       setRecipient('');
@@ -129,7 +154,10 @@ export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-900">XMTP Mini App Messenger</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 transition-colors"
+          >
             ✕
           </button>
         </div>
@@ -140,6 +168,13 @@ export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
             <div className="text-center py-8">
               <p className="text-gray-600 mb-4">Please connect your wallet to use XMTP messaging.</p>
             </div>
+          ) : error ? (
+            <div className="text-center py-8">
+              <p className="text-red-600 font-semibold">{error}</p>
+              <p className="text-gray-600 mt-2">
+                Switch your wallet network to Ethereum Mainnet, Goerli, or Base to use XMTP.
+              </p>
+            </div>
           ) : !xmtpClient ? (
             <div className="text-center py-8">
               {isLoading ? (
@@ -148,19 +183,20 @@ export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
                   <p className="text-gray-600">Initializing XMTP...</p>
                 </div>
               ) : (
-                <div className="space-y-4">
-                  <p className="text-gray-600">Setting up XMTP client...</p>
-                  {error && <p className="text-red-600 text-sm">{error}</p>}
-                </div>
+                <p className="text-gray-600">Setting up XMTP client...</p>
               )}
             </div>
           ) : (
-            <div className="space-y-6">
+            <>
               {/* Success Message */}
-              <div className="bg-green-50 border border-green-200 p-4 rounded-lg">
+              <div className="bg-green-50 border border-green-200 p-4 rounded-lg mb-6">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
-                    <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                    <svg
+                      className="h-5 w-5 text-green-400"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
                       <path
                         fillRule="evenodd"
                         d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
@@ -169,17 +205,20 @@ export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
                     </svg>
                   </div>
                   <div className="ml-3">
-                    <h3 className="text-sm font-medium text-green-800">XMTP V3 Client Initialized Successfully!</h3>
+                    <h3 className="text-sm font-medium text-green-800">
+                      XMTP V3 Client Initialized Successfully!
+                    </h3>
                     <div className="mt-2 text-sm text-green-700">
-                      <p>Your wallet is now connected to XMTP messaging.</p>
+                      <p>Your wallet is connected to XMTP messaging.</p>
                       <p className="mt-1">Address: {walletClient.account.address}</p>
+                      <p>Network: {chain?.name ?? 'Unknown'}</p>
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Message Input */}
-              <div className="space-y-4">
+              <div className="space-y-4 mb-6">
                 <input
                   type="text"
                   placeholder="Farcaster Address or Wallet"
@@ -215,7 +254,9 @@ export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
                       <div
                         key={i}
                         className={`p-3 rounded-lg ${
-                          msg.senderAddress === walletClient?.account.address ? 'bg-blue-100 ml-8' : 'bg-gray-100 mr-8'
+                          msg.senderAddress === walletClient?.account.address
+                            ? 'bg-blue-100 ml-8'
+                            : 'bg-gray-100 mr-8'
                         }`}
                       >
                         <div className="text-xs text-gray-600 mb-1">
@@ -235,7 +276,7 @@ export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
                   <p className="text-red-600 text-sm">{error}</p>
                 </div>
               )}
-            </div>
+            </>
           )}
         </div>
       </div>
