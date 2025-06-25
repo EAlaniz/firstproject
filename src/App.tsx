@@ -8,6 +8,8 @@ import { EnhancedWalletConnector } from './components/EnhancedWalletConnector';
 import XMTPMessaging from './components/XMTPMessaging';
 import XMTPDiagnostics from './components/XMTPDiagnostics';
 import { initXMTP } from './xmtpClient';
+import { base } from 'wagmi/chains';
+import { Activity, Trophy, Circle, MessageCircle, Menu, X, ArrowRight } from 'lucide-react';
 
 function App() {
   // Test wagmi config to ensure provider is working
@@ -277,145 +279,226 @@ function App() {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      {/* Header */}
-      <Header 
-        currentStreak={currentStreak}
-        totalTokens={totalTokens}
-      />
-
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
-        {/* Onboarding Steps */}
-        {currentStep < 3 && (
-          <div className="max-w-2xl mx-auto mb-8">
-            <div className="bg-white rounded-lg shadow-lg p-6">
-              {getStepContent(currentStep)}
+  // Modern landing page for wallet connect
+  if (!isWalletConnected) {
+    return (
+      <div className="min-h-screen bg-white text-black">
+        {/* Header */}
+        <header className="border-b border-gray-200 px-4 sm:px-6 py-4">
+          <div className="max-w-6xl mx-auto flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-black rounded-full flex items-center justify-center">
+                <Activity className="w-5 h-5 text-white" />
+              </div>
+              <span className="text-xl font-medium">10K</span>
+            </div>
+            <button
+              onClick={() => setShowWalletConnector(true)}
+              className="bg-black text-white px-4 sm:px-6 py-2 rounded-full hover:bg-gray-800 transition-colors cursor-pointer text-sm font-medium"
+            >
+              Connect
+            </button>
+          </div>
+        </header>
+        {/* Hero Section */}
+        <main className="max-w-4xl mx-auto px-4 sm:px-6 py-12 sm:py-20">
+          <div className="text-center space-y-6 sm:space-y-8">
+            <div className="space-y-4">
+              <h1 className="text-4xl sm:text-6xl font-light tracking-tight leading-tight">
+                Move. Earn. Connect.
+              </h1>
+              <p className="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed px-4">
+                An inclusive wellness platform that rewards your daily movement with tokens and connects you with a community of movers.
+              </p>
+            </div>
+            <div className="flex justify-center px-4">
+              <button
+                onClick={() => setShowWalletConnector(true)}
+                className="bg-black text-white px-6 sm:px-8 py-3 sm:py-4 rounded-full hover:bg-gray-800 transition-colors cursor-pointer font-medium flex items-center space-x-2 w-full sm:w-auto justify-center"
+              >
+                <span>Get Started</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="pt-8 sm:pt-12 text-sm text-gray-500">
+              Powered by Base Chain • Low fees • Fast transactions
             </div>
           </div>
+        </main>
+        {/* Wallet Connector Modal */}
+        {showWalletConnector && (
+          <Modal
+            isOpen={showWalletConnector}
+            onClose={() => setShowWalletConnector(false)}
+            title="Connect Wallet"
+          >
+            <EnhancedWalletConnector />
+          </Modal>
         )}
+      </div>
+    );
+  }
 
-        {/* Step Tracker */}
-        {isWalletConnected && currentStep >= 2 && (
-          <div className="max-w-4xl mx-auto">
-            <StepTracker 
-              currentSteps={currentSteps}
-              dailyGoal={dailyGoal}
-              onGoalChange={setDailyGoal}
-            />
+  // Main dashboard after connect
+  return (
+    <div className="min-h-screen bg-white text-black">
+      {/* Header */}
+      <header className="border-b border-gray-200 px-4 py-3 sm:px-6 sm:py-4">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 bg-black rounded-full flex items-center justify-center">
+              <Activity className="w-5 h-5 text-white" />
+            </div>
+            <span className="text-xl font-medium">10K</span>
           </div>
-        )}
-
-        {/* Wallet Connection Prompt */}
-        {!isWalletConnected && currentStep >= 2 && (
-          <div className="max-w-md mx-auto text-center">
-            <div className="bg-white rounded-lg shadow-lg p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                Connect Your Wallet
-              </h2>
-              <p className="text-gray-600 mb-6">
-                Connect your wallet to start tracking steps and earning rewards.
-              </p>
+          {/* Desktop Navigation */}
+          <div className="hidden sm:flex items-center space-x-6">
+            {/* Stats */}
+            <div className="flex items-center space-x-6 text-sm">
+              <div className="flex items-center space-x-2">
+                <Trophy className="w-4 h-4 text-amber-500" />
+                <span className="font-medium">{currentStreak}</span>
+                <span className="text-gray-600 hidden lg:inline">day streak</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Circle className="w-4 h-4 text-purple-500 fill-current" />
+                <span className="font-medium">{totalTokens}</span>
+                <span className="text-gray-600 hidden lg:inline">tokens</span>
+              </div>
+            </div>
+            {/* Action Buttons */}
+            <div className="flex items-center space-x-2">
               <button
-                onClick={handleWalletConnect}
-                className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                onClick={() => setShowXMTPMessaging(true)}
+                className="relative p-2 hover:bg-gray-100 rounded-full transition-colors"
+                title="Messages"
               >
-                Connect Wallet
+                <MessageCircle className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setShowWalletConnector(true)}
+                className="bg-gray-100 text-black px-4 py-2 rounded-full hover:bg-gray-200 transition-colors cursor-pointer text-sm"
+              >
+                Wallet
               </button>
             </div>
           </div>
-        )}
-
-        {/* Quick Actions */}
-        {isWalletConnected && (
-          <div className="max-w-4xl mx-auto mt-8">
-            <div className="bg-white rounded-lg shadow-lg p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                Quick Actions
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <button
-                  onClick={() => setShowXMTPMessaging(true)}
-                  className="bg-purple-600 text-white px-4 py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors"
-                >
-                  💬 Open Messaging
-                </button>
-                <button
-                  onClick={() => setShowXMTPDiagnostics(true)}
-                  className="bg-orange-600 text-white px-4 py-3 rounded-lg font-semibold hover:bg-orange-700 transition-colors"
-                >
-                  🔧 XMTP Diagnostics
-                </button>
-                <button
-                  onClick={() => handleShare('copy', `Check out my progress on ${APP_CONFIG.name}! 🚶‍♂️`)}
-                  className="bg-green-600 text-white px-4 py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors"
-                >
-                  📤 Share Progress
-                </button>
+          {/* Mobile Menu Button */}
+          <div className="flex items-center space-x-2 sm:hidden">
+            <button
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      </header>
+      {/* Main Content */}
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
+        {/* Today's Progress */}
+        <section className="mb-8 sm:mb-16">
+          <div className="text-center space-y-6 sm:space-y-8">
+            <div className="space-y-2">
+              <h1 className="text-4xl sm:text-5xl font-light tracking-tight">
+                {currentSteps.toLocaleString()}
+              </h1>
+              <p className="text-gray-600">
+                of {dailyGoal.toLocaleString()} steps today
+              </p>
+            </div>
+            {/* Progress Circle */}
+            <div className="relative w-40 h-40 sm:w-48 sm:h-48 mx-auto">
+              <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="45"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  fill="none"
+                  className="text-gray-200"
+                />
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="45"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  fill="none"
+                  strokeDasharray={`${2 * Math.PI * 45}`}
+                  strokeDashoffset={`${2 * Math.PI * 45 * (1 - (currentSteps / dailyGoal))}`}
+                  className={`transition-all duration-1000 ${
+                    currentSteps >= dailyGoal ? 'text-green-500' : 'text-black'
+                  }`}
+                  strokeLinecap="round"
+                />
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="text-center">
+                  <div className="text-xl sm:text-2xl font-medium">
+                    {Math.round((currentSteps / dailyGoal) * 100)}%
+                  </div>
+                  {currentSteps >= dailyGoal && (
+                    <span className="text-green-500 font-semibold">Goal!</span>
+                  )}
+                </div>
               </div>
             </div>
+            {/* Goal Selector */}
+            <div className="flex justify-center">
+              <select
+                value={dailyGoal}
+                onChange={(e) => setDailyGoal(Number(e.target.value))}
+                className="bg-gray-100 border-0 rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
+              >
+                <option value={5000}>5K Steps</option>
+                <option value={7500}>7.5K Steps</option>
+                <option value={10000}>10K Steps</option>
+                <option value={12500}>12.5K Steps</option>
+                <option value={15000}>15K Steps</option>
+              </select>
+            </div>
           </div>
-        )}
+        </section>
+        {/* Quick Actions */}
+        <section className="mb-8 sm:mb-16">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <button
+              onClick={() => setShowXMTPMessaging(true)}
+              className="bg-purple-600 text-white px-4 py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors"
+            >
+              💬 Open Messaging
+            </button>
+            <button
+              onClick={() => setShowXMTPDiagnostics(true)}
+              className="bg-orange-600 text-white px-4 py-3 rounded-lg font-semibold hover:bg-orange-700 transition-colors"
+            >
+              🔧 XMTP Diagnostics
+            </button>
+          </div>
+        </section>
       </main>
-
       {/* Wallet Connector Modal */}
       {showWalletConnector && (
-        <Modal 
-          isOpen={showWalletConnector} 
+        <Modal
+          isOpen={showWalletConnector}
           onClose={() => setShowWalletConnector(false)}
           title="Connect Wallet"
         >
           <EnhancedWalletConnector />
         </Modal>
       )}
-
       {/* XMTP Messaging */}
-      <XMTPMessaging 
-        isOpen={showXMTPMessaging} 
-        onClose={() => setShowXMTPMessaging(false)} 
+      <XMTPMessaging
+        isOpen={showXMTPMessaging}
+        onClose={() => setShowXMTPMessaging(false)}
       />
-
       {/* XMTP Diagnostics */}
-      <XMTPDiagnostics 
-        isOpen={showXMTPDiagnostics} 
-        onClose={() => setShowXMTPDiagnostics(false)} 
+      <XMTPDiagnostics
+        isOpen={showXMTPDiagnostics}
+        onClose={() => setShowXMTPDiagnostics(false)}
       />
-
-      {/* Error Modal */}
-      {error && (
-        <Modal isOpen={!!error} onClose={() => setError(null)} title="Error">
-          <div className="p-6">
-            <p className="text-red-700 mb-4">{error}</p>
-            <button
-              onClick={() => setError(null)}
-              className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition-colors"
-            >
-              Close
-            </button>
-          </div>
-        </Modal>
-      )}
-
-      {/* Success Modal */}
-      {success && (
-        <Modal isOpen={!!success} onClose={() => setSuccess(null)} title="Success">
-          <div className="p-6">
-            <p className="text-green-700 mb-4">{success}</p>
-            <button
-              onClick={() => setSuccess(null)}
-              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition-colors"
-            >
-              Close
-            </button>
-          </div>
-        </Modal>
-      )}
-
-      {/* General Modal */}
-      <Modal isOpen={isModalOpen} onClose={closeModal} title="Modal">
-        {modalContent}
-      </Modal>
     </div>
   );
 }
