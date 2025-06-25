@@ -71,8 +71,8 @@ export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
     }
     try {
       setStatus(`Creating conversation with ${recipient}...`);
-      // Correct method for XMTP SDK v3.2.1 (type assertion for newConversation)
-      const conversation = await (xmtpClient.conversations as any).newConversation(recipient);
+      // Correct method for XMTP SDK v3.2.1
+      const conversation = await (xmtpClient.conversations as any).new(recipient);
       setStatus('Sending message...');
       await conversation.send(message);
       setStatus('Message sent!');
