@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import MessagingPanel from './components/MessagingPanel';
 import FarcasterMiniApp from './components/FarcasterMiniApp';
-import EnhancedWalletConnector from './components/EnhancedWalletConnector';
+import { EnhancedWalletConnector } from './components/EnhancedWalletConnector';
 import { sdk } from '@farcaster/frame-sdk';
 import { XMTPProvider } from './contexts/XMTPContext';
 import XMTPMessaging from './components/XMTPMessaging';

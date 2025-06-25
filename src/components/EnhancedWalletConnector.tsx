@@ -47,7 +47,8 @@ export const EnhancedWalletConnector: React.FC<EnhancedWalletConnectorProps> = (
   children = null,
   onOpenModal = undefined
 }) => {
-  const { address, isConnected, disconnect } = useAccount();
+  const { address, isConnected } = useAccount();
+  const { disconnect } = useDisconnect();
   const { data: walletClient } = useWalletClient();
   const { 
     isRegistered, 
