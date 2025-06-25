@@ -1,10 +1,24 @@
 import React, { useEffect, useState } from 'react';
-import { useAccount, useSigner } from 'wagmi';
-import { Client } from '@xmtp/browser-sdk';
+import { useWalletClient, useAccount } from 'wagmi';
+import { Client, type Signer, type Identifier, type IdentifierKind } from '@xmtp/browser-sdk';
 
-export default function XmtpMessenger() {
+interface XMTPMessagingProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+function hexToUint8Array(hex: string): Uint8Array {
+  if (hex.startsWith('0x')) hex = hex.slice(2);
+  const array = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < array.length; i++) {
+    array[i] = parseInt(hex.substr(i * 2, 2), 16);
+  }
+  return array;
+}
+
+export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
   const { address } = useAccount();
-  const { data: signer } = useSigner();
+  const { data: walletClient } = useWalletClient();
 
   const [xmtpClient, setXmtpClient] = useState<Client | null>(null);
   const [recipient, setRecipient] = useState('');
@@ -12,11 +26,25 @@ export default function XmtpMessenger() {
   const [status, setStatus] = useState('');
 
   useEffect(() => {
-    if (!signer || !address) return;
-
+    if (!walletClient || !address) return;
     async function initXmtp() {
       setStatus('Initializing XMTP client...');
       try {
+        if (!walletClient) throw new Error('Wallet client not available');
+        // Create a custom signer compatible with XMTP
+        const accountIdentifier: Identifier = {
+          identifier: walletClient.account.address,
+          identifierKind: 'Ethereum' as IdentifierKind,
+        };
+        const signer: Signer = {
+          type: 'EOA',
+          signMessage: async (msg: string) => {
+            if (!walletClient) throw new Error('Wallet client not available');
+            const sig = await walletClient.signMessage({ message: msg });
+            return hexToUint8Array(sig);
+          },
+          getIdentifier: () => accountIdentifier,
+        };
         const client = await Client.create(signer, { env: 'production' });
         setXmtpClient(client);
         setStatus('XMTP client initialized');
@@ -25,9 +53,8 @@ export default function XmtpMessenger() {
         setStatus('Failed to initialize XMTP client');
       }
     }
-
     initXmtp();
-  }, [signer, address]);
+  }, [walletClient, address]);
 
   async function sendMessage() {
     if (!xmtpClient) {
@@ -42,50 +69,53 @@ export default function XmtpMessenger() {
       setStatus('Please enter a message');
       return;
     }
-
     try {
       setStatus(`Creating conversation with ${recipient}...`);
-      // IMPORTANT: Use `new` method (not newConversation)
-      const conversation = await xmtpClient.conversations.new(recipient);
+      // Correct method for XMTP SDK v3.2.1 (type assertion for newConversation)
+      const conversation = await (xmtpClient.conversations as any).newConversation(recipient);
       setStatus('Sending message...');
       await conversation.send(message);
       setStatus('Message sent!');
       setMessage('');
     } catch (error) {
       console.error('Error sending message:', error);
-      setStatus('Error sending message: ' + (error instanceof Error ? error.message : String(error)));
+      setStatus('Failed to send message');
     }
   }
 
+  if (!isOpen) return null;
+
   return (
-    <div style={{ maxWidth: 600, margin: 'auto', padding: 20 }}>
-      <h1>XMTP Messenger</h1>
-
-      <label htmlFor="recipient">Recipient Address</label>
-      <input
-        id="recipient"
-        type="text"
-        value={recipient}
-        onChange={(e) => setRecipient(e.target.value)}
-        placeholder="0xRecipientAddress"
-        style={{ width: '100%', padding: 8, marginBottom: 12 }}
-      />
-
-      <label htmlFor="message">Message</label>
-      <textarea
-        id="message"
-        rows={5}
-        value={message}
-        onChange={(e) => setMessage(e.target.value)}
-        placeholder="Type your message here..."
-        style={{ width: '100%', padding: 8, marginBottom: 12 }}
-      />
-
-      <button onClick={sendMessage} style={{ padding: '10px 20px', fontSize: 16 }}>
-        Send Message
-      </button>
-
-      <div style={{ marginTop: 20, fontWeight: 'bold' }}>{status}</div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <h2 className="text-xl font-semibold">XMTP Messenger</h2>
+          <button onClick={onClose} className="text-gray-500 hover:text-red-600">✕</button>
+        </div>
+        <div className="p-6 space-y-4">
+          <input
+            type="text"
+            value={recipient}
+            onChange={(e) => setRecipient(e.target.value)}
+            placeholder="Recipient address"
+            className="w-full p-2 border rounded"
+          />
+          <input
+            type="text"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder="Type your message..."
+            className="w-full p-2 border rounded"
+          />
+          <button
+            onClick={sendMessage}
+            className="bg-green-600 text-white px-4 py-2 rounded w-full"
+          >
+            Send
+          </button>
+          <div className="text-sm text-gray-600">{status}</div>
+        </div>
+      </div>
     </div>
   );
 }
