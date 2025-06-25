@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { WagmiProvider } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { config } from './wagmi';
+import { wagmiConfig } from '../wagmi.config';
 import { APP_CONFIG, ENV_CONFIG } from './constants';
 import Header from './components/Header';
 import StepTracker from './components/StepTracker';
@@ -262,7 +262,7 @@ function App() {
   };
 
   return (
-    <WagmiProvider config={config}>
+    <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
         <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
           {/* Header */}
