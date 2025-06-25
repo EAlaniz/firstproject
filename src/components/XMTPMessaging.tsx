@@ -1,89 +1,124 @@
 import React, { useEffect, useState } from 'react';
 import { useAccount, useWalletClient } from 'wagmi';
-import { Client, type Signer as XmtpSigner } from '@xmtp/browser-sdk';
-import { WalletClient } from 'viem';
+import { Client, type XmtpClient, type XmtpSigner } from '@xmtp/browser-sdk';
+import type { WalletClient } from 'viem';
 
-function createXmtpSigner(walletClient: WalletClient): XmtpSigner {
-  return {
-    getAddress: async () => {
-      const [addr] = await walletClient.getAddresses();
-      return addr;
-    },
-    signMessage: async (msg) => {
-      const message = typeof msg === 'string' ? new TextEncoder().encode(msg) : msg;
-      return await walletClient.signMessage({ message });
-    },
-    getIdentifier: () => {
-      throw new Error(
-        'Should be replaced by XMTP client.create before use — this is expected behavior'
-      );
-    },
-  } as any;
-}
-
-export default function XmtpMessenger() {
+export default function XMTPMessaging() {
   const { address } = useAccount();
   const { data: walletClient } = useWalletClient();
 
-  const [client, setClient] = useState<Client | null>(null);
-  const [to, setTo] = useState('');
-  const [msg, setMsg] = useState('');
-  const [status, setStatus] = useState('');
+  const [xmtpClient, setXmtpClient] = useState<XmtpClient | null>(null);
+  const [recipient, setRecipient] = useState('');
+  const [message, setMessage] = useState('');
+  const [status, setStatus] = useState('Ready');
 
+  // 🛠️ Custom signer factory with proper getIdentifier for XMTP V3
+  function createXmtpSigner(walletClient: WalletClient): XmtpSigner {
+    return {
+      getAddress: async () => {
+        const [addr] = await walletClient.getAddresses();
+        return addr;
+      },
+      signMessage: async (msg) => {
+        const message = typeof msg === 'string' ? new TextEncoder().encode(msg) : msg;
+        return await walletClient.signMessage({ message });
+      },
+      getIdentifier: async () => {
+        const [address] = await walletClient.getAddresses();
+        return {
+          identifier: address,
+          identifierKind: 'Ethereum',
+        };
+      },
+    };
+  }
+
+  // 🧠 Initialize XMTP on mount
   useEffect(() => {
     if (!walletClient || !address) return;
 
-    (async () => {
+    async function initXMTP() {
       setStatus('Initializing XMTP client...');
       try {
         const signer = createXmtpSigner(walletClient);
-        const xm = await Client.create(signer, { env: 'production' });
-        setClient(xm);
-        setStatus('🌐 XMTP initialized');
-      } catch (e: any) {
-        console.error('XMTP init error:', e);
-        setStatus('Initialization failed: ' + e.message);
+        const client = await Client.create(signer, {
+          env: 'production',
+        });
+        setXmtpClient(client);
+        setStatus('XMTP client initialized');
+        console.log('[XMTP] Client initialized:', client);
+      } catch (e) {
+        console.error('[XMTP] init error:', e);
+        setStatus('XMTP init failed: ' + (e instanceof Error ? e.message : String(e)));
       }
-    })();
+    }
+
+    initXMTP();
   }, [walletClient, address]);
 
-  const handleSend = async () => {
-    if (!client) return setStatus('XMTP client not ready');
-    if (!to || !msg) return setStatus('Enter recipient and message');
+  // 📨 Send message function
+  async function handleSendMessage() {
+    if (!xmtpClient) {
+      setStatus('XMTP client not ready');
+      return;
+    }
+    if (!recipient.trim()) {
+      setStatus('Enter a recipient address');
+      return;
+    }
+    if (!message.trim()) {
+      setStatus('Enter a message');
+      return;
+    }
 
     try {
-      setStatus(`Creating conversation with ${to}...`);
-      const convo = await client.conversations.newConversation(to);
-      setStatus('✅ Sending...');
-      await convo.send(msg);
-      setMsg('');
-      setStatus('✅ Message sent');
-    } catch (e: any) {
-      console.error('Send error:', e);
-      setStatus('Error sending: ' + e.message);
+      setStatus('Creating conversation...');
+      const convo = await xmtpClient.conversations.newConversation(recipient);
+      await convo.send(message);
+      setStatus('Message sent!');
+      setMessage('');
+    } catch (err) {
+      console.error('[XMTP] Error sending message:', err);
+      setStatus('Error sending message: ' + (err instanceof Error ? err.message : String(err)));
     }
-  };
+  }
 
   return (
     <div style={{ maxWidth: 600, margin: 'auto', padding: 20 }}>
-      <h1>XMTP Messenger</h1>
+      <h2>XMTP Messenger</h2>
+
+      <label>Recipient Wallet Address:</label>
       <input
-        placeholder="Recipient address"
-        value={to}
-        onChange={(e) => setTo(e.target.value)}
-        style={{ width: '100%', padding: 8, marginBottom: 8 }}
+        type="text"
+        value={recipient}
+        onChange={(e) => setRecipient(e.target.value)}
+        placeholder="0x..."
+        style={{ width: '100%', marginBottom: 12, padding: 8 }}
       />
+
+      <label>Message:</label>
       <textarea
-        placeholder="Your message"
-        value={msg}
-        onChange={(e) => setMsg(e.target.value)}
         rows={4}
-        style={{ width: '100%', padding: 8, marginBottom: 8 }}
+        value={message}
+        onChange={(e) => setMessage(e.target.value)}
+        placeholder="Hello from Farcaster Mini App!"
+        style={{ width: '100%', marginBottom: 12, padding: 8 }}
       />
-      <button onClick={handleSend} style={{ padding: 10 }}>
-        ➤ Send
+
+      <button
+        onClick={handleSendMessage}
+        style={{
+          padding: '10px 20px',
+          backgroundColor: '#222',
+          color: '#fff',
+          borderRadius: 8,
+          cursor: 'pointer',
+        }}
+      >
+        Send
       </button>
-      <div style={{ marginTop: 12, fontWeight: 'bold' }}>{status}</div>
+
+      <p style={{ marginTop: 16, fontWeight: 'bold' }}>{status}</p>
     </div>
   );
 }
