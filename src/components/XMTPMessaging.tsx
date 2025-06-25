@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useXMTP } from '../contexts/XMTPContext';
-import { Conversation, DecodedMessage } from '@xmtp/xmtp-js';
+import { Conversation, DecodedMessage } from '@xmtp/browser-sdk';
 import { Send, Users, Plus, X, MessageCircle, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
 import { useAccount, useWalletClient } from 'wagmi';
 import { isFarcasterMiniApp } from './EnhancedWalletConnector'; // Updated: use EnhancedWalletConnector
