@@ -12,7 +12,7 @@ export const APP_CONFIG = {
 // Environment Configuration
 export const ENV_CONFIG = {
   XMTP_ENV: import.meta.env.VITE_XMTP_ENV || 'production',
-  RPC_URL: import.meta.env.VITE_RPC_URL || 'https://flashy-convincing-paper.base-mainnet.quiknode.pro/fe55bc09278a1ccc534942fad989695b412ab4ea/',
+  RPC_URL: import.meta.env.VITE_RPC_URL || 'https://mainnet.base.org',
   STEP_TRACKER_CONTRACT: import.meta.env.VITE_STEP_TRACKER_CONTRACT as `0x${string}`,
   ONCHAINKIT_API_KEY: import.meta.env.VITE_ONCHAINKIT_API_KEY,
 } as const;
@@ -73,3 +73,7 @@ export const FARCASTER_CONFIG = {
   authDomain: "www.move10k.xyz",
   redirectUrl: "https://www.move10k.xyz",
 } as const; 
+// Validate required environment variables
+if (!ENV_CONFIG.RPC_URL) {
+  console.warn('VITE_RPC_URL not set, using public Base RPC endpoint');
+}

@@ -146,9 +146,15 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       console.log('Initializing XMTP V3 client for address:', address);
       console.log('Using XMTP environment:', xmtpEnv);
 
-      // Check if user is registered on XMTP V3
-      const canMessage = await Client.canMessage(address, { env: xmtpEnv });
-      console.log('Can message check result:', canMessage);
+      // Check if user is registered on XMTP V3 with better error handling
+      let canMessage = false;
+      try {
+        canMessage = await Client.canMessage(address, { env: xmtpEnv });
+      } catch (canMessageError) {
+        console.error('Error checking XMTP registration:', canMessageError);
+        // If canMessage fails, assume user needs to register
+        canMessage = false;
+      }
       
       if (!canMessage) {
         console.log('User not registered on XMTP V3, attempting to register...');
