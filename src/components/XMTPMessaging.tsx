@@ -24,7 +24,6 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
   const [selectedConversation, setSelectedConversation] = useState<any>(null);
   const [messages, setMessages] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [viewMode, setViewMode] = useState<'simple' | 'advanced'>('simple');
   const [showNewMessage, setShowNewMessage] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -122,62 +121,31 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
     }
   };
 
-  // Handle simple message sending (current working approach)
+  // Handle message sending using direct client
   const handleSendMessage = async () => {
-    const client = xmtpClient || getClient();
-    if (!client) return setStatus('XMTP client not ready');
-    if (!recipient || !message) return setStatus('Recipient or message missing');
-
-    // Validate recipient address
-    if (!/^0x[a-fA-F0-9]{40}$/.test(recipient)) {
-      setStatus('Invalid Ethereum address. Please enter a valid 0x... address.');
-      return;
-    }
-
-    try {
-      setStatus('Sending message...');
-      let convo;
-      if (typeof (client.conversations as any).newDm === 'function') {
-        convo = await (client.conversations as any).newDm(recipient);
-      } else if (typeof (client.conversations as any).newDmWithIdentifier === 'function') {
-        convo = await (client.conversations as any).newDmWithIdentifier({
-          kind: 'ETHEREUM',
-          identifier: recipient,
-        });
-      } else {
-        throw new Error('No valid method found to create DM conversation on XMTP client');
-      }
-      await convo.send(message);
-      setStatus('Message sent!');
-      setMessage('');
-      setRecipient('');
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      if (msg.includes('synced 1 messages, 0 failed 1 succeeded')) {
-        setStatus('Message sent! (sync status: 1 succeeded)');
-      } else {
-        setStatus('Error sending message: ' + msg);
-      }
-    }
-  };
-
-  // Handle advanced message sending using direct client
-  const handleAdvancedSendMessage = async () => {
     if (!message.trim()) return;
     
     try {
       if (selectedConversation) {
+        // Send to existing conversation
         await selectedConversation.send(message);
         setMessage('');
-      } else if (recipient) {
-        const conversation = await createConversation(recipient);
+      } else if (recipient && recipient.trim()) {
+        // Create new conversation and send message
+        const conversation = await createConversation(recipient.trim());
         if (conversation) {
           await conversation.send(message);
           setMessage('');
           setRecipient('');
           setSelectedConversation(conversation);
           await loadMessages(conversation);
+          subscribeToMessages(conversation);
+          setShowNewMessage(false);
+        } else {
+          setStatus('Failed to create conversation');
         }
+      } else {
+        setStatus('Please enter a recipient address');
       }
     } catch (error) {
       console.error('Error sending message:', error);
@@ -192,199 +160,38 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
     subscribeToMessages(conversation);
   };
 
+  // Handle creating new conversation
+  const handleCreateNewConversation = async () => {
+    if (!recipient || !recipient.trim()) {
+      setStatus('Please enter a valid recipient address');
+      return;
+    }
+
+    // Validate recipient address
+    if (!/^0x[a-fA-F0-9]{40}$/.test(recipient.trim())) {
+      setStatus('Invalid Ethereum address. Please enter a valid 0x... address.');
+      return;
+    }
+
+    try {
+      const conversation = await createConversation(recipient.trim());
+      if (conversation) {
+        setSelectedConversation(conversation);
+        setRecipient('');
+        setShowNewMessage(false);
+        setStatus('Conversation created successfully');
+      } else {
+        setStatus('Failed to create conversation');
+      }
+    } catch (error) {
+      console.error('Error creating conversation:', error);
+      setStatus('Error creating conversation: ' + (error as Error).message);
+    }
+  };
+
   // Filter conversations based on search
   const filteredConversations = conversations.filter(conv => 
     conv.peerAddress?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  // Simple view (current working functionality)
-  const renderSimpleView = () => (
-    <div className="p-6 space-y-4">
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Recipient address</label>
-        <input
-          type="text"
-          value={recipient}
-          onChange={(e) => setRecipient(e.target.value)}
-          placeholder="0xRecipientAddress"
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
-        />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
-        <textarea
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          placeholder="Type your message here"
-          rows={4}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
-        />
-      </div>
-      <button
-        onClick={handleSendMessage}
-        className="w-full bg-purple-600 text-white px-4 py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors"
-      >
-        Send Message
-      </button>
-      {status && (
-        <p className="mt-4 font-bold text-center text-purple-700">{status}</p>
-      )}
-    </div>
-  );
-
-  // Advanced view with conversation management
-  const renderAdvancedView = () => (
-    <div className="flex flex-col h-[600px]">
-      {/* Conversations List */}
-      <div className="flex-1 flex">
-        <div className="w-1/3 border-r border-gray-200 flex flex-col">
-          <div className="p-4 border-b border-gray-200">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="font-semibold text-gray-900">Conversations</h3>
-              <button
-                onClick={() => setShowNewMessage(true)}
-                className="p-1 hover:bg-gray-100 rounded"
-              >
-                <Plus size={16} />
-              </button>
-            </div>
-            
-            {/* Search conversations */}
-            <div className="relative mb-3">
-              <Search size={16} className="absolute left-2 top-2.5 text-gray-400" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search conversations..."
-                className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-              />
-            </div>
-
-            {showNewMessage && (
-              <div className="mb-3">
-                <input
-                  type="text"
-                  value={recipient}
-                  onChange={(e) => setRecipient(e.target.value)}
-                  placeholder="0xRecipientAddress"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-                <button
-                  onClick={() => setShowNewMessage(false)}
-                  className="mt-1 text-xs text-gray-500 hover:text-gray-700"
-                >
-                  Cancel
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Conversations list */}
-          <div className="flex-1 overflow-y-auto">
-            {isLoading ? (
-              <div className="p-4 text-center text-gray-500">Loading conversations...</div>
-            ) : filteredConversations.length === 0 ? (
-              <div className="p-4 text-center text-gray-500">
-                {searchTerm ? 'No conversations found' : 'No conversations yet'}
-              </div>
-            ) : (
-              filteredConversations.map((conversation) => (
-                <div
-                  key={conversation.topic || conversation.id}
-                  onClick={() => handleSelectConversation(conversation)}
-                  className={`p-3 cursor-pointer hover:bg-gray-50 border-l-4 ${
-                    selectedConversation?.topic === conversation.topic || selectedConversation?.id === conversation.id
-                      ? 'border-purple-500 bg-purple-50'
-                      : 'border-transparent'
-                  }`}
-                >
-                  <div className="text-sm font-medium text-gray-900">
-                    {conversation.peerAddress?.slice(0, 6)}...{conversation.peerAddress?.slice(-4)}
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    {conversation.topic?.slice(0, 20) || conversation.id?.slice(0, 20)}...
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
-        {/* Messages area */}
-        <div className="flex-1 flex flex-col">
-          {selectedConversation ? (
-            <>
-              {/* Messages header */}
-              <div className="p-4 border-b border-gray-200">
-                <h3 className="font-semibold text-gray-900">
-                  {selectedConversation.peerAddress?.slice(0, 6)}...{selectedConversation.peerAddress?.slice(-4)}
-                </h3>
-              </div>
-
-              {/* Messages list */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                {isLoading ? (
-                  <div className="text-center text-gray-500">Loading messages...</div>
-                ) : messages.length === 0 ? (
-                  <div className="text-center text-gray-500">No messages yet</div>
-                ) : (
-                  messages.map((msg, index) => (
-                    <div
-                      key={index}
-                      className={`flex ${msg.senderAddress === address ? 'justify-end' : 'justify-start'}`}
-                    >
-                      <div
-                        className={`max-w-xs px-3 py-2 rounded-lg ${
-                          msg.senderAddress === address
-                            ? 'bg-purple-600 text-white'
-                            : 'bg-gray-200 text-gray-900'
-                        }`}
-                      >
-                        <div className="text-sm">{String(msg.content)}</div>
-                        <div className={`text-xs mt-1 ${
-                          msg.senderAddress === address ? 'text-purple-200' : 'text-gray-500'
-                        }`}>
-                          {new Date(msg.sent).toLocaleTimeString()}
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-
-              {/* Message input */}
-              <div className="p-4 border-t border-gray-200">
-                <div className="flex space-x-2">
-                  <input
-                    type="text"
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleAdvancedSendMessage()}
-                    placeholder="Type a message..."
-                    className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  />
-                  <button
-                    onClick={handleAdvancedSendMessage}
-                    className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
-                  >
-                    <Send size={16} />
-                  </button>
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="flex-1 flex items-center justify-center text-gray-500">
-              <div className="text-center">
-                <MessageCircle size={48} className="mx-auto mb-4 opacity-50" />
-                <h3 className="text-lg font-semibold mb-2">Select a conversation</h3>
-                <p className="text-sm">Choose a conversation from the list to start messaging</p>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
   );
 
   if (!isOpen) return null;
@@ -400,36 +207,178 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex items-center space-x-4">
             <h2 className="text-xl font-semibold text-gray-900">XMTP Messenger</h2>
-            <div className="flex space-x-1">
-              <button
-                onClick={() => setViewMode('simple')}
-                className={`px-3 py-1 rounded text-sm font-medium ${
-                  viewMode === 'simple'
-                    ? 'bg-purple-100 text-purple-700'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                Simple
-              </button>
-              <button
-                onClick={() => setViewMode('advanced')}
-                className={`px-3 py-1 rounded text-sm font-medium ${
-                  viewMode === 'advanced'
-                    ? 'bg-purple-100 text-purple-700'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                Advanced
-              </button>
-            </div>
+            {status && (
+              <span className="text-sm text-purple-600 font-medium">{status}</span>
+            )}
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
             <X size={24} />
           </button>
         </div>
 
-        {/* Content */}
-        {viewMode === 'simple' ? renderSimpleView() : renderAdvancedView()}
+        {/* Main Content */}
+        <div className="flex flex-col h-[600px]">
+          {/* Conversations List */}
+          <div className="flex-1 flex">
+            <div className="w-1/3 border-r border-gray-200 flex flex-col">
+              <div className="p-4 border-b border-gray-200">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-semibold text-gray-900">Conversations</h3>
+                  <button
+                    onClick={() => setShowNewMessage(true)}
+                    className="p-1 hover:bg-gray-100 rounded"
+                  >
+                    <Plus size={16} />
+                  </button>
+                </div>
+                
+                {/* Search conversations */}
+                <div className="relative mb-3">
+                  <Search size={16} className="absolute left-2 top-2.5 text-gray-400" />
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Search conversations..."
+                    className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+
+                {showNewMessage && (
+                  <div className="mb-3 space-y-2">
+                    <input
+                      type="text"
+                      value={recipient}
+                      onChange={(e) => setRecipient(e.target.value)}
+                      placeholder="0xRecipientAddress"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={handleCreateNewConversation}
+                        className="flex-1 bg-purple-600 text-white px-3 py-2 rounded-lg text-sm hover:bg-purple-700 transition-colors"
+                      >
+                        Create
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowNewMessage(false);
+                          setRecipient('');
+                        }}
+                        className="px-3 py-2 text-sm text-gray-500 hover:text-gray-700"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Conversations list */}
+              <div className="flex-1 overflow-y-auto">
+                {isLoading ? (
+                  <div className="p-4 text-center text-gray-500">Loading conversations...</div>
+                ) : filteredConversations.length === 0 ? (
+                  <div className="p-4 text-center text-gray-500">
+                    {searchTerm ? 'No conversations found' : 'No conversations yet'}
+                  </div>
+                ) : (
+                  filteredConversations.map((conversation) => (
+                    <div
+                      key={conversation.topic || conversation.id}
+                      onClick={() => handleSelectConversation(conversation)}
+                      className={`p-3 cursor-pointer hover:bg-gray-50 border-l-4 ${
+                        selectedConversation?.topic === conversation.topic || selectedConversation?.id === conversation.id
+                          ? 'border-purple-500 bg-purple-50'
+                          : 'border-transparent'
+                      }`}
+                    >
+                      <div className="text-sm font-medium text-gray-900">
+                        {conversation.peerAddress?.slice(0, 6)}...{conversation.peerAddress?.slice(-4)}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {conversation.topic?.slice(0, 20) || conversation.id?.slice(0, 20)}...
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Messages area */}
+            <div className="flex-1 flex flex-col">
+              {selectedConversation ? (
+                <>
+                  {/* Messages header */}
+                  <div className="p-4 border-b border-gray-200">
+                    <h3 className="font-semibold text-gray-900">
+                      {selectedConversation.peerAddress?.slice(0, 6)}...{selectedConversation.peerAddress?.slice(-4)}
+                    </h3>
+                  </div>
+
+                  {/* Messages list */}
+                  <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                    {isLoading ? (
+                      <div className="text-center text-gray-500">Loading messages...</div>
+                    ) : messages.length === 0 ? (
+                      <div className="text-center text-gray-500">No messages yet</div>
+                    ) : (
+                      messages.map((msg, index) => (
+                        <div
+                          key={index}
+                          className={`flex ${msg.senderAddress === address ? 'justify-end' : 'justify-start'}`}
+                        >
+                          <div
+                            className={`max-w-xs px-3 py-2 rounded-lg ${
+                              msg.senderAddress === address
+                                ? 'bg-purple-600 text-white'
+                                : 'bg-gray-200 text-gray-900'
+                            }`}
+                          >
+                            <div className="text-sm">{String(msg.content)}</div>
+                            <div className={`text-xs mt-1 ${
+                              msg.senderAddress === address ? 'text-purple-200' : 'text-gray-500'
+                            }`}>
+                              {new Date(msg.sent).toLocaleTimeString()}
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  {/* Message input */}
+                  <div className="p-4 border-t border-gray-200">
+                    <div className="flex space-x-2">
+                      <input
+                        type="text"
+                        value={message}
+                        onChange={(e) => setMessage(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                        placeholder="Type a message..."
+                        className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      />
+                      <button
+                        onClick={handleSendMessage}
+                        className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                      >
+                        <Send size={16} />
+                      </button>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="flex-1 flex items-center justify-center text-gray-500">
+                  <div className="text-center">
+                    <MessageCircle size={48} className="mx-auto mb-4 opacity-50" />
+                    <h3 className="text-lg font-semibold mb-2">Select a conversation</h3>
+                    <p className="text-sm">Choose a conversation from the list to start messaging</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
