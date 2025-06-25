@@ -9,7 +9,10 @@ import XMTPMessaging from './components/XMTPMessaging';
 import XMTPDiagnostics from './components/XMTPDiagnostics';
 import { initXMTP } from './xmtpClient';
 import { base } from 'wagmi/chains';
-import { Activity, Trophy, Circle, MessageCircle, Menu, X, ArrowRight } from 'lucide-react';
+import { Activity, Trophy, Circle, MessageCircle, Menu, X } from 'lucide-react';
+import { Wallet, WalletDropdown, WalletDropdownLink, WalletDropdownDisconnect } from '@coinbase/onchainkit/wallet';
+import { Address, Avatar, Name, Identity, EthBalance } from '@coinbase/onchainkit/identity';
+import { color } from '@coinbase/onchainkit/theme';
 
 function App() {
   // Test wagmi config to ensure provider is working
@@ -317,7 +320,6 @@ function App() {
                 className="bg-black text-white px-6 sm:px-8 py-3 sm:py-4 rounded-full hover:bg-gray-800 transition-colors cursor-pointer font-medium flex items-center space-x-2 w-full sm:w-auto justify-center"
               >
                 <span>Get Started</span>
-                <ArrowRight className="w-4 h-4" />
               </button>
             </div>
             <div className="pt-8 sm:pt-12 text-sm text-gray-500">
@@ -375,12 +377,50 @@ function App() {
               >
                 <MessageCircle className="w-5 h-5" />
               </button>
-              <button
-                onClick={() => setShowWalletConnector(true)}
-                className="bg-gray-100 text-black px-4 py-2 rounded-full hover:bg-gray-200 transition-colors cursor-pointer text-sm"
-              >
-                Wallet
-              </button>
+              <Wallet>
+                <button
+                  onClick={() => setShowWalletConnector(true)}
+                  className="bg-gray-100 text-black px-4 py-2 rounded-full hover:bg-gray-200 transition-colors cursor-pointer text-sm"
+                >
+                  Wallet
+                </button>
+                {showWalletConnector && (
+                  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+                    <div className="bg-white w-full sm:max-w-sm sm:w-full max-h-[90vh] overflow-y-auto sm:rounded-2xl rounded-t-2xl">
+                      <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200">
+                        <h2 className="text-lg sm:text-xl font-medium">Wallet</h2>
+                        <button
+                          onClick={() => setShowWalletConnector(false)}
+                          className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+                        >
+                          <X className="w-5 h-5" />
+                        </button>
+                      </div>
+                      <div className="p-4 sm:p-6">
+                        {address && (
+                          <Identity className="px-4 pt-3 pb-2" address={address} hasCopyAddressOnClick>
+                            <Avatar />
+                            <Name />
+                            <Address className={color.foregroundMuted} />
+                            <EthBalance />
+                          </Identity>
+                        )}
+                        <WalletDropdown>
+                          <WalletDropdownLink
+                            icon="wallet"
+                            href="https://keys.coinbase.com"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            Wallet
+                          </WalletDropdownLink>
+                          <WalletDropdownDisconnect />
+                        </WalletDropdown>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </Wallet>
             </div>
           </div>
           {/* Mobile Menu Button */}
@@ -479,16 +519,6 @@ function App() {
           </div>
         </section>
       </main>
-      {/* Wallet Connector Modal */}
-      {showWalletConnector && (
-        <Modal
-          isOpen={showWalletConnector}
-          onClose={() => setShowWalletConnector(false)}
-          title="Connect Wallet"
-        >
-          <EnhancedWalletConnector />
-        </Modal>
-      )}
       {/* XMTP Messaging */}
       <XMTPMessaging
         isOpen={showXMTPMessaging}
