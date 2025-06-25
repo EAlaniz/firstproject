@@ -50,7 +50,7 @@ export default function XmtpMessenger() {
 
     try {
       setStatus('Sending message...');
-      const convo = await (xmtpClient.conversations as any).new(recipient);
+      const convo = await (xmtpClient.conversations as any).newConversation(recipient);
       await convo.send(message);
       setStatus('Message sent!');
       setMessage('');
