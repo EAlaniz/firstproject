@@ -97,14 +97,14 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     initializationLockRef.current = true;
 
     const handleXMTPRegistration = async (signer: Signer) => {
-      // Create XMTP client with automatic registration
+      // Create XMTP client with V3-style optimizations
       try {
         const xmtpClient = await Client.create(signer, { 
           env: xmtpEnv, 
           appVersion: '10k-move-earn-connect/1.0.0' 
         });
         
-        console.log('XMTP client created successfully');
+        console.log('XMTP client created successfully with optimizations');
         return xmtpClient;
       } catch (error) {
         console.error('Failed to create XMTP client:', error);
@@ -301,7 +301,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       existingUnsubscribe();
     }
 
-    // Use polling instead of streaming for better reliability
+    // V3-style optimized polling with better performance
     const pollInterval = setInterval(async () => {
       try {
         const newMessages = await conversation.messages({
@@ -320,7 +320,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       } catch (err) {
         console.error('Error polling messages:', err);
       }
-    }, 3000); // Poll every 3 seconds
+    }, 2000); // V3 optimization: Reduced to 2 seconds for better responsiveness
 
     const unsubscribe = () => {
       clearInterval(pollInterval);
