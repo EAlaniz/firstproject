@@ -31,6 +31,10 @@ class WalletClientSigner {
     this.address = address;
   }
 
+  static async create(walletClient: any, address: string): Promise<WalletClientSigner> {
+    return new WalletClientSigner(walletClient, address);
+  }
+
   getIdentifier(): string {
     return this.address;
   }
@@ -82,8 +86,8 @@ export async function initXMTPClient(): Promise<Client> {
     const [account] = await walletClient.getAddresses();
     console.log('Wallet account:', account);
 
-    // Create proper signer wrapper
-    const signer = new WalletClientSigner(walletClient, account);
+    // Create proper signer wrapper using the async create method
+    const signer = await WalletClientSigner.create(walletClient, account);
 
     // Create XMTP client with proper signer
     xmtpClient = await Client.create(signer as any, { 
