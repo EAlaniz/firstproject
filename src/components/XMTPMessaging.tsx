@@ -138,7 +138,7 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
       await initializeClient(signer);
     } catch (err) {
       console.error('[XMTP] Failed to initialize XMTP:', err);
-      setError('Failed to initialize XMTP. Please ensure you are using MetaMask or Coinbase Wallet.');
+      setError('Failed to initialize XMTP. Please ensure you are using Coinbase Wallet.');
       return;
     }
   };

@@ -1,12 +1,11 @@
 import { http, createConfig } from 'wagmi';
 import { base } from 'wagmi/chains';
-import { coinbaseWallet, metaMask } from 'wagmi/connectors';
+import { coinbaseWallet } from 'wagmi/connectors';
 import { ENV_CONFIG } from './constants';
 
 export const config = createConfig({
   chains: [base],
   connectors: [
-    metaMask(),
     coinbaseWallet({
       appName: '10K - Move. Earn. Connect.',
       appLogoUrl: 'https://www.move10k.xyz/10k-icon.png',

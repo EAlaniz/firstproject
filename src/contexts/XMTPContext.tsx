@@ -115,7 +115,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         } else if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string' && error.message.includes('User denied')) {
           throw new Error('Signature request was denied. Please try again to enable messaging.');
         } else {
-          throw new Error('Failed to initialize XMTP. Please try again with MetaMask or Coinbase Wallet.');
+          throw new Error('Failed to initialize XMTP. Please try again with Coinbase Wallet.');
         }
       }
     };
@@ -159,7 +159,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
           } else {
             const errorMessage = registrationErr instanceof Error 
               ? registrationErr.message 
-              : 'Failed to register on XMTP. Please try again with MetaMask or Coinbase Wallet.';
+              : 'Failed to register on XMTP. Please try again with Coinbase Wallet.';
             setError(errorMessage);
           }
           setIsRegistered(false);
