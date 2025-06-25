@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useConfig, useAccount, useBalance } from 'wagmi';
+import { useConfig, useAccount, useBalance, useWalletClient } from 'wagmi';
 import { APP_CONFIG, ENV_CONFIG } from './constants';
 import Header from './components/Header';
 import StepTracker from './components/StepTracker';
@@ -7,6 +7,7 @@ import Modal from './components/Modal';
 import { EnhancedWalletConnector } from './components/EnhancedWalletConnector';
 import XMTPMessaging from './components/XMTPMessaging';
 import XMTPDiagnostics from './components/XMTPDiagnostics';
+import { initXMTP } from './xmtpClient';
 
 function App() {
   // Test wagmi config to ensure provider is working
@@ -32,12 +33,26 @@ function App() {
 
   const { address, isConnected } = useAccount();
   const { data: balance } = useBalance({ address: address });
+  const { data: walletClient } = useWalletClient();
 
   // Update wallet connection state
   useEffect(() => {
     setIsWalletConnected(isConnected);
     setWalletAddress(address || null);
   }, [isConnected, address]);
+
+  // Initialize XMTP immediately after wallet connect
+  useEffect(() => {
+    if (isConnected && address && walletClient) {
+      initXMTP(walletClient)
+        .then(() => {
+          console.log('XMTP initialized after wallet connect');
+        })
+        .catch((e) => {
+          setError('XMTP setup failed. Please sign the message to enable messaging.');
+        });
+    }
+  }, [isConnected, address, walletClient]);
 
   // Clear messages after timeout
   useEffect(() => {
