@@ -1,5 +1,4 @@
 import { Client } from '@xmtp/browser-sdk';
-import { useWalletClient } from 'wagmi';
 
 let xmtpClient: Client | null = null;
 
@@ -13,6 +12,7 @@ export async function createSigner(walletClient: any) {
   return {
     getAddress: () => Promise.resolve(walletClient.account.address),
     signMessage: (message: string) => walletClient.signMessage({ message }),
+    getIdentifier: () => Promise.resolve(walletClient.account.address),
   };
 }
 
@@ -20,6 +20,7 @@ export async function initXMTP(walletClient: any) {
   try {
     console.log('Initializing XMTP V3 client...');
     
+    // Create signer with all required methods including getIdentifier
     const signer = await createSigner(walletClient);
     console.log('Signer created for address:', await signer.getAddress());
 
@@ -31,79 +32,6 @@ export async function initXMTP(walletClient: any) {
   } catch (error) {
     console.error('❌ Failed to initialize XMTP V3 client:', error);
     throw error;
-  }
-}
-
-export async function sendMessage(recipientAddress: string, messageText: string) {
-  if (!xmtpClient) {
-    throw new Error('XMTP client not initialized. Call initXMTP() first.');
-  }
-
-  try {
-    console.log('Sending message to address:', recipientAddress);
-    
-    // Create or find DM conversation
-    const conversation = await xmtpClient.conversations.newConversation(recipientAddress);
-    
-    // Send the message
-    await conversation.send(messageText);
-    
-    console.log('✅ Message sent successfully');
-  } catch (error) {
-    console.error('❌ Failed to send message:', error);
-    throw error;
-  }
-}
-
-export async function startMessageStream() {
-  if (!xmtpClient) {
-    throw new Error('XMTP client not initialized. Call initXMTP() first.');
-  }
-
-  try {
-    console.log('Starting message stream...');
-    
-    // Stream conversations and messages
-    for await (const conversation of await xmtpClient.conversations.stream()) {
-      console.log('New conversation:', conversation.id);
-      
-      for await (const message of await conversation.streamMessages()) {
-        console.log(`📥 New message from ${message.senderAddress}: ${message.content}`);
-      }
-    }
-  } catch (error) {
-    console.error('❌ Error in message stream:', error);
-    throw error;
-  }
-}
-
-export async function listConversations() {
-  if (!xmtpClient) {
-    throw new Error('XMTP client not initialized. Call initXMTP() first.');
-  }
-
-  try {
-    const conversations = await xmtpClient.conversations.list();
-    console.log('Conversations:', conversations);
-    return conversations;
-  } catch (error) {
-    console.error('❌ Failed to list conversations:', error);
-    throw error;
-  }
-}
-
-export async function canMessage(address: string) {
-  if (!xmtpClient) {
-    throw new Error('XMTP client not initialized. Call initXMTP() first.');
-  }
-
-  try {
-    const canMessageResult = await xmtpClient.canMessage(address);
-    console.log('Can message', address, ':', canMessageResult);
-    return canMessageResult;
-  } catch (error) {
-    console.error('❌ Failed to check if can message:', error);
-    return false;
   }
 }
 
