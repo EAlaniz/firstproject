@@ -2,8 +2,8 @@ import React, { useEffect, useState, KeyboardEvent } from 'react';
 import { Client } from '@xmtp/browser-sdk';
 import { useWalletClient, useChainId } from 'wagmi';
 
-// Import only types with import type
-import type { Signer as XMTPSigner, Identifier as XMTPIdentifier } from '@xmtp/browser-sdk';
+// Import proper types from XMTP SDK
+import type { Signer, Identifier, IdentifierKind } from '@xmtp/browser-sdk';
 
 interface XMTPMessagingProps {
   isOpen: boolean;
@@ -14,19 +14,6 @@ interface Message {
   senderAddress: string;
   content: string;
   timestamp: Date;
-}
-
-// Define Identifier type if not exported from xmtp
-interface Identifier {
-  identifier: string;
-  identifierKind: string;
-}
-
-// Define Signer type if not exported from xmtp
-interface Signer {
-  type: 'EOA';
-  getIdentifier: () => Identifier;
-  signMessage: (msg: string) => Promise<Uint8Array>;
 }
 
 function hexToUint8Array(hex: string): Uint8Array {
@@ -40,6 +27,46 @@ function hexToUint8Array(hex: string): Uint8Array {
   return array;
 }
 
+// Extract XMTP initialization for better testability
+async function initializeXMTPClient(
+  walletClient: any,
+  chainId: number
+): Promise<Client> {
+  const getXmtpEnv = (chainId?: number): 'production' | 'dev' | null => {
+    if (!chainId) return null;
+    if (chainId === 1) return 'production';
+    if (chainId === 5) return 'dev';
+    if (chainId === 8453) return 'production'; // Base chain support
+    return null;
+  };
+
+  const xmtpEnv = getXmtpEnv(chainId);
+
+  if (!xmtpEnv) {
+    throw new Error(
+      `XMTP is not supported on chain ID ${chainId}. Switch to Ethereum Mainnet, Goerli, or Base.`
+    );
+  }
+
+  const accountAddress = walletClient.account.address;
+
+  const accountIdentifier: Identifier = {
+    identifier: accountAddress,
+    identifierKind: 'Ethereum' as IdentifierKind,
+  };
+
+  const signer: Signer = {
+    type: 'EOA',
+    getIdentifier: () => accountIdentifier,
+    signMessage: async (message: string): Promise<Uint8Array> => {
+      const signature = await walletClient.signMessage({ message });
+      return hexToUint8Array(signature);
+    },
+  };
+
+  return await Client.create(signer, { env: xmtpEnv });
+}
+
 export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
   const { data: walletClient } = useWalletClient();
   const chainId = useChainId();
@@ -51,14 +78,6 @@ export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const getXmtpEnv = (chainId?: number): 'production' | 'dev' | null => {
-    if (!chainId) return null;
-    if (chainId === 1) return 'production';
-    if (chainId === 5) return 'dev';
-    if (chainId === 8453) return 'production'; // Base chain support
-    return null;
-  };
-
   useEffect(() => {
     async function initXMTP() {
       if (!walletClient) {
@@ -67,38 +86,11 @@ export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
         return;
       }
 
-      const xmtpEnv = getXmtpEnv(chainId);
-
-      if (!xmtpEnv) {
-        setError(
-          `XMTP is not supported on chain ID ${chainId}. Switch to Ethereum Mainnet, Goerli, or Base.`
-        );
-        setXmtpClient(null);
-        return;
-      }
-
       setIsLoading(true);
       setError(null);
 
       try {
-        const accountAddress = walletClient.account.address;
-
-        const accountIdentifier: Identifier = {
-          identifier: accountAddress,
-          identifierKind: 'Ethereum',
-        };
-
-        const signer: Signer = {
-          type: 'EOA',
-          getIdentifier: () => accountIdentifier,
-          signMessage: async (message: string): Promise<Uint8Array> => {
-            const signature = await walletClient.signMessage({ message });
-            return hexToUint8Array(signature);
-          },
-        };
-
-        const client = await Client.create(signer as any, { env: xmtpEnv });
-
+        const client = await initializeXMTPClient(walletClient, chainId);
         setXmtpClient(client);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to initialize XMTP');
@@ -220,7 +212,7 @@ export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
               <div className="space-y-4 mb-6">
                 <input
                   type="text"
-                  placeholder="Farcaster Address or Wallet"
+                  placeholder="Recipient wallet address (0x...)"
                   value={recipient}
                   onChange={(e) => setRecipient(e.target.value)}
                   className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
