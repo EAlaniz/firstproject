@@ -10,7 +10,6 @@ import {
   MessageCircle, 
   Loader2 
 } from 'lucide-react';
-import { useXMTP } from '../contexts/XMTPContext';
 
 // Environment detection utility
 export const getEnvironmentInfo = () => {
@@ -44,11 +43,6 @@ export const EnhancedWalletConnector: React.FC<EnhancedWalletConnectorProps> = (
 }) => {
   const { address, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
-  const { 
-    isRegistered, 
-    isInitializing, 
-    error 
-  } = useXMTP();
   
   const { isFarcaster, isMobile } = getEnvironmentInfo();
 
@@ -65,24 +59,12 @@ export const EnhancedWalletConnector: React.FC<EnhancedWalletConnectorProps> = (
               {address.slice(0, 6)}...{address.slice(-4)}
             </div>
             <div className="text-xs text-purple-600 flex items-center space-x-1">
-              {isInitializing ? (
-                <>
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                  <span>Setting up messaging...</span>
-                </>
-              ) : isRegistered ? (
-                <>
-                  <MessageCircle className="w-3 h-3" />
-                  <span>Ready to chat</span>
-                </>
-              ) : (
-                <span>Connected to Farcaster</span>
-              )}
+              <span>Connected to Farcaster</span>
             </div>
           </div>
           <button
             onClick={() => disconnect()}
-            className="p-1 hover:bg-gray-100 rounded transition-colors"
+            className="p-1 hover:bg-gray-100 rounded-full transition-colors"
             title="Disconnect"
           >
             <LogOut className="w-4 h-4 text-gray-500" />
@@ -120,31 +102,12 @@ export const EnhancedWalletConnector: React.FC<EnhancedWalletConnectorProps> = (
             </div>
             <button
               onClick={() => disconnect()}
-              className="p-1 hover:bg-gray-100 rounded transition-colors"
+              className="p-1 hover:bg-gray-100 rounded-full transition-colors"
               title="Disconnect"
             >
               <LogOut className="w-4 h-4 text-gray-500" />
             </button>
           </div>
-          {/* XMTP Status */}
-          {isInitializing && (
-            <div className="text-xs text-blue-500 mt-1 text-center">
-              <Loader2 className="w-3 h-3 inline-block animate-spin mr-1" /> Setting up messaging...
-            </div>
-          )}
-          {isRegistered && !isInitializing && (
-            <div className="text-xs text-green-600 mt-1 text-center">
-              <MessageCircle className="w-3 h-3 inline-block mr-1" /> Ready to chat on XMTP!
-            </div>
-          )}
-          {!isRegistered && !isInitializing && (
-            <div className="text-xs text-gray-500 mt-1 text-center">
-              Messaging unavailable. Connect wallet and complete setup.
-            </div>
-          )}
-          {error && (
-            <div className="text-xs text-red-500 mt-1 text-center">{error}</div>
-          )}
         </div>
       );
     } else {
@@ -175,25 +138,6 @@ export const EnhancedWalletConnector: React.FC<EnhancedWalletConnectorProps> = (
           <User className="w-4 h-4" />
           <span>Wallet</span>
         </button>
-        {/* XMTP Status */}
-        {isInitializing && (
-          <div className="text-xs text-blue-500 mt-1 text-center">
-            <Loader2 className="w-3 h-3 inline-block animate-spin mr-1" /> Setting up messaging...
-          </div>
-        )}
-        {isRegistered && !isInitializing && (
-          <div className="text-xs text-green-600 mt-1 text-center">
-            <MessageCircle className="w-3 h-3 inline-block mr-1" /> Ready to chat on XMTP!
-          </div>
-        )}
-        {!isRegistered && !isInitializing && (
-          <div className="text-xs text-gray-500 mt-1 text-center">
-            Messaging unavailable. Connect wallet and complete setup.
-          </div>
-        )}
-        {error && (
-          <div className="text-xs text-red-500 mt-1 text-center">{error}</div>
-        )}
       </div>
     );
   }
@@ -208,29 +152,6 @@ export const EnhancedWalletConnector: React.FC<EnhancedWalletConnectorProps> = (
           </button>
         )}
       </ConnectWallet>
-      {/* XMTP Status for Desktop */}
-      {isConnected && (
-        <div className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 w-full text-center">
-          {isInitializing && (
-            <div className="text-xs text-blue-500">
-              <Loader2 className="w-3 h-3 inline-block animate-spin mr-1" /> Setting up messaging...
-            </div>
-          )}
-          {isRegistered && !isInitializing && (
-            <div className="text-xs text-green-600">
-              <MessageCircle className="w-3 h-3 inline-block mr-1" /> Ready to chat on XMTP!
-            </div>
-          )}
-          {!isRegistered && !isInitializing && (
-            <div className="text-xs text-gray-500">
-              Messaging unavailable. Connect wallet and complete setup.
-            </div>
-          )}
-          {error && (
-            <div className="text-xs text-red-500">{error}</div>
-          )}
-        </div>
-      )}
     </div>
   );
 };

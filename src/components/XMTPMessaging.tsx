@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useXMTP } from '../contexts/XMTPContext';
-import { Conversation, DecodedMessage } from '@xmtp/browser-sdk';
-import { Send, Users, Plus, X, MessageCircle, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
-import { useAccount } from 'wagmi';
+import { useAccount, useWalletClient } from 'wagmi';
+import { Send, Users, Plus, X, MessageCircle, Loader2, AlertCircle, CheckCircle, Zap } from 'lucide-react';
+import { initXMTP, getXMTPClient } from '../xmtpClient';
+import { useMessageStream } from '../useMessageStream';
 
 // Extend the Window type to include farcaster (if present)
 declare global {
@@ -31,55 +31,48 @@ interface MinimalMessage {
 
 const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
   const { address } = useAccount();
+  const { data: walletClient } = useWalletClient();
   
-  const {
-    conversations,
-    messages,
-    isLoading,
-    error,
-    isRegistered,
-    isInitializing,
-    sendMessage,
-    createConversation,
-    loadMessages,
-    subscribeToMessages,
-    unsubscribeFromMessages,
-    clearError,
-  } = useXMTP();
-
-  const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
-  const [newMessage, setNewMessage] = useState('');
+  const [client, setClient] = useState<any>(null);
+  const [isInitializing, setIsInitializing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [newContactAddress, setNewContactAddress] = useState('');
+  const [selectedPeer, setSelectedPeer] = useState<string>('');
   const [showNewChat, setShowNewChat] = useState(false);
-  const [isSending, setIsSending] = useState(false);
-  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, []);
 
-  // Subscribe to messages when conversation is selected
+  // Initialize XMTP when wallet connects
   useEffect(() => {
-    if (selectedConversation) {
-      loadMessages(selectedConversation);
-      subscribeToMessages(selectedConversation);
-      
-      // Unsubscribe when conversation changes
-      return () => {
-        unsubscribeFromMessages(selectedConversation);
-      };
-    }
-  }, [selectedConversation, loadMessages, subscribeToMessages, unsubscribeFromMessages]);
+    const initializeXMTP = async () => {
+      if (address && walletClient && !client && !isInitializing) {
+        setIsInitializing(true);
+        setError(null);
+        
+        try {
+          const { ethers } = await import('ethers');
+          const provider = new ethers.BrowserProvider(walletClient);
+          const signer = await provider.getSigner();
+          const xmtpClient = await initXMTP(signer);
+          setClient(xmtpClient);
+        } catch (err) {
+          console.error('Failed to initialize XMTP:', err);
+          setError('Failed to initialize XMTP. Please try again.');
+        } finally {
+          setIsInitializing(false);
+        }
+      }
+    };
 
-  // Show success message when XMTP is initialized
-  useEffect(() => {
-    if (isRegistered && !isInitializing) {
-      setShowSuccessMessage(true);
-      setTimeout(() => setShowSuccessMessage(false), 3000);
-    }
-  }, [isRegistered, isInitializing]);
+    initializeXMTP();
+  }, [address, walletClient, client, isInitializing]);
+
+  // Use message stream for selected peer
+  const { messages, sendMessage } = useMessageStream(client, selectedPeer);
 
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
@@ -88,28 +81,26 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
   };
 
   const handleSendMessage = async () => {
-    if (!selectedConversation || !newMessage.trim() || isSending) return;
+    if (!selectedPeer) return;
+    
+    const input = document.getElementById('message-input') as HTMLInputElement;
+    const content = input?.value?.trim();
+    if (!content) return;
 
-    setIsSending(true);
     try {
-      await sendMessage(selectedConversation, newMessage.trim());
-      setNewMessage('');
+      await sendMessage(content);
+      input.value = '';
     } catch (err) {
       console.error('Failed to send message:', err);
-    } finally {
-      setIsSending(false);
+      setError('Failed to send message');
     }
   };
 
-  const handleCreateConversation = async () => {
+  const handleCreateConversation = () => {
     if (!newContactAddress.trim()) return;
-
-    const conversation = await createConversation(newContactAddress.trim());
-    if (conversation) {
-      setSelectedConversation(conversation);
-      setNewContactAddress('');
-      setShowNewChat(false);
-    }
+    setSelectedPeer(newContactAddress.trim());
+    setNewContactAddress('');
+    setShowNewChat(false);
   };
 
   const formatAddress = (address: string) => {
@@ -142,12 +133,12 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
               <Loader2 className="w-3 h-3 inline-block animate-spin mr-1" /> Setting up messaging...
             </div>
           )}
-          {isRegistered && !isInitializing && (
+          {client && !isInitializing && (
             <div className="text-xs text-green-600 text-center">
               <CheckCircle className="w-3 h-3 inline-block mr-1" /> Ready to chat on XMTP!
             </div>
           )}
-          {!isRegistered && !isInitializing && (
+          {!client && !isInitializing && (
             <div className="text-xs text-gray-500 text-center">
               Messaging unavailable. Connect wallet and complete setup.
             </div>
@@ -156,6 +147,7 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
             <div className="text-xs text-red-500 text-center">{error}</div>
           )}
         </div>
+
         {/* Sidebar */}
         <div className="w-80 border-r border-gray-200 flex flex-col">
           {/* Header */}
@@ -169,7 +161,7 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
                     <span>Initializing...</span>
                   </div>
                 )}
-                {isRegistered && (
+                {client && (
                   <div className="flex items-center space-x-1 text-xs text-green-600">
                     <CheckCircle className="w-3 h-3" />
                     <span>Connected</span>
@@ -178,39 +170,13 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
                 <button
                   onClick={() => setShowNewChat(true)}
                   className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                  disabled={!isRegistered}
+                  disabled={!client}
                 >
                   <Plus className="w-5 h-5" />
                 </button>
               </div>
             </div>
-            
-            {/* Success Message */}
-            {showSuccessMessage && (
-              <div className="mt-3 p-2 bg-green-50 border border-green-200 rounded-lg">
-                <div className="flex items-center space-x-2 text-green-700">
-                  <CheckCircle className="w-4 h-4" />
-                  <span className="text-sm font-medium">XMTP initialized successfully! You can now send and receive messages.</span>
-                </div>
-              </div>
-            )}
           </div>
-
-          {/* Error Display */}
-          {error && (
-            <div className="p-3 bg-red-50 border-b border-red-200">
-              <div className="flex items-start space-x-2 text-red-700">
-                <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                <div className="flex-1">
-                  <span className="text-sm font-medium">XMTP Error</span>
-                  <p className="text-xs mt-1">{error}</p>
-                </div>
-                <button onClick={clearError} className="flex-shrink-0">
-                  <X className="w-3 h-3" />
-                </button>
-              </div>
-            </div>
-          )}
 
           {/* New Chat Modal */}
           {showNewChat && (
@@ -244,17 +210,12 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
 
           {/* Conversations List */}
           <div className="flex-1 overflow-y-auto">
-            {isLoading ? (
-              <div className="p-4 text-center text-gray-500">
-                <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
-                <p className="text-sm">Loading conversations...</p>
-              </div>
-            ) : !address ? (
+            {!address ? (
               <div className="p-4 text-center text-gray-500">
                 <MessageCircle className="w-8 h-8 mx-auto mb-2 text-gray-400" />
                 <p className="text-sm">Please connect your wallet first</p>
               </div>
-            ) : !isRegistered ? (
+            ) : !client ? (
               <div className="p-4 text-center text-gray-500">
                 <MessageCircle className="w-8 h-8 mx-auto mb-2 text-gray-400" />
                 <p className="text-sm mb-2">
@@ -263,16 +224,11 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
                 <p className="text-xs text-gray-400">
                   Connect your wallet to enable messaging
                 </p>
-                {error && (
-                  <p className="text-xs text-red-500 mt-2">
-                    {error}
-                  </p>
-                )}
               </div>
-            ) : conversations.length === 0 ? (
+            ) : !selectedPeer ? (
               <div className="p-4 text-center text-gray-500">
                 <MessageCircle className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                <p className="text-sm">No conversations yet</p>
+                <p className="text-sm">No conversation selected</p>
                 <button
                   onClick={() => setShowNewChat(true)}
                   className="mt-2 text-blue-600 hover:text-blue-700 text-sm"
@@ -281,52 +237,39 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
                 </button>
               </div>
             ) : (
-              conversations.map((conversation: Conversation) => {
-                const conv = conversation as MinimalConversation;
-                return (
-                  <div
-                    key={conv.id || conv.peerAddress}
-                    onClick={() => setSelectedConversation(conversation)}
-                    className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
-                      selectedConversation && (selectedConversation as MinimalConversation).id === conv.id
-                        ? 'bg-blue-50 border-blue-200'
-                        : ''
-                    }`}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
-                        <Users className="w-5 h-5 text-gray-600" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm truncate">
-                          {formatAddress(conv.peerAddress || 'Unknown')}
-                        </p>
-                        <p className="text-xs text-gray-500 truncate">
-                          New conversation
-                        </p>
-                      </div>
-                    </div>
+              <div className="p-4">
+                <div className="flex items-center space-x-3 p-3 bg-blue-50 rounded-lg">
+                  <div className="w-10 h-10 bg-blue-200 rounded-full flex items-center justify-center">
+                    <Users className="w-5 h-5 text-blue-600" />
                   </div>
-                );
-              })
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm truncate">
+                      {formatAddress(selectedPeer)}
+                    </p>
+                    <p className="text-xs text-gray-500 truncate">
+                      Active conversation
+                    </p>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
         </div>
 
         {/* Chat Area */}
         <div className="flex-1 flex flex-col">
-          {selectedConversation ? (
+          {selectedPeer ? (
             <>
               {/* Chat Header */}
               <div className="p-4 border-b border-gray-200">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
-                      <Users className="w-4 h-4 text-gray-600" />
+                    <div className="w-8 h-8 bg-blue-200 rounded-full flex items-center justify-center">
+                      <Users className="w-4 h-4 text-blue-600" />
                     </div>
                     <div>
                       <p className="font-medium">
-                        {formatAddress((selectedConversation as MinimalConversation).peerAddress || 'Unknown')}
+                        {formatAddress(selectedPeer)}
                       </p>
                       <p className="text-xs text-gray-500">Active now</p>
                     </div>
@@ -342,70 +285,62 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
 
               {/* Messages */}
               <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {messages.map((message: DecodedMessage, index: number) => {
-                  const msg = message as MinimalMessage;
-                  const conv = selectedConversation as MinimalConversation;
-                  return (
+                {messages.map((message, index) => (
+                  <div
+                    key={index}
+                    className={`flex ${
+                      (message as any).senderAddress === selectedPeer
+                        ? 'justify-start'
+                        : 'justify-end'
+                    }`}
+                  >
                     <div
-                      key={index}
-                      className={`flex ${
-                        msg.senderAddress === conv.peerAddress
-                          ? 'justify-start'
-                          : 'justify-end'
+                      className={`max-w-xs px-4 py-2 rounded-lg ${
+                        (message as any).senderAddress === selectedPeer
+                          ? 'bg-gray-100 text-gray-900'
+                          : 'bg-blue-600 text-white'
                       }`}
                     >
-                      <div
-                        className={`max-w-xs px-4 py-2 rounded-lg ${
-                          msg.senderAddress === conv.peerAddress
-                            ? 'bg-gray-100 text-gray-900'
-                            : 'bg-blue-600 text-white'
-                        }`}
-                      >
-                        <p className="text-sm">{String(msg.content)}</p>
-                        <p className={`text-xs mt-1 ${
-                          msg.senderAddress === conv.peerAddress
-                            ? 'text-gray-500'
-                            : 'text-blue-200'
-                        }`}>
-                          {formatTimestamp(msg.sent || new Date())}
-                        </p>
-                      </div>
+                      <p className="text-sm">{String((message as any).content)}</p>
+                      <p className={`text-xs mt-1 ${
+                        (message as any).senderAddress === selectedPeer
+                          ? 'text-gray-500'
+                          : 'text-blue-200'
+                      }`}>
+                        {formatTimestamp((message as any).sent || new Date())}
+                      </p>
                     </div>
-                  );
-                })}
+                  </div>
+                ))}
                 <div ref={messagesEndRef} />
               </div>
 
               {/* Message Input */}
               <div className="flex items-center p-4 border-t border-gray-200">
                 <input
+                  id="message-input"
                   type="text"
                   className="flex-1 border rounded px-3 py-2 mr-2"
                   placeholder="Type your message..."
-                  value={newMessage}
-                  onChange={e => setNewMessage(e.target.value)}
-                  disabled={!isRegistered || isInitializing}
+                  disabled={!client || isInitializing}
+                  onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
                 />
                 <button
                   onClick={handleSendMessage}
-                  disabled={!isRegistered || isInitializing || !newMessage.trim()}
-                  className={`bg-blue-600 text-white px-4 py-2 rounded-full flex items-center space-x-2 ${(!isRegistered || isInitializing || !newMessage.trim()) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700 transition-colors'}`}
+                  disabled={!client || isInitializing}
+                  className={`bg-blue-600 text-white px-4 py-2 rounded-full flex items-center space-x-2 ${(!client || isInitializing) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700 transition-colors'}`}
                 >
                   <Send className="w-4 h-4" />
                   <span>Send</span>
                 </button>
               </div>
-              {(!isRegistered || isInitializing) && (
-                <div className="text-xs text-red-500 text-center w-full pb-2">
-                  Connect wallet and complete messaging setup to start chatting.
-                </div>
-              )}
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center text-gray-500">
-                <MessageCircle className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-                <p>Select a conversation to start messaging</p>
+                <MessageCircle className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                <p className="text-lg font-medium">Select a conversation</p>
+                <p className="text-sm">Choose a contact to start messaging</p>
               </div>
             </div>
           )}

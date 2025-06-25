@@ -24,7 +24,6 @@ import {
 } from 'lucide-react';
 import { EnhancedWalletConnector } from './components/EnhancedWalletConnector';
 import { sdk } from '@farcaster/frame-sdk';
-import { XMTPProvider } from './contexts/XMTPContext';
 import XMTPMessaging from './components/XMTPMessaging';
 import { CONTRACT_CONFIG, ENV_CONFIG } from './constants';
 
@@ -728,7 +727,7 @@ function App() {
 
   // Main return with conditional rendering
   return (
-    <XMTPProvider>
+    <>
       {!isMiniAppReady ? (
         <div className="min-h-screen bg-white flex items-center justify-center">
           <div className="text-center space-y-4">
@@ -1187,7 +1186,7 @@ function App() {
           {ModalsAndOverlays}
         </div>
       )}
-    </XMTPProvider>
+    </>
   );
 }
 
