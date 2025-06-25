@@ -17,10 +17,7 @@ export const config = createConfig({
     }),
   ],
   transports: {
-    [base.id]: http(rpcUrl, {
-      timeout: 10000,
-      retryCount: 3,
-    }),
+    [base.id]: http(rpcUrl),
   },
 });
 
