@@ -24,10 +24,10 @@ let xmtpClient: Client | null = null;
 export async function initXMTPClient(): Promise<Client> {
   if (xmtpClient) return xmtpClient;
 
-  const { isFarcaster, isMobile } = getEnvironmentInfo();
+  const { isFarcaster } = getEnvironmentInfo();
   
   try {
-    console.log('Initializing XMTP V3 client for environment:', { isFarcaster, isMobile });
+    console.log('Initializing XMTP V3 client for environment:', { isFarcaster });
     
     let walletClient;
     
@@ -42,16 +42,13 @@ export async function initXMTPClient(): Promise<Client> {
       } else {
         throw new Error('Farcaster wallet not available');
       }
-    } else if (isMobile) {
-      // Mobile Web - use Coinbase Wallet
-      console.log('Using Coinbase Wallet for mobile');
-      walletClient = createWalletClient({
-        chain: base,
-        transport: custom(window.ethereum),
-      });
     } else {
-      // Desktop Web - use any available wallet
-      console.log('Using desktop wallet');
+      // Desktop/Mobile Web - use window.ethereum
+      console.log('Using window.ethereum');
+      if (!window.ethereum) {
+        throw new Error('No wallet provider available');
+      }
+      
       walletClient = createWalletClient({
         chain: base,
         transport: custom(window.ethereum),
@@ -61,8 +58,11 @@ export async function initXMTPClient(): Promise<Client> {
     const [account] = await walletClient.getAddresses();
     console.log('Wallet account:', account);
 
-    // @ts-expect-error XMTP SDK type mismatch
-    xmtpClient = await Client.create(walletClient, { env: 'production' });
+    // Create XMTP client with proper signer
+    xmtpClient = await Client.create(walletClient as any, { 
+      env: 'production'
+    });
+    
     console.log('XMTP V3 Client ready for account:', account);
 
     return xmtpClient;
