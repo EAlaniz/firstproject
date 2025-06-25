@@ -2,6 +2,17 @@ import React, { useEffect, useState } from 'react';
 import { Client } from '@xmtp/browser-sdk';
 import { useWalletClient } from 'wagmi';
 
+interface Identifier {
+  identifier: string;
+  identifierKind: string;
+}
+
+interface Signer {
+  type: 'EOA';
+  getIdentifier: () => Identifier;
+  signMessage: (msg: string) => Promise<Uint8Array>;
+}
+
 interface XMTPMessagingProps {
   isOpen: boolean;
   onClose: () => void;
@@ -13,6 +24,18 @@ interface Message {
   timestamp: Date;
 }
 
+function hexToUint8Array(hex: string): Uint8Array {
+  if (hex.startsWith('0x')) {
+    hex = hex.slice(2);
+  }
+  const length = hex.length / 2;
+  const array = new Uint8Array(length);
+  for (let i = 0; i < length; i++) {
+    array[i] = parseInt(hex.substr(i * 2, 2), 16);
+  }
+  return array;
+}
+
 export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
   const { data: walletClient } = useWalletClient();
   const [xmtpClient, setXmtpClient] = useState<Client | null>(null);
@@ -22,7 +45,6 @@ export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Initialize XMTP when wallet client is available
   useEffect(() => {
     async function initXMTP() {
       if (!walletClient) return;
@@ -32,26 +54,32 @@ export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
 
       try {
         console.log('Initializing XMTP V3 client...');
-        
-        // Create signer with all required methods including getIdentifier
-        const signer = {
-          getAddress: () => Promise.resolve(walletClient.account.address),
-          signMessage: (message: string) => walletClient.signMessage({ message }),
-          getIdentifier: () => Promise.resolve(walletClient.account.address),
+
+        const accountIdentifier: Identifier = {
+          identifier: walletClient.account.address,
+          identifierKind: 'Ethereum',
         };
 
-        console.log('Signer created for address:', await signer.getAddress());
+        const signer: Signer = {
+          type: 'EOA',
+          getIdentifier: () => accountIdentifier,
+          signMessage: async (message: string): Promise<Uint8Array> => {
+            const signature = await walletClient.signMessage({ message });
+            return hexToUint8Array(signature);
+          },
+        };
 
-        // Initialize client with signer and environment
-        const client = await Client.create(signer as any, { env: 'production' });
+        console.log('Signer created for address:', accountIdentifier.identifier);
+
+        const client = await Client.create(signer, {
+          env: 'production',
+        });
 
         console.log('✅ XMTP V3 client created successfully');
         setXmtpClient(client);
 
-        // Log available methods for debugging
         console.log('Available client methods:', Object.getOwnPropertyNames(client));
         console.log('Available conversations methods:', Object.getOwnPropertyNames(client.conversations));
-        
       } catch (err) {
         console.error('❌ Failed to initialize XMTP V3 client:', err);
         setError(err instanceof Error ? err.message : 'Failed to initialize XMTP');
@@ -63,25 +91,28 @@ export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
     initXMTP();
   }, [walletClient]);
 
-  // Send message function
   const sendMessage = async () => {
     if (!xmtpClient || !recipient.trim() || !message.trim()) return;
 
     try {
       setIsLoading(true);
-      
-      // For now, just add message to local state since API methods may differ
+
+      // Open conversation with recipient
+      const conversation = await xmtpClient.conversations.newConversation(recipient);
+
+      // Send the message
+      await conversation.send(message);
+
+      // Add message locally
       const newMessage: Message = {
         senderAddress: walletClient?.account.address || '',
         content: message,
         timestamp: new Date(),
       };
-      setMessages(prev => [...prev, newMessage]);
-      
+      setMessages((prev) => [...prev, newMessage]);
+
       setMessage('');
       setRecipient('');
-      
-      console.log('Message added to local state. Full messaging API coming soon.');
     } catch (err) {
       console.error('❌ Failed to send message:', err);
       setError(err instanceof Error ? err.message : 'Failed to send message');
@@ -98,14 +129,11 @@ export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-900">XMTP Mini App Messenger</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-          >
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
             ✕
           </button>
         </div>
-        
+
         {/* Content */}
         <div className="p-6">
           {!walletClient ? (
@@ -122,9 +150,7 @@ export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
               ) : (
                 <div className="space-y-4">
                   <p className="text-gray-600">Setting up XMTP client...</p>
-                  {error && (
-                    <p className="text-red-600 text-sm">{error}</p>
-                  )}
+                  {error && <p className="text-red-600 text-sm">{error}</p>}
                 </div>
               )}
             </div>
@@ -135,13 +161,15 @@ export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
                     <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      <path
+                        fillRule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                   </div>
                   <div className="ml-3">
-                    <h3 className="text-sm font-medium text-green-800">
-                      XMTP V3 Client Initialized Successfully!
-                    </h3>
+                    <h3 className="text-sm font-medium text-green-800">XMTP V3 Client Initialized Successfully!</h3>
                     <div className="mt-2 text-sm text-green-700">
                       <p>Your wallet is now connected to XMTP messaging.</p>
                       <p className="mt-1">Address: {walletClient.account.address}</p>
@@ -187,13 +215,13 @@ export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
                       <div
                         key={i}
                         className={`p-3 rounded-lg ${
-                          msg.senderAddress === walletClient?.account.address
-                            ? 'bg-blue-100 ml-8'
-                            : 'bg-gray-100 mr-8'
+                          msg.senderAddress === walletClient?.account.address ? 'bg-blue-100 ml-8' : 'bg-gray-100 mr-8'
                         }`}
                       >
                         <div className="text-xs text-gray-600 mb-1">
-                          {msg.senderAddress === walletClient?.account.address ? 'You' : msg.senderAddress.slice(0, 6) + '...'}
+                          {msg.senderAddress === walletClient?.account.address
+                            ? 'You'
+                            : msg.senderAddress.slice(0, 6) + '...'}
                         </div>
                         <div className="text-sm">{msg.content}</div>
                       </div>
@@ -213,4 +241,4 @@ export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
       </div>
     </div>
   );
-} 
+}
