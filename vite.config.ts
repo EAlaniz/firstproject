@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
+import path from 'path';
 
 export default defineConfig({
   plugins: [
@@ -10,9 +11,9 @@ export default defineConfig({
       targets: [
         {
           src: 'public/.well-known',
-          dest: '.well-known'
-        }
-      ]
+          dest: '.well-known',
+        },
+      ],
     }),
     nodePolyfills({
       protocolImports: true,
@@ -31,20 +32,25 @@ export default defineConfig({
     outDir: 'dist',
     sourcemap: false,
     target: 'esnext',
+    commonjsOptions: {
+      transformMixedEsModules: true,
+    },
     rollupOptions: {
       external: [],
     },
   },
   optimizeDeps: {
-    exclude: ['lucide-react'],
-    include: ['buffer'],
+    exclude: ['lucide-react', 'workers'],
+    include: ['buffer', 'protobufjs/minimal'],
   },
   define: {
-    global: 'window',
+    global: 'globalThis',
   },
   resolve: {
     alias: {
       buffer: 'buffer',
+      'protobufjs/minimal': path.resolve(__dirname, 'node_modules/protobufjs/minimal.js'),
+      'eventemitter3': path.resolve(__dirname, 'node_modules/eventemitter3/index.js'),
     },
   },
 });

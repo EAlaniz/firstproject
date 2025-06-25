@@ -1,7 +1,6 @@
 import React, { useEffect, useState, KeyboardEvent } from 'react';
-import { Client } from '@xmtp/browser-sdk';
-import { useWalletClient, useChainId } from 'wagmi';
 import type { Signer, Identifier, IdentifierKind } from '@xmtp/browser-sdk';
+import { useWalletClient, useChainId } from 'wagmi';
 import { resolveFarcasterHandle } from '../utils/resolveFarcaster';
 
 interface XMTPMessagingProps {
@@ -26,51 +25,11 @@ function hexToUint8Array(hex: string): Uint8Array {
   return array;
 }
 
-// Extract XMTP initialization for better testability
-async function initializeXMTPClient(
-  walletClient: any,
-  chainId: number
-): Promise<Client> {
-  const getXmtpEnv = (chainId?: number): 'production' | 'dev' | null => {
-    if (!chainId) return null;
-    if (chainId === 1) return 'production';
-    if (chainId === 5) return 'dev';
-    if (chainId === 8453) return 'production'; // Base chain support
-    return null;
-  };
-
-  const xmtpEnv = getXmtpEnv(chainId);
-
-  if (!xmtpEnv) {
-    throw new Error(
-      `XMTP is not supported on chain ID ${chainId}. Switch to Ethereum Mainnet, Goerli, or Base.`
-    );
-  }
-
-  const accountAddress = walletClient.account.address;
-
-  const accountIdentifier: Identifier = {
-    identifier: accountAddress,
-    identifierKind: 'Ethereum' as IdentifierKind,
-  };
-
-  const signer: Signer = {
-    type: 'EOA',
-    getIdentifier: () => accountIdentifier,
-    signMessage: async (message: string): Promise<Uint8Array> => {
-      const signature = await walletClient.signMessage({ message });
-      return hexToUint8Array(signature);
-    },
-  };
-
-  return await Client.create(signer, { env: xmtpEnv });
-}
-
 export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
   const { data: walletClient } = useWalletClient();
   const chainId = useChainId();
 
-  const [xmtpClient, setXmtpClient] = useState<Client | null>(null);
+  const [xmtpClient, setXmtpClient] = useState<any | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [recipientInput, setRecipientInput] = useState('');
   const [recipientResolved, setRecipientResolved] = useState<string | null>(null);
@@ -78,9 +37,51 @@ export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Initialize XMTP client
+  // Initialize XMTP client with dynamic import and client-side guard
   useEffect(() => {
-    async function initXMTP() {
+    if (typeof window === 'undefined') return; // <-- no SSR
+
+    async function initializeXMTPClient(
+      walletClient: any,
+      chainId: number
+    ) {
+      const getXmtpEnv = (chainId?: number): 'production' | 'dev' | null => {
+        if (!chainId) return null;
+        if (chainId === 1) return 'production';
+        if (chainId === 5) return 'dev';
+        if (chainId === 8453) return 'production'; // Base chain support
+        return null;
+      };
+
+      const xmtpEnv = getXmtpEnv(chainId);
+      if (!xmtpEnv) {
+        throw new Error(
+          `XMTP is not supported on chain ID ${chainId}. Switch to Ethereum Mainnet, Goerli, or Base.`
+        );
+      }
+
+      const { Client } = await import('@xmtp/browser-sdk');
+
+      const accountAddress = walletClient.account.address;
+
+      const accountIdentifier: Identifier = {
+        identifier: accountAddress,
+        identifierKind: 'Ethereum' as IdentifierKind,
+      };
+
+      const signer: Signer = {
+        type: 'EOA',
+        getIdentifier: () => accountIdentifier,
+        signMessage: async (msg: string): Promise<Uint8Array> => {
+          const signature = await walletClient.signMessage({ message: msg });
+          return hexToUint8Array(signature);
+        },
+      };
+
+      return await Client.create(signer, { env: xmtpEnv });
+    }
+
+    async function init() {
       if (!walletClient) {
         setError('Wallet client not connected');
         setXmtpClient(null);
@@ -88,6 +89,7 @@ export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
       }
       setIsLoading(true);
       setError(null);
+
       try {
         const client = await initializeXMTPClient(walletClient, chainId);
         setXmtpClient(client);
@@ -98,38 +100,35 @@ export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
         setIsLoading(false);
       }
     }
-    initXMTP();
+
+    init();
   }, [walletClient, chainId]);
 
-  // Resolve Farcaster handle or address
+  // Resolve Farcaster handle or Ethereum address
   const handleResolve = async () => {
     if (!recipientInput) return;
     setIsLoading(true);
     setError(null);
-    const isAddress = /^0x[a-fA-F0-9]{40}$/.test(recipientInput);
-    let resolved: string | null = null;
-    if (isAddress) {
-      resolved = recipientInput;
-    } else {
-      resolved = await resolveFarcasterHandle(recipientInput);
-    }
-    if (!resolved) {
-      setError('Could not resolve Farcaster handle');
-      setRecipientResolved(null);
-    } else {
+    try {
+      const isAddress = /^0x[a-fA-F0-9]{40}$/.test(recipientInput);
+      const resolved = isAddress ? recipientInput : await resolveFarcasterHandle(recipientInput);
+      if (!resolved) throw new Error('Could not resolve Farcaster handle');
       setRecipientResolved(resolved);
-      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to resolve recipient');
+      setRecipientResolved(null);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
-  // Send message
+  // Send message via XMTP
   const sendMessage = async () => {
     if (!xmtpClient || !recipientResolved || !message.trim()) return;
     setIsLoading(true);
     setError(null);
+
     try {
-      // Use type assertion to bypass linter for newConversation
       const conversation = await (xmtpClient.conversations as any).newConversation(recipientResolved);
       await conversation.send(message);
       setMessages((prev) => [
@@ -148,11 +147,11 @@ export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
     }
   };
 
-  // Stream incoming messages
+  // Stream incoming messages, with cancellation cleanup
   useEffect(() => {
     if (!xmtpClient) return;
     let cancelled = false;
-    const streamMessages = async () => {
+    (async () => {
       try {
         const stream = await xmtpClient.conversations.streamAllMessages();
         for await (const msg of stream) {
@@ -161,31 +160,23 @@ export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
           setMessages((prev) => [
             ...prev,
             {
-              senderAddress: msg.senderAddress as string,
+              senderAddress: msg.senderAddress,
               content: typeof msg.content === 'string' ? msg.content : 'Unsupported message type',
-              timestamp:
-                'sent' in msg &&
-                (typeof msg.sent === 'string' || typeof msg.sent === 'number' || msg.sent instanceof Date)
-                  ? (msg.sent instanceof Date ? msg.sent : new Date(msg.sent))
-                  : new Date(),
+              timestamp: msg.sent ? new Date(msg.sent) : new Date(),
             },
           ]);
         }
       } catch (err) {
-        console.error('Error streaming messages:', err);
         setError('Failed to stream incoming messages');
       }
-    };
-    streamMessages();
+    })();
     return () => {
       cancelled = true;
     };
   }, [xmtpClient]);
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      sendMessage();
-    }
+    if (e.key === 'Enter') sendMessage();
   };
 
   if (!isOpen) return null;
@@ -196,10 +187,7 @@ export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-900">XMTP Mini App Messenger</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-          >
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
             ✕
           </button>
         </div>
@@ -217,7 +205,7 @@ export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
             <div className="text-center py-8">
               {isLoading ? (
                 <div className="space-y-4">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto" />
                   <p className="text-gray-600">Initializing XMTP...</p>
                 </div>
               ) : (
@@ -246,6 +234,7 @@ export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
                   <div className="text-sm text-gray-600">Resolved: {recipientResolved}</div>
                 )}
               </div>
+
               {/* Message Input */}
               <div className="space-y-4 mb-6">
                 <input
@@ -264,6 +253,7 @@ export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
                   {isLoading ? 'Sending...' : 'Send via XMTP'}
                 </button>
               </div>
+
               {/* Messages */}
               <div className="space-y-4">
                 <h3 className="font-semibold text-gray-900">Messages</h3>
