@@ -50,6 +50,8 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   
   // Use ref to track if we've already initialized for this address
   const initializedAddressRef = useRef<string | null>(null);
+  // Use ref to prevent multiple simultaneous initializations
+  const initializationLockRef = useRef<boolean>(false);
 
   const xmtpEnv = ENV_CONFIG.XMTP_ENV;
 
@@ -79,11 +81,20 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       return;
     }
 
+    // Prevent multiple simultaneous initializations
+    if (initializationLockRef.current) {
+      console.log('XMTP initialization already in progress, skipping...');
+      return;
+    }
+
     // Prevent multiple initializations for the same address
     if (initializedAddressRef.current === address) {
       console.log('Already initialized for this address');
       return;
     }
+
+    // Set the lock
+    initializationLockRef.current = true;
 
     const handleXMTPRegistration = async (signer: Signer) => {
       // Create XMTP client with automatic registration
@@ -97,7 +108,15 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         return xmtpClient;
       } catch (error) {
         console.error('Failed to create XMTP client:', error);
-        throw new Error('Failed to initialize XMTP. Please try again with MetaMask or Coinbase Wallet.');
+        
+        // Handle signature rejection specifically
+        if (error && typeof error === 'object' && 'code' in error && error.code === 4001) {
+          throw new Error('Signature request was rejected. Please try again to enable messaging.');
+        } else if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string' && error.message.includes('User denied')) {
+          throw new Error('Signature request was denied. Please try again to enable messaging.');
+        } else {
+          throw new Error('Failed to initialize XMTP. Please try again with MetaMask or Coinbase Wallet.');
+        }
       }
     };
 
@@ -131,10 +150,18 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
           return;
         } catch (registrationErr) {
           console.error('Error registering on XMTP:', registrationErr);
-          const errorMessage = registrationErr instanceof Error 
-            ? registrationErr.message 
-            : 'Failed to register on XMTP. Please try again with MetaMask or Coinbase Wallet.';
-          setError(errorMessage);
+          
+          // Handle signature rejection specifically
+          if (registrationErr && typeof registrationErr === 'object' && 'code' in registrationErr && registrationErr.code === 4001) {
+            setError('Signature request was rejected. Please try again to enable messaging.');
+          } else if (registrationErr && typeof registrationErr === 'object' && 'message' in registrationErr && typeof registrationErr.message === 'string' && registrationErr.message.includes('User denied')) {
+            setError('Signature request was denied. Please try again to enable messaging.');
+          } else {
+            const errorMessage = registrationErr instanceof Error 
+              ? registrationErr.message 
+              : 'Failed to register on XMTP. Please try again with MetaMask or Coinbase Wallet.';
+            setError(errorMessage);
+          }
           setIsRegistered(false);
           return;
         }
@@ -155,13 +182,23 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       
     } catch (err) {
       console.error('Error initializing XMTP client:', err);
-      const errorMessage = err instanceof Error 
-        ? err.message 
-        : 'Failed to initialize XMTP. Please try again.';
-      setError(errorMessage);
+      
+      // Handle signature rejection specifically
+      if (err && typeof err === 'object' && 'code' in err && err.code === 4001) {
+        setError('Signature request was rejected. Please try again to enable messaging.');
+      } else if (err && typeof err === 'object' && 'message' in err && typeof err.message === 'string' && err.message.includes('User denied')) {
+        setError('Signature request was denied. Please try again to enable messaging.');
+      } else {
+        const errorMessage = err instanceof Error 
+          ? err.message 
+          : 'Failed to initialize XMTP. Please try again.';
+        setError(errorMessage);
+      }
       setIsRegistered(false);
     } finally {
       setIsInitializing(false);
+      // Release the initialization lock
+      initializationLockRef.current = false;
     }
   }, [address, loadConversations, xmtpEnv]);
 
@@ -326,6 +363,8 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       setIsRegistered(false);
       setError(null);
       initializedAddressRef.current = null;
+      // Reset initialization lock
+      initializationLockRef.current = false;
       
       // Cleanup all subscriptions
       messageSubscriptions.forEach(unsubscribe => unsubscribe());

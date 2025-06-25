@@ -60,6 +60,8 @@ createRoot(rootElement).render(
             options={{
               timeout: 30000,
               enableLogging: true,
+              rpcUrl: ENV_CONFIG.RPC_URL,
+              chainId: base.id,
               // Disable popup in mini app environment
               disablePopup: isFarcasterMiniApp(),
             }}
