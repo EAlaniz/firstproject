@@ -12,7 +12,11 @@ export async function createSigner(walletClient: any) {
   return {
     getAddress: () => Promise.resolve(walletClient.account.address),
     signMessage: (message: string) => walletClient.signMessage({ message }),
-    getIdentifier: () => Promise.resolve(walletClient.account.address),
+    getIdentifier: () =>
+      Promise.resolve({
+        identifier: walletClient.account.address,
+        identifierKind: 'Ethereum',
+      }),
   };
 }
 
