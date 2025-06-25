@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useAccount, useWalletClient } from 'wagmi';
-import { Client } from '@xmtp/browser-sdk';
+import { initXMTP, getClient } from '../xmtpClient';
 
 export default function XmtpMessenger() {
   const { address } = useAccount();
   const { data: walletClient } = useWalletClient();
 
-  const [xmtpClient, setXmtpClient] = useState<Client | null>(null);
+  const [xmtpClient, setXmtpClient] = useState<any>(null);
   const [recipient, setRecipient] = useState('');
   const [message, setMessage] = useState('');
   const [status, setStatus] = useState('');
@@ -17,24 +17,9 @@ export default function XmtpMessenger() {
     const init = async () => {
       try {
         setStatus('Initializing XMTP...');
-        const signer = {
-          type: 'EOA',
-          getAddress: async () => address,
-          signMessage: async (msg: string) =>
-            walletClient.signMessage({ account: address, message: msg }),
-          getIdentifier: async () => ({
-            identifier: address,
-            identifierKind: 'Ethereum',
-          }),
-        };
-
-        const client = await Client.create(signer as any, {
-          env: 'production',
-        });
-
+        const client = await initXMTP(walletClient);
         setXmtpClient(client);
         setStatus('XMTP client initialized');
-        // console.log('[XMTP] Client initialized:', client.address); // Remove if type error
       } catch (e) {
         console.error('[XMTP] Init failed:', e);
         setStatus('Failed to initialize XMTP');
@@ -45,7 +30,8 @@ export default function XmtpMessenger() {
   }, [walletClient, address]);
 
   const handleSendMessage = async () => {
-    if (!xmtpClient) return setStatus('XMTP client not ready');
+    const client = xmtpClient || getClient();
+    if (!client) return setStatus('XMTP client not ready');
     if (!recipient || !message) return setStatus('Recipient or message missing');
 
     // Validate recipient address before attempting to create DM
@@ -56,17 +42,11 @@ export default function XmtpMessenger() {
 
     try {
       setStatus('Sending message...');
-      // Debug: log available methods and prototype on conversations
-      console.log('XMTP conversations object:', xmtpClient.conversations);
-      console.log('Available methods:', Object.keys(xmtpClient.conversations));
-      const proto = Object.getPrototypeOf(xmtpClient.conversations);
-      console.log('Prototype:', proto);
-      console.log('All property names:', Object.getOwnPropertyNames(proto));
       let convo;
-      if (typeof (xmtpClient.conversations as any).newDm === 'function') {
-        convo = await (xmtpClient.conversations as any).newDm(recipient);
-      } else if (typeof (xmtpClient.conversations as any).newDmWithIdentifier === 'function') {
-        convo = await (xmtpClient.conversations as any).newDmWithIdentifier({
+      if (typeof (client.conversations as any).newDm === 'function') {
+        convo = await (client.conversations as any).newDm(recipient);
+      } else if (typeof (client.conversations as any).newDmWithIdentifier === 'function') {
+        convo = await (client.conversations as any).newDmWithIdentifier({
           kind: 'ETHEREUM',
           identifier: recipient,
         });
