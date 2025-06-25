@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Client } from '@xmtp/browser-sdk';
-import { createWalletClient, custom } from 'viem';
-import { base } from 'viem/chains';
-import { useAccount } from 'wagmi';
+import { useWalletClient } from 'wagmi';
 
 interface XMTPMessagingProps {
   isOpen: boolean;
@@ -16,109 +14,83 @@ interface Message {
 }
 
 export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
-  const [xmtp, setXmtp] = useState<Client | null>(null);
+  const { data: walletClient } = useWalletClient();
+  const [xmtpClient, setXmtpClient] = useState<Client | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [recipient, setRecipient] = useState('');
-  const [text, setText] = useState('');
-  const [conversation, setConversation] = useState<any>(null);
+  const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { address, isConnected } = useAccount();
 
-  // Create signer function
-  const createSigner = async () => {
-    const walletClient = createWalletClient({
-      chain: base,
-      transport: custom(window.ethereum),
-    });
+  // Initialize XMTP when wallet client is available
+  useEffect(() => {
+    async function initXMTP() {
+      if (!walletClient) return;
 
-    const [walletAddress] = await walletClient.getAddresses();
+      setIsLoading(true);
+      setError(null);
 
-    return {
-      getAddress: () => Promise.resolve(walletAddress),
-      signMessage: (message: string) =>
-        walletClient.signMessage({ account: walletAddress, message }),
-    };
-  };
-
-  // Initialize XMTP
-  const initXMTP = async () => {
-    if (!isConnected || !address) {
-      setError('Wallet not connected');
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      console.log('Initializing XMTP V3 client...');
-      
-      const signer = await createSigner();
-      console.log('Signer created for address:', await signer.getAddress());
-
-      // Initialize client with signer and environment
-      const xmtpClient = await Client.create(signer as any, { env: 'production' });
-
-      console.log('✅ XMTP V3 client created successfully');
-      setXmtp(xmtpClient);
-
-      // Start streaming messages
-      startMessageStream(xmtpClient);
-    } catch (err) {
-      console.error('❌ Failed to initialize XMTP V3 client:', err);
-      setError(err instanceof Error ? err.message : 'Failed to initialize XMTP');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Start message stream
-  const startMessageStream = async (client: Client) => {
-    try {
-      console.log('Starting message stream...');
-      
-      // Stream conversations and messages
-      for await (const conv of await client.conversations.stream()) {
-        console.log('New conversation:', conv.id);
+      try {
+        console.log('Initializing XMTP V3 client...');
         
-        for await (const msg of await conv.streamMessages()) {
-          const newMessage: Message = {
-            senderAddress: msg.senderAddress,
-            content: msg.content as string,
-            timestamp: new Date(),
-          };
-          setMessages(prev => [...prev, newMessage]);
-        }
-      }
-    } catch (error) {
-      console.error('❌ Error in message stream:', error);
-    }
-  };
+        // Create signer using wallet client (following starter code pattern)
+        const signer = {
+          getAddress: () => Promise.resolve(walletClient.account.address),
+          signMessage: (message: string) => walletClient.signMessage({ message }),
+        };
 
-  // Start conversation and send message
-  const startConvAndSend = async () => {
-    if (!xmtp || !recipient.trim() || !text.trim()) return;
+        console.log('Signer created for address:', await signer.getAddress());
+
+        // Initialize client with signer and environment
+        const client = await Client.create(signer as any, { env: 'production' });
+
+        console.log('✅ XMTP V3 client created successfully');
+        setXmtpClient(client);
+
+        // Start streaming messages
+        for await (const convo of await client.conversations.stream()) {
+          for await (const msg of await convo.streamMessages()) {
+            const newMessage: Message = {
+              senderAddress: msg.senderAddress,
+              content: msg.content as string,
+              timestamp: new Date(),
+            };
+            setMessages(prev => [...prev, newMessage]);
+          }
+        }
+      } catch (err) {
+        console.error('❌ Failed to initialize XMTP V3 client:', err);
+        setError(err instanceof Error ? err.message : 'Failed to initialize XMTP');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    initXMTP();
+  }, [walletClient]);
+
+  // Send message function (following starter code pattern)
+  const sendMessage = async () => {
+    if (!xmtpClient || !recipient.trim() || !message.trim()) return;
 
     try {
       setIsLoading(true);
       
       // Create or find DM conversation
-      const conv = await (xmtp.conversations as any).newConversation(recipient);
-      setConversation(conv);
+      const convo = await xmtpClient.conversations.newConversation(recipient);
       
       // Send the message
-      await conv.send(text);
+      await convo.send(message);
       
       // Add message to local state
       const newMessage: Message = {
-        senderAddress: address || '',
-        content: text,
+        senderAddress: walletClient?.account.address || '',
+        content: message,
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, newMessage]);
       
-      setText('');
+      setMessage('');
       setRecipient('');
     } catch (err) {
       console.error('❌ Failed to send message:', err);
@@ -128,13 +100,6 @@ export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
     }
   };
 
-  // Auto-initialize when wallet connects
-  useEffect(() => {
-    if (isConnected && address && !xmtp && !isLoading) {
-      initXMTP();
-    }
-  }, [isConnected, address]);
-
   if (!isOpen) return null;
 
   return (
@@ -142,7 +107,7 @@ export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">XMTP Messaging</h2>
+          <h2 className="text-xl font-semibold text-gray-900">XMTP Mini App Messenger</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -153,11 +118,11 @@ export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
         
         {/* Content */}
         <div className="p-6">
-          {!isConnected ? (
+          {!walletClient ? (
             <div className="text-center py-8">
               <p className="text-gray-600 mb-4">Please connect your wallet to use XMTP messaging.</p>
             </div>
-          ) : !xmtp ? (
+          ) : !xmtpClient ? (
             <div className="text-center py-8">
               {isLoading ? (
                 <div className="space-y-4">
@@ -166,12 +131,7 @@ export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <button
-                    onClick={initXMTP}
-                    className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
-                  >
-                    Initialize XMTP
-                  </button>
+                  <p className="text-gray-600">Setting up XMTP client...</p>
                   {error && (
                     <p className="text-red-600 text-sm">{error}</p>
                   )}
@@ -184,28 +144,26 @@ export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
               <div className="space-y-4">
                 <input
                   type="text"
-                  placeholder="Recipient Address (0x...)"
+                  placeholder="Farcaster Address or Wallet"
                   value={recipient}
                   onChange={(e) => setRecipient(e.target.value)}
                   className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
-                <div className="flex space-x-2">
-                  <input
-                    type="text"
-                    placeholder="Your message..."
-                    value={text}
-                    onChange={(e) => setText(e.target.value)}
-                    className="flex-1 p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    onKeyPress={(e) => e.key === 'Enter' && startConvAndSend()}
-                  />
-                  <button
-                    onClick={startConvAndSend}
-                    disabled={!recipient.trim() || !text.trim() || isLoading}
-                    className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isLoading ? 'Sending...' : 'Send'}
-                  </button>
-                </div>
+                <input
+                  type="text"
+                  placeholder="Message"
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                />
+                <button
+                  onClick={sendMessage}
+                  disabled={!recipient.trim() || !message.trim() || isLoading}
+                  className="bg-blue-600 text-white px-4 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed w-full"
+                >
+                  {isLoading ? 'Sending...' : 'Send via XMTP'}
+                </button>
               </div>
 
               {/* Messages */}
@@ -219,13 +177,13 @@ export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
                       <div
                         key={i}
                         className={`p-3 rounded-lg ${
-                          msg.senderAddress === address
+                          msg.senderAddress === walletClient?.account.address
                             ? 'bg-blue-100 ml-8'
                             : 'bg-gray-100 mr-8'
                         }`}
                       >
                         <div className="text-xs text-gray-600 mb-1">
-                          {msg.senderAddress === address ? 'You' : msg.senderAddress.slice(0, 6) + '...'}
+                          {msg.senderAddress === walletClient?.account.address ? 'You' : msg.senderAddress.slice(0, 6) + '...'}
                         </div>
                         <div className="text-sm">{msg.content}</div>
                       </div>

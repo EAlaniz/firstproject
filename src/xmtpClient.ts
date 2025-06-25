@@ -1,6 +1,5 @@
 import { Client } from '@xmtp/browser-sdk';
-import { createWalletClient, custom } from 'viem';
-import { base } from 'viem/chains';
+import { useWalletClient } from 'wagmi';
 
 let xmtpClient: Client | null = null;
 
@@ -10,30 +9,22 @@ const databaseEncryptionKey = new Uint8Array([
   166, 83, 208, 224, 254, 44, 205, 227, 175, 49, 234, 129, 74, 252, 135, 145,
 ]);
 
-export async function createSigner() {
-  const walletClient = createWalletClient({
-    chain: base,
-    transport: custom(window.ethereum),
-  });
-
-  const [address] = await walletClient.getAddresses();
-
+export async function createSigner(walletClient: any) {
   return {
-    getAddress: () => Promise.resolve(address),
-    signMessage: (message: string) =>
-      walletClient.signMessage({ account: address, message }),
+    getAddress: () => Promise.resolve(walletClient.account.address),
+    signMessage: (message: string) => walletClient.signMessage({ message }),
   };
 }
 
-export async function initXMTP() {
+export async function initXMTP(walletClient: any) {
   try {
     console.log('Initializing XMTP V3 client...');
     
-    const signer = await createSigner();
+    const signer = await createSigner(walletClient);
     console.log('Signer created for address:', await signer.getAddress());
 
     // Initialize client with signer and environment (production or dev)
-    xmtpClient = await Client.create(signer, { env: 'production' });
+    xmtpClient = await Client.create(signer as any, { env: 'production' });
 
     console.log('✅ XMTP V3 client created successfully');
     return xmtpClient;
