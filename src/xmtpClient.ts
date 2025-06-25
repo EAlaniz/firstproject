@@ -1,5 +1,4 @@
 import { Client } from "@xmtp/browser-sdk";
-import { createWalletClient, custom } from 'viem';
 import { base } from 'viem/chains';
 
 // Environment detection
@@ -21,6 +20,27 @@ export const getEnvironmentInfo = () => {
 
 let xmtpClient: Client | null = null;
 
+// Create a proper EIP-191 compatible signer
+function createEIP191Signer(provider: any) {
+  return {
+    type: 'SCW' as const,
+    getIdentifier: async () => {
+      const accounts = await provider.request({ method: 'eth_accounts' });
+      return accounts[0];
+    },
+    signMessage: async (message: string) => {
+      const accounts = await provider.request({ method: 'eth_accounts' });
+      return provider.request({
+        method: 'personal_sign',
+        params: [message, accounts[0]]
+      });
+    },
+    getChainId: () => {
+      return BigInt(base.id);
+    }
+  };
+}
+
 export async function initXMTPClient(): Promise<Client> {
   if (xmtpClient) return xmtpClient;
 
@@ -29,16 +49,13 @@ export async function initXMTPClient(): Promise<Client> {
   try {
     console.log('Initializing XMTP V3 client for environment:', { isFarcaster });
     
-    let walletClient;
+    let provider;
     
     if (isFarcaster) {
       // Farcaster Mini App - use injected wallet
       if (typeof window !== 'undefined' && window.farcaster) {
         console.log('Using Farcaster injected wallet');
-        walletClient = createWalletClient({
-          chain: base,
-          transport: custom(window.farcaster.getProvider?.() || window.ethereum),
-        });
+        provider = window.farcaster.getProvider?.() || window.ethereum;
       } else {
         throw new Error('Farcaster wallet not available');
       }
@@ -48,19 +65,20 @@ export async function initXMTPClient(): Promise<Client> {
       if (!window.ethereum) {
         throw new Error('No wallet provider available');
       }
-      
-      walletClient = createWalletClient({
-        chain: base,
-        transport: custom(window.ethereum),
-      });
+      provider = window.ethereum;
     }
 
-    const [account] = await walletClient.getAddresses();
+    // Create EIP-191 compatible signer
+    const signer = createEIP191Signer(provider);
+    
+    // Get account address
+    const account = await signer.getIdentifier();
     console.log('Wallet account:', account);
 
-    // Create XMTP client with proper signer
-    xmtpClient = await Client.create(walletClient as any, { 
-      env: 'production'
+    // Create XMTP client with proper configuration
+    xmtpClient = await Client.create(signer, { 
+      env: 'production',
+      codecs: [],
     });
     
     console.log('XMTP V3 Client ready for account:', account);

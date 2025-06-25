@@ -3,8 +3,8 @@ import { base } from 'wagmi/chains';
 import { coinbaseWallet } from 'wagmi/connectors';
 import { ENV_CONFIG } from './constants';
 
-// Ensure we have a valid RPC URL
-const rpcUrl = ENV_CONFIG.RPC_URL || 'https://mainnet.base.org';
+// Use the private QuickNode RPC URL
+const rpcUrl = ENV_CONFIG.RPC_URL || 'https://flashy-convincing-paper.base-mainnet.quiknode.pro/fe55bc09278a1ccc534942fad989695b412ab4ea/';
 
 export const config = createConfig({
   chains: [base],
@@ -17,7 +17,10 @@ export const config = createConfig({
     }),
   ],
   transports: {
-    [base.id]: http(rpcUrl),
+    [base.id]: http(rpcUrl, {
+      timeout: 10000,
+      retryCount: 3,
+    }),
   },
 });
 

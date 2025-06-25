@@ -12,7 +12,7 @@ export const APP_CONFIG = {
 // Environment Configuration
 export const ENV_CONFIG = {
   XMTP_ENV: import.meta.env.VITE_XMTP_ENV || 'production',
-  RPC_URL: import.meta.env.VITE_RPC_URL || 'https://mainnet.base.org',
+  RPC_URL: import.meta.env.VITE_RPC_URL || 'https://flashy-convincing-paper.base-mainnet.quiknode.pro/fe55bc09278a1ccc534942fad989695b412ab4ea/',
   STEP_TRACKER_CONTRACT: import.meta.env.VITE_STEP_TRACKER_CONTRACT as `0x${string}`,
   ONCHAINKIT_API_KEY: import.meta.env.VITE_ONCHAINKIT_API_KEY,
 } as const;
