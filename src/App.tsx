@@ -1,19 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { WagmiProvider } from 'wagmi';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { wagmiConfig } from '../wagmi.config';
+import { useConfig, useAccount } from 'wagmi';
 import { APP_CONFIG, ENV_CONFIG } from './constants';
 import Header from './components/Header';
 import StepTracker from './components/StepTracker';
 import Modal from './components/Modal';
 import { EnhancedWalletConnector } from './components/EnhancedWalletConnector';
 import XMTPMessaging from './components/XMTPMessaging';
-import { useAccount } from 'wagmi';
-
-// Create a client
-const queryClient = new QueryClient();
 
 function App() {
+  // Test wagmi config to ensure provider is working
+  const config = useConfig();
+  console.log('Wagmi config found:', !!config);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalContent, setModalContent] = useState<React.ReactNode>(null);
   const [showWalletConnector, setShowWalletConnector] = useState(false);
@@ -262,137 +260,133 @@ function App() {
   };
 
   return (
-    <WagmiProvider config={wagmiConfig}>
-      <QueryClientProvider client={queryClient}>
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-          {/* Header */}
-          <Header 
-            currentStreak={currentStreak}
-            totalTokens={totalTokens}
-          />
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      {/* Header */}
+      <Header 
+        currentStreak={currentStreak}
+        totalTokens={totalTokens}
+      />
 
-          {/* Main Content */}
-          <main className="container mx-auto px-4 py-8">
-            {/* Onboarding Steps */}
-            {currentStep < 3 && (
-              <div className="max-w-2xl mx-auto mb-8">
-                <div className="bg-white rounded-lg shadow-lg p-6">
-                  {getStepContent(currentStep)}
-                </div>
+      {/* Main Content */}
+      <main className="container mx-auto px-4 py-8">
+        {/* Onboarding Steps */}
+        {currentStep < 3 && (
+          <div className="max-w-2xl mx-auto mb-8">
+            <div className="bg-white rounded-lg shadow-lg p-6">
+              {getStepContent(currentStep)}
+            </div>
+          </div>
+        )}
+
+        {/* Step Tracker */}
+        {isWalletConnected && currentStep >= 2 && (
+          <div className="max-w-4xl mx-auto">
+            <StepTracker 
+              currentSteps={currentSteps}
+              dailyGoal={dailyGoal}
+              onGoalChange={setDailyGoal}
+            />
+          </div>
+        )}
+
+        {/* Wallet Connection Prompt */}
+        {!isWalletConnected && currentStep >= 2 && (
+          <div className="max-w-md mx-auto text-center">
+            <div className="bg-white rounded-lg shadow-lg p-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                Connect Your Wallet
+              </h2>
+              <p className="text-gray-600 mb-6">
+                Connect your wallet to start tracking steps and earning rewards.
+              </p>
+              <button
+                onClick={handleWalletConnect}
+                className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+              >
+                Connect Wallet
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Quick Actions */}
+        {isWalletConnected && (
+          <div className="max-w-4xl mx-auto mt-8">
+            <div className="bg-white rounded-lg shadow-lg p-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                Quick Actions
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <button
+                  onClick={() => setShowXMTPMessaging(true)}
+                  className="bg-purple-600 text-white px-4 py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors"
+                >
+                  💬 Open Messaging
+                </button>
+                <button
+                  onClick={() => handleShare('copy', `Check out my progress on ${APP_CONFIG.name}! 🚶‍♂️`)}
+                  className="bg-green-600 text-white px-4 py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors"
+                >
+                  📤 Share Progress
+                </button>
               </div>
-            )}
+            </div>
+          </div>
+        )}
+      </main>
 
-            {/* Step Tracker */}
-            {isWalletConnected && currentStep >= 2 && (
-              <div className="max-w-4xl mx-auto">
-                <StepTracker 
-                  currentSteps={currentSteps}
-                  dailyGoal={dailyGoal}
-                  onGoalChange={setDailyGoal}
-                />
-              </div>
-            )}
+      {/* Wallet Connector Modal */}
+      {showWalletConnector && (
+        <Modal 
+          isOpen={showWalletConnector} 
+          onClose={() => setShowWalletConnector(false)}
+          title="Connect Wallet"
+        >
+          <EnhancedWalletConnector />
+        </Modal>
+      )}
 
-            {/* Wallet Connection Prompt */}
-            {!isWalletConnected && currentStep >= 2 && (
-              <div className="max-w-md mx-auto text-center">
-                <div className="bg-white rounded-lg shadow-lg p-6">
-                  <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                    Connect Your Wallet
-                  </h2>
-                  <p className="text-gray-600 mb-6">
-                    Connect your wallet to start tracking steps and earning rewards.
-                  </p>
-                  <button
-                    onClick={handleWalletConnect}
-                    className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
-                  >
-                    Connect Wallet
-                  </button>
-                </div>
-              </div>
-            )}
+      {/* XMTP Messaging */}
+      <XMTPMessaging 
+        isOpen={showXMTPMessaging} 
+        onClose={() => setShowXMTPMessaging(false)} 
+      />
 
-            {/* Quick Actions */}
-            {isWalletConnected && (
-              <div className="max-w-4xl mx-auto mt-8">
-                <div className="bg-white rounded-lg shadow-lg p-6">
-                  <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                    Quick Actions
-                  </h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <button
-                      onClick={() => setShowXMTPMessaging(true)}
-                      className="bg-purple-600 text-white px-4 py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors"
-                    >
-                      💬 Open Messaging
-                    </button>
-                    <button
-                      onClick={() => handleShare('copy', `Check out my progress on ${APP_CONFIG.name}! 🚶‍♂️`)}
-                      className="bg-green-600 text-white px-4 py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors"
-                    >
-                      📤 Share Progress
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </main>
-
-          {/* Wallet Connector Modal */}
-          {showWalletConnector && (
-            <Modal 
-              isOpen={showWalletConnector} 
-              onClose={() => setShowWalletConnector(false)}
-              title="Connect Wallet"
+      {/* Error Modal */}
+      {error && (
+        <Modal isOpen={!!error} onClose={() => setError(null)} title="Error">
+          <div className="p-6">
+            <p className="text-red-700 mb-4">{error}</p>
+            <button
+              onClick={() => setError(null)}
+              className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition-colors"
             >
-              <EnhancedWalletConnector />
-            </Modal>
-          )}
+              Close
+            </button>
+          </div>
+        </Modal>
+      )}
 
-          {/* XMTP Messaging */}
-          <XMTPMessaging 
-            isOpen={showXMTPMessaging} 
-            onClose={() => setShowXMTPMessaging(false)} 
-          />
+      {/* Success Modal */}
+      {success && (
+        <Modal isOpen={!!success} onClose={() => setSuccess(null)} title="Success">
+          <div className="p-6">
+            <p className="text-green-700 mb-4">{success}</p>
+            <button
+              onClick={() => setSuccess(null)}
+              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </Modal>
+      )}
 
-          {/* Error Modal */}
-          {error && (
-            <Modal isOpen={!!error} onClose={() => setError(null)} title="Error">
-              <div className="p-6">
-                <p className="text-red-700 mb-4">{error}</p>
-                <button
-                  onClick={() => setError(null)}
-                  className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition-colors"
-                >
-                  Close
-                </button>
-              </div>
-            </Modal>
-          )}
-
-          {/* Success Modal */}
-          {success && (
-            <Modal isOpen={!!success} onClose={() => setSuccess(null)} title="Success">
-              <div className="p-6">
-                <p className="text-green-700 mb-4">{success}</p>
-                <button
-                  onClick={() => setSuccess(null)}
-                  className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition-colors"
-                >
-                  Close
-                </button>
-              </div>
-            </Modal>
-          )}
-
-          {/* General Modal */}
-          <Modal isOpen={isModalOpen} onClose={closeModal} title="Modal">
-            {modalContent}
-          </Modal>
-        </div>
-      </QueryClientProvider>
-    </WagmiProvider>
+      {/* General Modal */}
+      <Modal isOpen={isModalOpen} onClose={closeModal} title="Modal">
+        {modalContent}
+      </Modal>
+    </div>
   );
 }
 
