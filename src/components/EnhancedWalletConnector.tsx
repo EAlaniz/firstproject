@@ -57,13 +57,16 @@ export const EnhancedWalletConnector: React.FC<EnhancedWalletConnectorProps> = (
   
   const { isFarcaster, isMobile, isDesktop, environment } = getEnvironmentInfo();
 
-  // Environment-specific auto-initialization logic
+  // Environment-specific auto-initialization logic - More conservative approach
   useEffect(() => {
     const autoInitializeXMTP = async () => {
       // Only attempt auto-initialization once per connection
       if (autoInitAttempted) return;
       
       // More strict conditions to prevent double initialization
+      // Only auto-initialize if we're connected, have an address, have a wallet client,
+      // are not already registered, not currently initializing, not auto-initializing,
+      // and have no errors
       if (isConnected && address && walletClient && !isRegistered && !isInitializing && !isAutoInitializing && !error) {
         console.log(`[Wallet] Auto-initializing XMTP for ${environment} environment:`, address);
         setIsAutoInitializing(true);

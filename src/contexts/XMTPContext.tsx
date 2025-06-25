@@ -37,6 +37,25 @@ interface XMTPProviderProps {
   children: React.ReactNode;
 }
 
+// Helper functions for persistence
+const getStorageKey = (address: string) => `xmtp_${address.toLowerCase()}`;
+const saveXMTPState = (address: string, state: any) => {
+  try {
+    localStorage.setItem(getStorageKey(address), JSON.stringify(state));
+  } catch (error) {
+    console.warn('Failed to save XMTP state to localStorage:', error);
+  }
+};
+const loadXMTPState = (address: string) => {
+  try {
+    const stored = localStorage.getItem(getStorageKey(address));
+    return stored ? JSON.parse(stored) : null;
+  } catch (error) {
+    console.warn('Failed to load XMTP state from localStorage:', error);
+    return null;
+  }
+};
+
 export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   const { address } = useAccount();
   const [client, setClient] = useState<Client | null>(null);
@@ -142,6 +161,9 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
           setIsRegistered(true);
           initializedAddressRef.current = address;
           
+          // Save state to localStorage
+          saveXMTPState(address, { isRegistered: true, timestamp: Date.now() });
+          
           console.log('XMTP client initialized and user registered successfully');
           setError(null);
           
@@ -174,6 +196,9 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       setClient(xmtpClient);
       setIsRegistered(true);
       initializedAddressRef.current = address;
+      
+      // Save state to localStorage
+      saveXMTPState(address, { isRegistered: true, timestamp: Date.now() });
       
       console.log('XMTP client initialized successfully for existing user');
       
@@ -353,6 +378,18 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       messageSubscriptions.forEach(unsubscribe => unsubscribe());
     };
   }, [messageSubscriptions]);
+
+  // Load persisted state on mount and address change
+  useEffect(() => {
+    if (address) {
+      const persistedState = loadXMTPState(address);
+      if (persistedState && persistedState.isRegistered) {
+        console.log('Loading persisted XMTP state for address:', address);
+        setIsRegistered(true);
+        initializedAddressRef.current = address;
+      }
+    }
+  }, [address]);
 
   // Reset state when address changes
   useEffect(() => {
