@@ -2,7 +2,7 @@
 export const APP_CONFIG = {
   name: "10K - Move. Earn. Connect.",
   shortName: "10K",
-  description: "Inclusive wellness app for step tracking, social connection, and token rewards",
+  description: "A Farcaster Mini App for step tracking, social connection, and token rewards on Base Chain.",
   version: "1.0.0",
   themeColor: "#667eea",
   backgroundColor: "#000000",
@@ -11,10 +11,15 @@ export const APP_CONFIG = {
 
 // Environment Configuration
 export const ENV_CONFIG = {
-  XMTP_ENV: import.meta.env.VITE_XMTP_ENV || 'production',
-  RPC_URL: import.meta.env.VITE_RPC_URL || 'https://flashy-convincing-paper.base-mainnet.quiknode.pro/fe55bc09278a1ccc534942fad989695b412ab4ea/',
-  STEP_TRACKER_CONTRACT: import.meta.env.VITE_STEP_TRACKER_CONTRACT as `0x${string}`,
-  ONCHAINKIT_API_KEY: import.meta.env.VITE_ONCHAINKIT_API_KEY,
+  // Base Chain RPC URL
+  BASE_RPC_URL: import.meta.env.VITE_BASE_RPC_URL || 'https://mainnet.base.org',
+  
+  // Step Tracker Contract
+  STEP_TRACKER_CONTRACT: import.meta.env.VITE_STEP_TRACKER_CONTRACT || '0x0000000000000000000000000000000000000000',
+  
+  // Environment
+  NODE_ENV: import.meta.env.NODE_ENV || 'development',
+  IS_PRODUCTION: import.meta.env.NODE_ENV === 'production',
 } as const;
 
 // Step Tracking Configuration
@@ -47,23 +52,33 @@ export const UI_CONFIG = {
 export const CONTRACT_CONFIG = {
   stepTrackerAbi: [
     {
-      name: 'getUserStats',
-      type: 'function',
-      stateMutability: 'view',
-      inputs: [{ name: 'user', type: 'address' }],
-      outputs: [
-        { name: 'totalSteps', type: 'uint256' },
-        { name: 'currentStreak', type: 'uint256' },
-        { name: 'totalGoalsCompleted', type: 'uint256' }
-      ]
-    },
-    {
-      name: 'recordDailyGoal',
-      type: 'function',
-      stateMutability: 'nonpayable',
-      inputs: [
-        { name: 'steps', type: 'uint256' }
-      ]
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "user",
+          "type": "address"
+        }
+      ],
+      "name": "getUserStats",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "totalSteps",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "currentStreak",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "totalTokens",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
     }
   ] as const,
 } as const;
@@ -73,7 +88,8 @@ export const FARCASTER_CONFIG = {
   authDomain: "www.move10k.xyz",
   redirectUrl: "https://www.move10k.xyz",
 } as const; 
+
 // Validate required environment variables
-if (!ENV_CONFIG.RPC_URL) {
-  console.warn('VITE_RPC_URL not set, using public Base RPC endpoint');
+if (!ENV_CONFIG.BASE_RPC_URL) {
+  console.warn('VITE_BASE_RPC_URL not set, using public Base RPC endpoint');
 }

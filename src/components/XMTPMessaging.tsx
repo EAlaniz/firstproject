@@ -1,307 +1,248 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
+import { Client } from '@xmtp/browser-sdk';
+import { createWalletClient, custom } from 'viem';
+import { base } from 'viem/chains';
 import { useAccount } from 'wagmi';
-import { Send, Users, Plus, X, MessageCircle, Loader2, AlertCircle, CheckCircle, Zap } from 'lucide-react';
-import { useFarcasterLifecycle } from '../hooks/useFarcasterLifecycle';
-import { useMessageStream } from '../useMessageStream';
-
-// Extend the Window type to include farcaster (if present)
-declare global {
-  interface Window {
-    farcaster?: {
-      getProvider?: () => Promise<unknown>;
-    };
-  }
-}
 
 interface XMTPMessagingProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-interface MinimalConversation {
-  id?: string;
-  peerAddress?: string;
+interface Message {
+  senderAddress: string;
+  content: string;
+  timestamp: Date;
 }
 
-interface MinimalMessage {
-  senderAddress?: string;
-  content?: string;
-  sent?: Date;
-}
+export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
+  const [xmtp, setXmtp] = useState<Client | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [recipient, setRecipient] = useState('');
+  const [text, setText] = useState('');
+  const [conversation, setConversation] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { address, isConnected } = useAccount();
 
-const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
-  const { address } = useAccount();
-  const { client, isReady, error } = useFarcasterLifecycle();
-  
-  const [newContactAddress, setNewContactAddress] = useState('');
-  const [selectedPeer, setSelectedPeer] = useState<string>('');
-  const [showNewChat, setShowNewChat] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  // Create signer function
+  const createSigner = async () => {
+    const walletClient = createWalletClient({
+      chain: base,
+      transport: custom(window.ethereum),
+    });
 
-  // Auto-scroll to bottom when new messages arrive
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, []);
+    const [walletAddress] = await walletClient.getAddresses();
 
-  // Use message stream for selected peer
-  const { messages, sendMessage } = useMessageStream(client, selectedPeer);
-
-  const handleBackdropClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
-      onClose();
-    }
+    return {
+      getAddress: () => Promise.resolve(walletAddress),
+      signMessage: (message: string) =>
+        walletClient.signMessage({ account: walletAddress, message }),
+    };
   };
 
-  const handleSendMessage = async () => {
-    if (!selectedPeer) return;
-    
-    const input = document.getElementById('message-input') as HTMLInputElement;
-    const content = input?.value?.trim();
-    if (!content) return;
+  // Initialize XMTP
+  const initXMTP = async () => {
+    if (!isConnected || !address) {
+      setError('Wallet not connected');
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
 
     try {
-      await sendMessage(content);
-      input.value = '';
+      console.log('Initializing XMTP V3 client...');
+      
+      const signer = await createSigner();
+      console.log('Signer created for address:', await signer.getAddress());
+
+      // Initialize client with signer and environment
+      const xmtpClient = await Client.create(signer as any, { env: 'production' });
+
+      console.log('✅ XMTP V3 client created successfully');
+      setXmtp(xmtpClient);
+
+      // Start streaming messages
+      startMessageStream(xmtpClient);
     } catch (err) {
-      console.error('Failed to send message:', err);
+      console.error('❌ Failed to initialize XMTP V3 client:', err);
+      setError(err instanceof Error ? err.message : 'Failed to initialize XMTP');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleCreateConversation = () => {
-    if (!newContactAddress.trim()) return;
-    setSelectedPeer(newContactAddress.trim());
-    setNewContactAddress('');
-    setShowNewChat(false);
+  // Start message stream
+  const startMessageStream = async (client: Client) => {
+    try {
+      console.log('Starting message stream...');
+      
+      // Stream conversations and messages
+      for await (const conv of await client.conversations.stream()) {
+        console.log('New conversation:', conv.id);
+        
+        for await (const msg of await conv.streamMessages()) {
+          const newMessage: Message = {
+            senderAddress: msg.senderAddress,
+            content: msg.content as string,
+            timestamp: new Date(),
+          };
+          setMessages(prev => [...prev, newMessage]);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error in message stream:', error);
+    }
   };
 
-  const formatAddress = (address: string) => {
-    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  // Start conversation and send message
+  const startConvAndSend = async () => {
+    if (!xmtp || !recipient.trim() || !text.trim()) return;
+
+    try {
+      setIsLoading(true);
+      
+      // Create or find DM conversation
+      const conv = await (xmtp.conversations as any).newConversation(recipient);
+      setConversation(conv);
+      
+      // Send the message
+      await conv.send(text);
+      
+      // Add message to local state
+      const newMessage: Message = {
+        senderAddress: address || '',
+        content: text,
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, newMessage]);
+      
+      setText('');
+      setRecipient('');
+    } catch (err) {
+      console.error('❌ Failed to send message:', err);
+      setError(err instanceof Error ? err.message : 'Failed to send message');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const formatTimestamp = (timestamp: Date) => {
-    const now = new Date();
-    const diff = now.getTime() - timestamp.getTime();
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(diff / 3600000);
-    const days = Math.floor(diff / 86400000);
-
-    if (minutes < 1) return 'Just now';
-    if (minutes < 60) return `${minutes}m ago`;
-    if (hours < 24) return `${hours}h ago`;
-    if (days < 7) return `${days}d ago`;
-    return timestamp.toLocaleDateString();
-  };
+  // Auto-initialize when wallet connects
+  useEffect(() => {
+    if (isConnected && address && !xmtp && !isLoading) {
+      initXMTP();
+    }
+  }, [isConnected, address]);
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={handleBackdropClick}>
-      <div className="bg-white w-full max-w-4xl h-[80vh] flex overflow-hidden rounded-2xl">
-        {/* XMTP Status Indicator */}
-        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10 w-full max-w-md mx-auto">
-          {isReady && (
-            <div className="text-xs text-green-600 text-center">
-              <CheckCircle className="w-3 h-3 inline-block mr-1" /> Ready to chat on XMTP!
-            </div>
-          )}
-          {!isReady && (
-            <div className="text-xs text-gray-500 text-center">
-              Messaging unavailable. Connect wallet and complete setup.
-            </div>
-          )}
-          {error && (
-            <div className="text-xs text-red-500 text-center">{error}</div>
-          )}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <h2 className="text-xl font-semibold text-gray-900">XMTP Messaging</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            ✕
+          </button>
         </div>
-
-        {/* Sidebar */}
-        <div className="w-80 border-r border-gray-200 flex flex-col">
-          {/* Header */}
-          <div className="p-4 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Messages</h2>
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={() => setShowNewChat(true)}
-                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                  disabled={!isReady}
-                >
-                  <Plus className="w-5 h-5" />
-                </button>
-              </div>
+        
+        {/* Content */}
+        <div className="p-6">
+          {!isConnected ? (
+            <div className="text-center py-8">
+              <p className="text-gray-600 mb-4">Please connect your wallet to use XMTP messaging.</p>
             </div>
-          </div>
-
-          {/* New Chat Modal */}
-          {showNewChat && (
-            <div className="p-4 border-b border-gray-200">
-              <div className="space-y-3">
+          ) : !xmtp ? (
+            <div className="text-center py-8">
+              {isLoading ? (
+                <div className="space-y-4">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                  <p className="text-gray-600">Initializing XMTP...</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <button
+                    onClick={initXMTP}
+                    className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                  >
+                    Initialize XMTP
+                  </button>
+                  {error && (
+                    <p className="text-red-600 text-sm">{error}</p>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* Message Input */}
+              <div className="space-y-4">
                 <input
                   type="text"
-                  placeholder="Enter wallet address (0x...)"
-                  value={newContactAddress}
-                  onChange={(e) => setNewContactAddress(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  placeholder="Recipient Address (0x...)"
+                  value={recipient}
+                  onChange={(e) => setRecipient(e.target.value)}
+                  className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <div className="flex space-x-2">
+                  <input
+                    type="text"
+                    placeholder="Your message..."
+                    value={text}
+                    onChange={(e) => setText(e.target.value)}
+                    className="flex-1 p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    onKeyPress={(e) => e.key === 'Enter' && startConvAndSend()}
+                  />
                   <button
-                    onClick={handleCreateConversation}
-                    disabled={!newContactAddress.trim()}
-                    className="flex-1 bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                    onClick={startConvAndSend}
+                    disabled={!recipient.trim() || !text.trim() || isLoading}
+                    className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Start Chat
-                  </button>
-                  <button
-                    onClick={() => setShowNewChat(false)}
-                    className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Conversations List */}
-          <div className="flex-1 overflow-y-auto">
-            {!address ? (
-              <div className="p-4 text-center text-gray-500">
-                <MessageCircle className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                <p className="text-sm">Please connect your wallet first</p>
-              </div>
-            ) : !isReady ? (
-              <div className="p-4 text-center text-gray-500">
-                <MessageCircle className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                <p className="text-sm mb-2">
-                  Setting up messaging
-                </p>
-                <p className="text-xs text-gray-400">
-                  Connect your wallet to enable messaging
-                </p>
-              </div>
-            ) : !selectedPeer ? (
-              <div className="p-4 text-center text-gray-500">
-                <MessageCircle className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                <p className="text-sm">No conversation selected</p>
-                <button
-                  onClick={() => setShowNewChat(true)}
-                  className="mt-2 text-blue-600 hover:text-blue-700 text-sm"
-                >
-                  Start your first chat
-                </button>
-              </div>
-            ) : (
-              <div className="p-4">
-                <div className="flex items-center space-x-3 p-3 bg-blue-50 rounded-lg">
-                  <div className="w-10 h-10 bg-blue-200 rounded-full flex items-center justify-center">
-                    <Users className="w-5 h-5 text-blue-600" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm truncate">
-                      {formatAddress(selectedPeer)}
-                    </p>
-                    <p className="text-xs text-gray-500 truncate">
-                      Active conversation
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Chat Area */}
-        <div className="flex-1 flex flex-col">
-          {selectedPeer ? (
-            <>
-              {/* Chat Header */}
-              <div className="p-4 border-b border-gray-200">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 bg-blue-200 rounded-full flex items-center justify-center">
-                      <Users className="w-4 h-4 text-blue-600" />
-                    </div>
-                    <div>
-                      <p className="font-medium">
-                        {formatAddress(selectedPeer)}
-                      </p>
-                      <p className="text-xs text-gray-500">Active now</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={onClose}
-                    className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                  >
-                    <X className="w-5 h-5" />
+                    {isLoading ? 'Sending...' : 'Send'}
                   </button>
                 </div>
               </div>
 
               {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {messages.map((message, index) => (
-                  <div
-                    key={index}
-                    className={`flex ${
-                      (message as any).senderAddress === selectedPeer
-                        ? 'justify-start'
-                        : 'justify-end'
-                    }`}
-                  >
-                    <div
-                      className={`max-w-xs px-4 py-2 rounded-lg ${
-                        (message as any).senderAddress === selectedPeer
-                          ? 'bg-gray-100 text-gray-900'
-                          : 'bg-blue-600 text-white'
-                      }`}
-                    >
-                      <p className="text-sm">{String((message as any).content)}</p>
-                      <p className={`text-xs mt-1 ${
-                        (message as any).senderAddress === selectedPeer
-                          ? 'text-gray-500'
-                          : 'text-blue-200'
-                      }`}>
-                        {formatTimestamp((message as any).sent || new Date())}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-                <div ref={messagesEndRef} />
+              <div className="space-y-4">
+                <h3 className="font-semibold text-gray-900">Messages</h3>
+                <div className="max-h-64 overflow-y-auto space-y-2">
+                  {messages.length === 0 ? (
+                    <p className="text-gray-500 text-center py-4">No messages yet. Start a conversation!</p>
+                  ) : (
+                    messages.map((msg, i) => (
+                      <div
+                        key={i}
+                        className={`p-3 rounded-lg ${
+                          msg.senderAddress === address
+                            ? 'bg-blue-100 ml-8'
+                            : 'bg-gray-100 mr-8'
+                        }`}
+                      >
+                        <div className="text-xs text-gray-600 mb-1">
+                          {msg.senderAddress === address ? 'You' : msg.senderAddress.slice(0, 6) + '...'}
+                        </div>
+                        <div className="text-sm">{msg.content}</div>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
 
-              {/* Message Input */}
-              <div className="flex items-center p-4 border-t border-gray-200">
-                <input
-                  id="message-input"
-                  type="text"
-                  className="flex-1 border rounded px-3 py-2 mr-2"
-                  placeholder="Type your message..."
-                  disabled={!isReady}
-                  onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                />
-                <button
-                  onClick={handleSendMessage}
-                  disabled={!isReady}
-                  className={`bg-blue-600 text-white px-4 py-2 rounded-full flex items-center space-x-2 ${(!isReady) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700 transition-colors'}`}
-                >
-                  <Send className="w-4 h-4" />
-                  <span>Send</span>
-                </button>
-              </div>
-            </>
-          ) : (
-            <div className="flex-1 flex items-center justify-center">
-              <div className="text-center text-gray-500">
-                <MessageCircle className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                <p className="text-lg font-medium">Select a conversation</p>
-                <p className="text-sm">Choose a contact to start messaging</p>
-              </div>
+              {error && (
+                <div className="bg-red-50 border border-red-200 p-3 rounded-lg">
+                  <p className="text-red-600 text-sm">{error}</p>
+                </div>
+              )}
             </div>
           )}
         </div>
       </div>
     </div>
   );
-};
-
-export default XMTPMessaging; 
+} 
