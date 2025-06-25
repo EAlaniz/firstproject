@@ -48,6 +48,12 @@ export default function XmtpMessenger() {
     if (!xmtpClient) return setStatus('XMTP client not ready');
     if (!recipient || !message) return setStatus('Recipient or message missing');
 
+    // Validate recipient address before attempting to create DM
+    if (!/^0x[a-fA-F0-9]{40}$/.test(recipient)) {
+      setStatus('Invalid Ethereum address. Please enter a valid 0x... address.');
+      return;
+    }
+
     try {
       setStatus('Sending message...');
       // Debug: log available methods and prototype on conversations
