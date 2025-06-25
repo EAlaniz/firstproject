@@ -56,7 +56,17 @@ export default function XmtpMessenger() {
       const proto = Object.getPrototypeOf(xmtpClient.conversations);
       console.log('Prototype:', proto);
       console.log('All property names:', Object.getOwnPropertyNames(proto));
-      const convo = await (xmtpClient.conversations as any).newConversation(recipient);
+      let convo;
+      if (typeof (xmtpClient.conversations as any).newDm === 'function') {
+        convo = await (xmtpClient.conversations as any).newDm(recipient);
+      } else if (typeof (xmtpClient.conversations as any).newDmWithIdentifier === 'function') {
+        convo = await (xmtpClient.conversations as any).newDmWithIdentifier({
+          kind: 'ETHEREUM',
+          identifier: recipient,
+        });
+      } else {
+        throw new Error('No valid method found to create DM conversation on XMTP client');
+      }
       await convo.send(message);
       setStatus('Message sent!');
       setMessage('');
