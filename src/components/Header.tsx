@@ -1,5 +1,5 @@
 import React from 'react';
-import { Activity, Trophy, Users } from 'lucide-react';
+import { Activity, Trophy } from 'lucide-react';
 
 interface HeaderProps {
   currentStreak: number;

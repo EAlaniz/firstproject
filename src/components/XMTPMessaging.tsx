@@ -2,9 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useXMTP } from '../contexts/XMTPContext';
 import { Conversation, DecodedMessage } from '@xmtp/browser-sdk';
 import { Send, Users, Plus, X, MessageCircle, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
-import { useAccount, useWalletClient } from 'wagmi';
-import { isFarcasterMiniApp } from './EnhancedWalletConnector'; // Updated: use EnhancedWalletConnector
-import { getEnvironmentInfo } from './EnhancedWalletConnector';
+import { useAccount } from 'wagmi';
 
 // Extend the Window type to include farcaster (if present)
 declare global {
@@ -22,25 +20,21 @@ interface XMTPMessagingProps {
 
 const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
   const { address } = useAccount();
-  const { data: walletClient } = useWalletClient();
   
   const {
-    client,
     conversations,
     messages,
     isLoading,
     error,
     isRegistered,
     isInitializing,
-    initializeClient,
     sendMessage,
     createConversation,
     loadMessages,
     subscribeToMessages,
     unsubscribeFromMessages,
     clearError,
-  } = useXMTP() as any;
-  const setError = (window as any).setError || ((msg: string) => { if (typeof clearError === 'function') clearError(); }); // fallback
+  } = useXMTP();
 
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [newMessage, setNewMessage] = useState('');
@@ -49,7 +43,6 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
   const [isSending, setIsSending] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -76,70 +69,6 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
       setTimeout(() => setShowSuccessMessage(false), 3000);
     }
   }, [isRegistered, isInitializing]);
-
-  const handleInitializeXMTP = async () => {
-    // Detailed logging for debugging
-    console.log('[XMTP] handleInitializeXMTP called');
-    console.log('[XMTP] address:', address);
-    console.log('[XMTP] isFarcasterMiniApp:', isFarcasterMiniApp());
-    console.log('[XMTP] walletClient:', walletClient);
-
-    let effectiveWalletClient = walletClient;
-
-    // In mini app, if walletClient is undefined, try to get provider from Farcaster SDK
-    if (isFarcasterMiniApp() && !walletClient && window?.farcaster) {
-      try {
-        // Try to get provider from Farcaster SDK (if available)
-        // This is a placeholder; actual SDK method may differ
-        if (window.farcaster.getProvider) {
-          effectiveWalletClient = await window.farcaster.getProvider();
-          console.log('[XMTP] Got wallet provider from Farcaster SDK:', effectiveWalletClient);
-        }
-      } catch (sdkErr) {
-        console.error('[XMTP] Failed to get provider from Farcaster SDK:', sdkErr);
-        setError('Failed to get wallet provider from Farcaster mini app. Please reconnect your wallet or reload.');
-        return;
-      }
-    }
-
-    if (!effectiveWalletClient) {
-      const errMsg = 'Wallet client not detected. Please connect your wallet.';
-      console.error('[XMTP]', errMsg);
-      setError(errMsg);
-      return;
-    }
-
-    if (isFarcasterMiniApp()) {
-      // In mini app, just use the walletClient as the signer (skip connector check)
-      try {
-        const { ethers } = await import('ethers');
-        const provider = new ethers.BrowserProvider(effectiveWalletClient);
-        const signer = await provider.getSigner();
-        console.log('[XMTP] Mini app: signer created, initializing XMTP client...');
-        await initializeClient(signer);
-      } catch (err) {
-        console.error('[XMTP] Failed to initialize XMTP in mini app:', err);
-        const errorMessage = err instanceof Error 
-          ? err.message 
-          : 'Failed to initialize XMTP. Please try again.';
-        setError(`XMTP Initialization Failed: ${errorMessage}`);
-      }
-      return;
-    }
-
-    // Web context: check for supported wallets by testing signature capability
-    try {
-      const { ethers } = await import('ethers');
-      const provider = new ethers.BrowserProvider(effectiveWalletClient);
-      const signer = await provider.getSigner();
-      // Initialize XMTP directly without test signature
-      await initializeClient(signer);
-    } catch (err) {
-      console.error('[XMTP] Failed to initialize XMTP:', err);
-      setError('Failed to initialize XMTP. Please ensure you are using Coinbase Wallet.');
-      return;
-    }
-  };
 
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
@@ -318,14 +247,14 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
               <div className="p-4 text-center text-gray-500">
                 <MessageCircle className="w-8 h-8 mx-auto mb-2 text-gray-400" />
                 <p className="text-sm mb-2">
-                  {isAutoInitializing ? 'Setting up messaging...' : 'Setting up messaging'}
+                  {isInitializing ? 'Setting up messaging...' : 'Setting up messaging'}
                 </p>
                 <p className="text-xs text-gray-400">
-                  {requirements.fallbackMessage}
+                  Connect your wallet to enable messaging
                 </p>
-                {environmentError && (
+                {error && (
                   <p className="text-xs text-red-500 mt-2">
-                    {environmentError}
+                    {error}
                   </p>
                 )}
               </div>
@@ -341,31 +270,34 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
                 </button>
               </div>
             ) : (
-              conversations.map((conversation: Conversation) => (
-                <div
-                  key={conversation.peerAddress}
-                  onClick={() => setSelectedConversation(conversation)}
-                  className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
-                    selectedConversation?.peerAddress === conversation.peerAddress
-                      ? 'bg-blue-50 border-blue-200'
-                      : ''
-                  }`}
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
-                      <Users className="w-5 h-5 text-gray-600" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">
-                        {formatAddress(conversation.peerAddress)}
-                      </p>
-                      <p className="text-xs text-gray-500 truncate">
-                        {conversation.context?.conversationId || 'New conversation'}
-                      </p>
+              conversations.map((conversation: Conversation) => {
+                const conv = conversation as any;
+                return (
+                  <div
+                    key={conv.id || conv.peerAddress}
+                    onClick={() => setSelectedConversation(conversation)}
+                    className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
+                      selectedConversation && (selectedConversation as any).id === conv.id
+                        ? 'bg-blue-50 border-blue-200'
+                        : ''
+                    }`}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+                        <Users className="w-5 h-5 text-gray-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">
+                          {formatAddress(conv.peerAddress || 'Unknown')}
+                        </p>
+                        <p className="text-xs text-gray-500 truncate">
+                          New conversation
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
@@ -383,7 +315,7 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
                     </div>
                     <div>
                       <p className="font-medium">
-                        {formatAddress(selectedConversation.peerAddress)}
+                        {formatAddress((selectedConversation as any).peerAddress || 'Unknown')}
                       </p>
                       <p className="text-xs text-gray-500">Active now</p>
                     </div>
@@ -399,33 +331,37 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
 
               {/* Messages */}
               <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {messages.map((message: DecodedMessage, index: number) => (
-                  <div
-                    key={index}
-                    className={`flex ${
-                      message.senderAddress === selectedConversation.peerAddress
-                        ? 'justify-start'
-                        : 'justify-end'
-                    }`}
-                  >
+                {messages.map((message: DecodedMessage, index: number) => {
+                  const msg = message as any;
+                  const conv = selectedConversation as any;
+                  return (
                     <div
-                      className={`max-w-xs px-4 py-2 rounded-lg ${
-                        message.senderAddress === selectedConversation.peerAddress
-                          ? 'bg-gray-100 text-gray-900'
-                          : 'bg-blue-600 text-white'
+                      key={index}
+                      className={`flex ${
+                        msg.senderAddress === conv.peerAddress
+                          ? 'justify-start'
+                          : 'justify-end'
                       }`}
                     >
-                      <p className="text-sm">{message.content}</p>
-                      <p className={`text-xs mt-1 ${
-                        message.senderAddress === selectedConversation.peerAddress
-                          ? 'text-gray-500'
-                          : 'text-blue-200'
-                      }`}>
-                        {formatTimestamp(message.sent)}
-                      </p>
+                      <div
+                        className={`max-w-xs px-4 py-2 rounded-lg ${
+                          msg.senderAddress === conv.peerAddress
+                            ? 'bg-gray-100 text-gray-900'
+                            : 'bg-blue-600 text-white'
+                        }`}
+                      >
+                        <p className="text-sm">{String(msg.content)}</p>
+                        <p className={`text-xs mt-1 ${
+                          msg.senderAddress === conv.peerAddress
+                            ? 'text-gray-500'
+                            : 'text-blue-200'
+                        }`}>
+                          {formatTimestamp(msg.sent)}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
                 <div ref={messagesEndRef} />
               </div>
 

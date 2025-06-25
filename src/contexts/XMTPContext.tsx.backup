@@ -3,7 +3,6 @@ import { Client, Conversation, DecodedMessage, SortDirection } from '@xmtp/brows
 import { useAccount, useWalletClient } from 'wagmi';
 import { Signer, isAddress } from 'ethers';
 import { ENV_CONFIG } from '../constants';
-import { getEnvironmentInfo } from '../components/EnhancedWalletConnector';
 
 interface XMTPContextType {
   client: Client | null;
@@ -37,12 +36,6 @@ export const useXMTP = () => {
 interface XMTPProviderProps {
   children: React.ReactNode;
 }
-
-// Database encryption key for V3 local database (required for V3)
-const DATABASE_ENCRYPTION_KEY = new Uint8Array([
-  233, 120, 198, 96, 154, 65, 132, 17, 132, 96, 250, 40, 103, 35, 125, 64,
-  166, 83, 208, 224, 254, 44, 205, 227, 175, 49, 234, 129, 74, 252, 135, 145,
-]);
 
 // Helper functions for persistence
 const getStorageKey = (address: string) => `xmtp_${address.toLowerCase()}`;
@@ -126,11 +119,9 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     const handleXMTPRegistration = async (signer: Signer) => {
       // Create XMTP client with V3 API
       try {
-        // V3: Use Client.build() instead of Client.create() and add dbEncryptionKey
-        const xmtpClient = await Client.build(signer, { 
+        const xmtpClient = await Client.create(signer, { 
           env: xmtpEnv, 
-          appVersion: '10k-move-earn-connect/1.0.0',
-          dbEncryptionKey: DATABASE_ENCRYPTION_KEY // Required for V3
+          appVersion: '10k-move-earn-connect/1.0.0' 
         });
         
         console.log('XMTP V3 client created successfully');
@@ -155,15 +146,9 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       console.log('Initializing XMTP V3 client for address:', address);
       console.log('Using XMTP environment:', xmtpEnv);
 
-      // Check if user is registered on XMTP V3 with better error handling
-      let canMessage = false;
-      try {
-        canMessage = await Client.canMessage(address, { env: xmtpEnv });
-      } catch (canMessageError) {
-        console.error('Error checking XMTP registration:', canMessageError);
-        // If canMessage fails, assume user needs to register
-        canMessage = false;
-      }
+      // Check if user is registered on XMTP V3
+      const canMessage = await Client.canMessage(address, { env: xmtpEnv });
+      console.log('Can message check result:', canMessage);
       
       if (!canMessage) {
         console.log('User not registered on XMTP V3, attempting to register...');

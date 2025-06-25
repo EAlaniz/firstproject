@@ -1,37 +1,32 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
+import { useAccount, useDisconnect } from 'wagmi';
 import { ConnectWallet } from '@coinbase/onchainkit/wallet';
-import { useAccount, useDisconnect, useWalletClient } from 'wagmi';
-import { User, LogOut, MessageCircle, Loader2, Smartphone, Monitor, Zap } from 'lucide-react';
+import { 
+  Monitor, 
+  Smartphone, 
+  User, 
+  LogOut, 
+  Zap, 
+  MessageCircle, 
+  Loader2 
+} from 'lucide-react';
 import { useXMTP } from '../contexts/XMTPContext';
 
-// Enhanced environment detection
+// Environment detection utility
 export const getEnvironmentInfo = () => {
-  const isFarcaster = (
-    window.location.hostname.includes('farcaster.xyz') ||
-    window.location.hostname.includes('warpcast.com') ||
-    window.location.hostname.includes('wrpcd.net') ||
-    window.location.search.includes('fid=') ||
-    window.location.search.includes('farcaster=') ||
-    window.navigator.userAgent.includes('Farcaster') ||
-    window.navigator.userAgent.includes('Warpcast') ||
-    window.location.search.includes('miniApp=true') ||
-    window.location.pathname.includes('/mini-app') ||
-    window.location.pathname.includes('/miniapp')
-  );
-
-  const isMobile = (
-    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-    window.innerWidth <= 768
-  );
-
-  const isDesktop = !isFarcaster && !isMobile;
-
-  return {
-    isFarcaster,
-    isMobile,
-    isDesktop,
-    environment: isFarcaster ? 'farcaster' : isMobile ? 'mobile' : 'desktop'
-  };
+  const userAgent = navigator.userAgent.toLowerCase();
+  const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
+  
+  // Check if we're in a Farcaster mini app environment
+  const isFarcaster = window.location.hostname.includes('warpcast.com') || 
+                     window.location.hostname.includes('farcaster.xyz') ||
+                     window.location.hostname.includes('farcaster.com') ||
+                     (window as any).farcaster !== undefined;
+  
+  const isDesktop = !isMobile && !isFarcaster;
+  const environment = isFarcaster ? 'farcaster' : isMobile ? 'mobile' : 'desktop';
+  
+  return { isFarcaster, isMobile, isDesktop, environment };
 };
 
 export const isFarcasterMiniApp = () => getEnvironmentInfo().isFarcaster;
@@ -49,68 +44,13 @@ export const EnhancedWalletConnector: React.FC<EnhancedWalletConnectorProps> = (
 }) => {
   const { address, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
-  const { data: walletClient } = useWalletClient();
   const { 
     isRegistered, 
     isInitializing, 
-    initializeClient, 
     error 
   } = useXMTP();
   
-  const [isAutoInitializing, setIsAutoInitializing] = useState(false);
-  const [autoInitAttempted, setAutoInitAttempted] = useState(false);
-  const [lastConnectedAddress, setLastConnectedAddress] = useState<string | null>(null);
-  
-  const { isFarcaster, isMobile, isDesktop, environment } = getEnvironmentInfo();
-
-  // Environment-specific auto-initialization logic - More conservative approach
-  useEffect(() => {
-    const autoInitializeXMTP = async () => {
-      // Only attempt auto-initialization once per connection
-      if (autoInitAttempted) return;
-      
-      // Only auto-initialize if we're connected, have an address, have a wallet client,
-      // are not already registered, not currently initializing, not auto-initializing,
-      // and have no errors, and this is a new connection (address changed)
-      if (isConnected && address && walletClient && !isRegistered && !isInitializing && !isAutoInitializing && !error && address !== lastConnectedAddress) {
-        console.log(`[Wallet] Auto-initializing XMTP for ${environment} environment:`, address);
-        setIsAutoInitializing(true);
-        setAutoInitAttempted(true);
-        setLastConnectedAddress(address);
-        
-        try {
-          const { ethers } = await import('ethers');
-          const provider = new ethers.BrowserProvider(walletClient);
-          const signer = await provider.getSigner();
-          
-          await initializeClient(signer);
-          console.log(`[Wallet] XMTP auto-initialization successful in ${environment}`);
-        } catch (error) {
-          console.error(`[Wallet] XMTP auto-initialization failed in ${environment}:`, error);
-          // Environment-specific error handling
-          if (isFarcaster) {
-            console.log('[Wallet] Farcaster environment - user can manually initialize later');
-          } else if (isMobile) {
-            console.log('[Wallet] Mobile environment - user can manually initialize later');
-          } else {
-            console.log('[Wallet] Desktop environment - user can manually initialize later');
-          }
-        } finally {
-          setIsAutoInitializing(false);
-        }
-      }
-    };
-
-    autoInitializeXMTP();
-  }, [isConnected, address, walletClient, isRegistered, isInitializing, isAutoInitializing, autoInitAttempted, initializeClient, environment, isFarcaster, isMobile, isDesktop, error, lastConnectedAddress]);
-
-  // Reset auto-init attempt when wallet disconnects
-  useEffect(() => {
-    if (!isConnected) {
-      setAutoInitAttempted(false);
-      setLastConnectedAddress(null);
-    }
-  }, [isConnected]);
+  const { isFarcaster, isMobile } = getEnvironmentInfo();
 
   // Farcaster Mini App Environment
   if (isFarcaster) {
@@ -125,7 +65,7 @@ export const EnhancedWalletConnector: React.FC<EnhancedWalletConnectorProps> = (
               {address.slice(0, 6)}...{address.slice(-4)}
             </div>
             <div className="text-xs text-purple-600 flex items-center space-x-1">
-              {isAutoInitializing ? (
+              {isInitializing ? (
                 <>
                   <Loader2 className="w-3 h-3 animate-spin" />
                   <span>Setting up messaging...</span>
