@@ -1,28 +1,7 @@
 import { http, createConfig } from 'wagmi';
 import { base } from 'wagmi/chains';
 import { coinbaseWallet } from 'wagmi/connectors';
-
-// Detect if we're in a Farcaster mini app environment
-const isFarcasterMiniApp = () => {
-  return (
-    window.location.hostname.includes('farcaster.xyz') ||
-    window.location.hostname.includes('warpcast.com') ||
-    window.location.hostname.includes('wrpcd.net') ||
-    window.location.search.includes('fid=') ||
-    window.location.search.includes('farcaster=') ||
-    window.navigator.userAgent.includes('Farcaster') ||
-    window.navigator.userAgent.includes('Warpcast') ||
-    // Add more specific detection for mini app preview
-    window.location.search.includes('miniApp=true') ||
-    window.location.pathname.includes('/miniapp') ||
-    // Check for Farcaster mini app specific parameters
-    window.location.search.includes('frame=') ||
-    window.location.search.includes('embed=') ||
-    // Check for mobile preview environments
-    window.location.hostname.includes('preview') ||
-    window.location.hostname.includes('debug')
-  );
-};
+import { ENV_CONFIG } from './constants';
 
 export const config = createConfig({
   chains: [base],
@@ -33,7 +12,7 @@ export const config = createConfig({
     }),
   ],
   transports: {
-    [base.id]: http('https://flashy-convincing-paper.base-mainnet.quiknode.pro/fe55bc09278a1ccc534942fad989695b412ab4ea/'),
+    [base.id]: http(ENV_CONFIG.RPC_URL),
   },
 });
 

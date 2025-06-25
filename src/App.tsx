@@ -28,29 +28,7 @@ import MiniAppWalletConnector from './components/MiniAppWalletConnector';
 import { sdk } from '@farcaster/frame-sdk';
 import { XMTPProvider } from './contexts/XMTPContext';
 import XMTPMessaging from './components/XMTPMessaging';
-
-// Contract ABI (simplified for demo)
-const stepTrackerAbi = [
-  {
-    name: 'getUserStats',
-    type: 'function',
-    stateMutability: 'view',
-    inputs: [{ name: 'user', type: 'address' }],
-    outputs: [
-      { name: 'totalSteps', type: 'uint256' },
-      { name: 'currentStreak', type: 'uint256' },
-      { name: 'totalGoalsCompleted', type: 'uint256' }
-    ]
-  },
-  {
-    name: 'recordDailyGoal',
-    type: 'function',
-    stateMutability: 'nonpayable',
-    inputs: [
-      { name: 'steps', type: 'uint256' }
-    ]
-  }
-] as const;
+import { CONTRACT_CONFIG, ENV_CONFIG } from './constants';
 
 function App() {
   // Wagmi hooks for Base chain integration
@@ -64,7 +42,6 @@ function App() {
   // Mini app detection
   const [isMiniApp, setIsMiniApp] = useState(false);
   const [isMiniAppReady, setIsMiniAppReady] = useState(false);
-  const [walletError, setWalletError] = useState<string | null>(null);
   
   // Initialize mini app detection with better error handling
   useEffect(() => {
@@ -115,16 +92,13 @@ function App() {
     }
   }, [isMiniApp, isConnected]);
   
-  // Contract addresses
-  const STEP_TRACKER_CONTRACT = import.meta.env.VITE_STEP_TRACKER_CONTRACT as `0x${string}`;
-  
   // Read user stats from Base chain
   const { data: userStats } = useReadContract({
-    address: STEP_TRACKER_CONTRACT,
-    abi: stepTrackerAbi,
+    address: ENV_CONFIG.STEP_TRACKER_CONTRACT,
+    abi: CONTRACT_CONFIG.stepTrackerAbi,
     functionName: 'getUserStats',
     args: address ? [address] : undefined,
-    query: { enabled: !!address && !!STEP_TRACKER_CONTRACT }
+    query: { enabled: !!address && !!ENV_CONFIG.STEP_TRACKER_CONTRACT }
   });
   
   // Local state

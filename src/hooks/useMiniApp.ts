@@ -10,7 +10,7 @@ export interface MiniAppState {
 export const useMiniApp = (): MiniAppState => {
   const [isMiniApp, setIsMiniApp] = useState(false);
   const [isMiniAppReady, setIsMiniAppReady] = useState(false);
-  const [walletError, setWalletError] = useState<string | null>(null);
+  const [walletError] = useState<string | null>(null);
 
   useEffect(() => {
     const detectMiniApp = async () => {

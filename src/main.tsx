@@ -14,6 +14,7 @@ import { WagmiProvider } from 'wagmi';
 import { base } from 'wagmi/chains';
 import { config } from './wagmi';
 import { AuthKitProvider } from '@farcaster/auth-kit';
+import { ENV_CONFIG } from './constants';
 import App from './App';
 import './index.css';
 
@@ -62,7 +63,7 @@ createRoot(rootElement).render(
             options: {
               timeout: 30000,
               enableLogging: true,
-              rpcUrl: 'https://flashy-convincing-paper.base-mainnet.quiknode.pro/fe55bc09278a1ccc534942fad989695b412ab4ea/',
+              rpcUrl: ENV_CONFIG.RPC_URL,
             },
             miniApp: {
               enabled: isFarcasterMiniApp(),
@@ -74,7 +75,7 @@ createRoot(rootElement).render(
           }}
         >
           <OnchainKitProvider
-            apiKey={import.meta.env.VITE_ONCHAINKIT_API_KEY || ''}
+            apiKey={ENV_CONFIG.ONCHAINKIT_API_KEY || ''}
             chain={base}
             options={{
               timeout: 30000,

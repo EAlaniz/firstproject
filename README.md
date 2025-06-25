@@ -1,222 +1,208 @@
-# 10K Base Mini App Migration Tool
+# 10K - Move. Earn. Connect.
 
-This repository contains an automated migration script to convert your 10K wellness app into a Base Chain Mini App using Coinbase's Mini App Kit framework.
+A Farcaster Mini App for step tracking, social connection, and token rewards on Base Chain with XMTP messaging integration.
 
-## Quick Migration
+## 🚀 Quick Start
 
-Run the migration script to automatically set up your Base Mini App:
+### Prerequisites
+- Node.js 18+ 
+- npm or yarn
+- A Base Chain RPC URL
+- OnchainKit API key (optional)
 
+### Installation
+
+1. **Clone and install dependencies**
 ```bash
-# Make the script executable
-chmod +x migrate-to-base.js
-
-# Run migration (creates new directory)
-npm run migrate
-
-# Or specify custom target directory
-node migrate-to-base.js ../my-base-app
+git clone <your-repo-url>
+cd move10k
+npm install
 ```
 
-## What the Migration Script Does
-
-1. **Clones Base Mini App Kit template** from Coinbase's official repository
-2. **Copies your 10K app files** (components, styles, configurations)
-3. **Updates package.json** with Base Chain dependencies
-4. **Configures Wagmi and OnchainKit** for Base integration
-5. **Creates environment files** with proper Base configuration
-6. **Sets up mini app manifest** for Coinbase directory submission
-7. **Installs dependencies** and prepares for development
-
-## Manual Migration Steps
-
-If you prefer to migrate manually, follow these steps:
-
-### 1. Clone Base Mini App Kit
-```bash
-git clone https://github.com/coinbase/build-onchain-apps.git
-cd build-onchain-apps/templates/base-mini-app
-```
-
-### 2. Copy 10K App Files
-```bash
-# Copy components and core files
-cp -r /path/to/10k-app/src/components ./src/
-cp /path/to/10k-app/src/App.tsx ./src/
-cp /path/to/10k-app/src/main.tsx ./src/
-cp /path/to/10k-app/src/index.css ./src/
-cp /path/to/10k-app/src/wagmi.ts ./src/
-cp /path/to/10k-app/tailwind.config.js ./
-```
-
-### 3. Install Dependencies
-```bash
-npm install @coinbase/onchainkit @coinbase/wallet-sdk @tanstack/react-query wagmi viem lucide-react
-```
-
-### 4. Configure Environment
+2. **Set up environment variables**
 ```bash
 cp .env.example .env
-# Edit .env with your API keys and contract addresses
 ```
 
-### 5. Start Development
+Edit `.env` with your configuration:
+```env
+# XMTP Configuration
+VITE_XMTP_ENV=production
+
+# RPC Configuration  
+VITE_RPC_URL=https://your-base-rpc-url.com/
+
+# Contract Configuration
+VITE_STEP_TRACKER_CONTRACT=0x0000000000000000000000000000000000000000
+
+# OnchainKit Configuration (optional)
+VITE_ONCHAINKIT_API_KEY=your_onchainkit_api_key_here
+```
+
+3. **Start development server**
 ```bash
 npm run dev
 ```
 
-## Environment Configuration
-
-Create a `.env` file with these variables:
-
-```env
-# Required
-VITE_ONCHAINKIT_API_KEY=your_coinbase_api_key
-VITE_STEP_TRACKER_CONTRACT=0x...
-VITE_TOKEN_CONTRACT=0x...
-
-# Optional
-VITE_WALLET_CONNECT_PROJECT_ID=your_project_id
-VITE_BASE_RPC_URL=https://mainnet.base.org
-VITE_BASE_SEPOLIA_RPC_URL=https://sepolia.base.org
-```
-
-## Smart Contract Deployment
-
-### Prerequisites
-```bash
-# Install Foundry
-curl -L https://foundry.paradigm.xyz | bash
-foundryup
-
-# Get Base Sepolia ETH
-# Visit: https://www.coinbase.com/faucets/base-ethereum-sepolia-faucet
-```
-
-### Deploy to Base Sepolia (Testnet)
-```bash
-forge create --rpc-url https://sepolia.base.org \
-  --private-key $PRIVATE_KEY \
-  --etherscan-api-key $BASESCAN_API_KEY \
-  --verify \
-  smart-contracts/BaseStepTracker.sol:BaseStepTracker \
-  --constructor-args $TOKEN_ADDRESS
-```
-
-### Deploy to Base Mainnet
-```bash
-forge create --rpc-url https://mainnet.base.org \
-  --private-key $PRIVATE_KEY \
-  --etherscan-api-key $BASESCAN_API_KEY \
-  --verify \
-  smart-contracts/BaseStepTracker.sol:BaseStepTracker \
-  --constructor-args $TOKEN_ADDRESS
-```
-
-## Production Deployment
-
-### Build for Production
+4. **Build for production**
 ```bash
 npm run build
 ```
 
-### Deploy Options
-1. **Vercel** (Recommended for Mini Apps)
-2. **Netlify**
-3. **Base's hosting platform**
+## 🏗️ Architecture
 
-### Submit to Coinbase Mini App Directory
-1. Go to [Coinbase Developer Platform](https://portal.cdp.coinbase.com/)
-2. Navigate to Mini Apps section
-3. Submit your deployed app for review
+### Core Technologies
+- **React 18** with TypeScript
+- **Vite** for fast development and building
+- **Wagmi** for Ethereum interactions
+- **XMTP** for decentralized messaging
+- **Farcaster Auth Kit** for mini app authentication
+- **Tailwind CSS** for styling
+- **Base Chain** for blockchain operations
 
-## Key Features Migrated
+### Key Features
+- ✅ **Step Tracking**: Real-time step counting with smart contract integration
+- ✅ **XMTP Messaging**: Decentralized wallet-to-wallet messaging
+- ✅ **Farcaster Mini App**: Native integration with Farcaster ecosystem
+- ✅ **Token Rewards**: Earn tokens for completing daily goals
+- ✅ **Social Features**: Share achievements and connect with community
+- ✅ **Wallet Support**: MetaMask and Coinbase Wallet compatibility
+- ✅ **Responsive Design**: Mobile-first design optimized for mini apps
 
-- ✅ Step tracking with Base Chain integration
-- ✅ Token rewards system
-- ✅ Social feed and sharing
-- ✅ Achievement system
-- ✅ Streak tracking
-- ✅ Coinbase Smart Wallet integration
-- ✅ **XMTP messaging for community chat**
-- ✅ Cross-Origin-Opener-Policy configuration
-- ✅ Base network validation
+## 🔧 Configuration
 
-## XMTP Messaging Integration
+### Environment Variables
 
-The app includes full XMTP messaging functionality for community chat:
+| Variable | Description | Required | Default |
+|----------|-------------|----------|---------|
+| `VITE_XMTP_ENV` | XMTP environment (production/dev) | No | `production` |
+| `VITE_RPC_URL` | Base Chain RPC endpoint | Yes | - |
+| `VITE_STEP_TRACKER_CONTRACT` | Smart contract address | Yes | - |
+| `VITE_ONCHAINKIT_API_KEY` | OnchainKit API key | No | - |
 
-### Features
-- **Real-time messaging** between users
-- **Wallet-to-wallet conversations** using XMTP protocol
-- **Message history** and conversation management
-- **Automatic registration check** for XMTP compatibility
-- **Production-ready** with proper error handling
+### Wallet Configuration
 
-### How It Works
-1. Users connect their wallet (Coinbase Smart Wallet, MetaMask, etc.)
-2. App checks if wallet is registered on XMTP using `Client.canMessage()`
-3. If registered, initializes XMTP client for messaging
-4. Users can start conversations with any wallet address
-5. Real-time message polling ensures reliable delivery
+The app supports multiple wallet providers:
+- **Coinbase Wallet** (primary)
+- **MetaMask** (fallback)
+- **Farcaster Auth Kit** (mini app mode)
 
-### Technical Implementation
-- **XMTP Client**: Production environment with proper app versioning
-- **Message Polling**: 3-second intervals for reliable message delivery
-- **Error Handling**: Comprehensive error states and user feedback
-- **State Management**: React Context with proper cleanup and subscriptions
-- **Wallet Integration**: Seamless integration with wagmi and ethers
+### XMTP Integration
 
-### User Experience
-- **Initialize XMTP**: One-click setup for new users
-- **Conversation List**: View all active conversations
-- **Real-time Chat**: Send and receive messages instantly
-- **Address Formatting**: Clean display of wallet addresses
-- **Message Timestamps**: Relative time display for messages
+XMTP messaging is fully integrated with:
+- **Automatic registration** for new users
+- **Real-time message polling** (3-second intervals)
+- **Conversation management** with proper cleanup
+- **Error handling** with user-friendly messages
+- **Production environment** with proper app versioning
 
-## Troubleshooting
+## 🧪 Development
+
+### Available Scripts
+
+```bash
+npm run dev          # Start development server
+npm run build        # Build for production
+npm run preview      # Preview production build
+npm run lint         # Run ESLint
+```
+
+### Project Structure
+
+```
+src/
+├── components/          # React components
+│   ├── XMTPMessaging.tsx    # XMTP chat interface
+│   ├── MiniAppWalletConnector.tsx  # Wallet connection
+│   ├── FarcasterMiniApp.tsx # Mini app wrapper
+│   └── ...
+├── contexts/           # React contexts
+│   └── XMTPContext.tsx # XMTP state management
+├── hooks/             # Custom React hooks
+├── utils/             # Utility functions
+├── constants.ts       # App configuration
+├── wagmi.ts          # Wagmi configuration
+└── App.tsx           # Main app component
+```
+
+### Mini App Detection
+
+The app automatically detects Farcaster mini app environment and adjusts behavior:
+- **Wallet connection**: Uses native wallet in mini app mode
+- **UI layout**: Optimized for mobile mini app interface
+- **Navigation**: Simplified for mini app constraints
+
+## 🚀 Deployment
+
+### Vercel (Recommended)
+
+1. **Connect your repository** to Vercel
+2. **Set environment variables** in Vercel dashboard
+3. **Deploy** with automatic builds
+
+### Manual Deployment
+
+```bash
+npm run build
+# Upload dist/ folder to your hosting provider
+```
+
+### Farcaster Mini App Submission
+
+1. **Deploy** your app to a public URL
+2. **Test** in Farcaster mini app environment
+3. **Submit** for review through Farcaster's developer portal
+
+## 🔍 Troubleshooting
 
 ### Common Issues
 
-1. **Wallet Connection Fails**
-   - Check OnchainKit API key in `.env`
-   - Verify COOP header in `vite.config.ts`
+#### XMTP Initialization Fails
+- Ensure wallet is connected before initializing XMTP
+- Check browser console for detailed error messages
+- Verify wallet supports EIP-191 signatures (MetaMask, Coinbase Wallet)
 
-2. **Contract Calls Fail**
-   - Verify contract addresses in `.env`
-   - Check network connection (Base vs Base Sepolia)
+#### Wallet Connection Issues
+- Check RPC URL configuration
+- Verify network is set to Base Chain
+- Ensure proper CSP headers for wallet connections
 
-3. **XMTP Initialization Fails**
-   - Ensure wallet is registered on XMTP
-   - Check browser console for detailed error messages
-   - Verify wallet connection before initializing XMTP
+#### Build Errors
+- Run `npm install` to ensure all dependencies
+- Check TypeScript configuration
+- Verify environment variables are set
 
-4. **Build Errors**
-   - Run `npm install` to ensure all dependencies
-   - Check TypeScript configuration
+#### Mini App Issues
+- Test in actual Farcaster mini app environment
+- Check mini app detection logic
+- Verify wallet connection flow in mini app mode
 
-### Debug Commands
-```bash
-# Check wallet connection
-npm run dev -- --debug
+### Debug Mode
 
-# Verify contract deployment
-cast call $CONTRACT_ADDRESS "getUserStats(address)" $USER_ADDRESS --rpc-url https://mainnet.base.org
-
-# Test transaction
-cast send $CONTRACT_ADDRESS "recordDailyGoal(uint256)" 10000 --private-key $PRIVATE_KEY --rpc-url https://sepolia.base.org
+Enable debug logging by setting:
+```env
+VITE_DEBUG=true
 ```
 
-## Resources
+### Support
 
-- [Base Chain Documentation](https://docs.base.org/)
-- [OnchainKit Documentation](https://onchainkit.xyz/)
-- [Coinbase Mini App Kit](https://github.com/coinbase/build-onchain-apps)
-- [Base Sepolia Faucet](https://www.coinbase.com/faucets/base-ethereum-sepolia-faucet)
-- [Coinbase Developer Platform](https://portal.cdp.coinbase.com/)
+For issues related to:
+- **XMTP**: Check [XMTP documentation](https://xmtp.org/docs)
+- **Farcaster**: Visit [Farcaster developer docs](https://docs.farcaster.xyz/)
+- **Base Chain**: See [Base documentation](https://docs.base.org/)
 
-## Support
+## 📄 License
 
-For issues with the migration script or Base integration, please check:
-1. The generated `DEPLOYMENT.md` file in your migrated app
-2. [Base Chain Discord](https://discord.gg/buildonbase)
-3. [Coinbase Developer Documentation](https://docs.cdp.coinbase.com/)
+MIT License - see LICENSE file for details.
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
+
+---
+
+**Built with ❤️ for the Farcaster community**

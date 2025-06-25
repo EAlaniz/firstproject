@@ -25,14 +25,12 @@ export const isFarcasterMiniApp = () => {
 interface MiniAppWalletConnectorProps {
   className?: string;
   children?: React.ReactNode;
-  variant?: 'button' | 'icon' | 'text';
   onOpenModal?: () => void;
 }
 
 export const MiniAppWalletConnector: React.FC<MiniAppWalletConnectorProps> = ({
   className = '',
   children = null,
-  variant = 'button',
   onOpenModal = undefined
 }) => {
   const { address, isConnected } = useAccount();

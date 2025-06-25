@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { Client, Conversation, DecodedMessage, SortDirection } from '@xmtp/xmtp-js';
-import { useAccount, useWalletClient } from 'wagmi';
+import { useAccount } from 'wagmi';
 import { Signer, isAddress } from 'ethers';
+import { ENV_CONFIG } from '../constants';
 
 interface XMTPContextType {
   client: Client | null;
@@ -38,7 +39,6 @@ interface XMTPProviderProps {
 
 export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   const { address } = useAccount();
-  const { data: walletClient } = useWalletClient();
   const [client, setClient] = useState<Client | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messages, setMessages] = useState<DecodedMessage[]>([]);
@@ -51,7 +51,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   // Use ref to track if we've already initialized for this address
   const initializedAddressRef = useRef<string | null>(null);
 
-  const xmtpEnv = import.meta.env.VITE_XMTP_ENV || 'production';
+  const xmtpEnv = ENV_CONFIG.XMTP_ENV;
 
   const clearError = useCallback(() => {
     setError(null);
@@ -73,36 +73,6 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     }
   }, [client]);
 
-  const handleXMTPRegistration = async (signer: Signer) => {
-    // Debug: log signature for troubleshooting
-    try {
-      const testSig = await signer.signMessage('XMTP test');
-      console.log('XMTP test signature:', testSig);
-      
-      // Validate signature format (should be a hex string)
-      if (!testSig || typeof testSig !== 'string' || !testSig.startsWith('0x')) {
-        throw new Error('Invalid signature format returned from wallet');
-      }
-    } catch (e) {
-      console.error('Error signing XMTP test message:', e);
-      throw new Error('Wallet signature test failed. Please ensure you are using MetaMask or Coinbase Wallet.');
-    }
-    
-    // Create XMTP client with automatic registration
-    try {
-      const xmtpClient = await Client.create(signer, { 
-        env: xmtpEnv, 
-        appVersion: '10k-move-earn-connect/1.0.0' 
-      });
-      
-      console.log('XMTP client created successfully');
-      return xmtpClient;
-    } catch (error) {
-      console.error('Failed to create XMTP client:', error);
-      throw new Error('Failed to initialize XMTP. Please try again with MetaMask or Coinbase Wallet.');
-    }
-  };
-
   const initializeClient = useCallback(async (signer: Signer) => {
     if (!address) {
       setError('No wallet address available');
@@ -114,6 +84,36 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       console.log('Already initialized for this address');
       return;
     }
+
+    const handleXMTPRegistration = async (signer: Signer) => {
+      // Debug: log signature for troubleshooting
+      try {
+        const testSig = await signer.signMessage('XMTP test');
+        console.log('XMTP test signature:', testSig);
+        
+        // Validate signature format (should be a hex string)
+        if (!testSig || typeof testSig !== 'string' || !testSig.startsWith('0x')) {
+          throw new Error('Invalid signature format returned from wallet');
+        }
+      } catch (e) {
+        console.error('Error signing XMTP test message:', e);
+        throw new Error('Wallet signature test failed. Please ensure you are using MetaMask or Coinbase Wallet.');
+      }
+      
+      // Create XMTP client with automatic registration
+      try {
+        const xmtpClient = await Client.create(signer, { 
+          env: xmtpEnv, 
+          appVersion: '10k-move-earn-connect/1.0.0' 
+        });
+        
+        console.log('XMTP client created successfully');
+        return xmtpClient;
+      } catch (error) {
+        console.error('Failed to create XMTP client:', error);
+        throw new Error('Failed to initialize XMTP. Please try again with MetaMask or Coinbase Wallet.');
+      }
+    };
 
     try {
       setIsInitializing(true);
@@ -223,7 +223,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     let canMessage = false;
     try {
       canMessage = await Client.canMessage(address, { env: xmtpEnv });
-    } catch (err) {
+    } catch {
       setError('Error checking recipient XMTP registration.');
       return null;
     }
@@ -243,9 +243,9 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       setError('Failed to create conversation.');
       return null;
     }
-  }, [client, loadConversations]);
+  }, [client, loadConversations, xmtpEnv]);
 
-  const createGroupChat = useCallback(async (name: string, addresses: string[]): Promise<Conversation | null> => {
+  const createGroupChat = useCallback(async (): Promise<Conversation | null> => {
     if (!client) return null;
 
     try {
@@ -323,7 +323,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     return () => {
       messageSubscriptions.forEach(unsubscribe => unsubscribe());
     };
-  }, []);
+  }, [messageSubscriptions]);
 
   // Reset state when address changes
   useEffect(() => {
@@ -339,7 +339,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       messageSubscriptions.forEach(unsubscribe => unsubscribe());
       setMessageSubscriptions(new Map());
     }
-  }, [address]);
+  }, [address, messageSubscriptions]);
 
   const value: XMTPContextType = {
     client,
