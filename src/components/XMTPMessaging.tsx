@@ -111,8 +111,11 @@ export default function XMTPMessaging({ isOpen, onClose }: XMTPMessagingProps) {
     setError(null);
     try {
       const isAddress = /^0x[a-fA-F0-9]{40}$/.test(recipientInput);
+      if (!isAddress && !/^([a-zA-Z0-9_]+)$/.test(recipientInput.replace(/^@/, ''))) {
+        throw new Error('Invalid Farcaster handle or Ethereum address.');
+      }
       const resolved = isAddress ? recipientInput : await resolveFarcasterHandle(recipientInput);
-      if (!resolved) throw new Error('Could not resolve Farcaster handle');
+      if (!resolved || !/^0x[a-fA-F0-9]{40}$/.test(resolved)) throw new Error('Could not resolve Farcaster handle to a valid Ethereum address');
       setRecipientResolved(resolved);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to resolve recipient');
