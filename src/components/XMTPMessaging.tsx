@@ -70,10 +70,10 @@ export default function XMTPMessaging() {
       setStatus('Enter a message');
       return;
     }
-
+  
     try {
       setStatus('Creating conversation...');
-      const convo = await xmtpClient.conversations.newConversation(recipient);
+      const convo = await xmtpClient.conversations.new(recipient); // ✅ CORRECT METHOD
       await convo.send(message);
       setStatus('Message sent!');
       setMessage('');
