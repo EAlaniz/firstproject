@@ -86,20 +86,6 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     }
 
     const handleXMTPRegistration = async (signer: Signer) => {
-      // Debug: log signature for troubleshooting
-      try {
-        const testSig = await signer.signMessage('XMTP test');
-        console.log('XMTP test signature:', testSig);
-        
-        // Validate signature format (should be a hex string)
-        if (!testSig || typeof testSig !== 'string' || !testSig.startsWith('0x')) {
-          throw new Error('Invalid signature format returned from wallet');
-        }
-      } catch (e) {
-        console.error('Error signing XMTP test message:', e);
-        throw new Error('Wallet signature test failed. Please ensure you are using MetaMask or Coinbase Wallet.');
-      }
-      
       // Create XMTP client with automatic registration
       try {
         const xmtpClient = await Client.create(signer, { 
@@ -216,6 +202,12 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     // Validate Ethereum address
     if (!isAddress(address)) {
       setError('Invalid Ethereum address. Please enter a valid address.');
+      return null;
+    }
+
+    // Prevent self-messaging
+    if (address.toLowerCase() === client.address?.toLowerCase()) {
+      setError('You cannot send messages to yourself.');
       return null;
     }
 

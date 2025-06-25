@@ -130,13 +130,11 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
       const { ethers } = await import('ethers');
       const provider = new ethers.BrowserProvider(effectiveWalletClient);
       const signer = await provider.getSigner();
-      // Try to sign a test message
-      await signer.signMessage('XMTP test');
-      // If successful, proceed to initialize XMTP
+      // Initialize XMTP directly without test signature
       await initializeClient(signer);
     } catch (err) {
-      console.error('[XMTP] Wallet does not support required signature method:', err);
-      setError('Your wallet does not support the required signature method for XMTP. Please use MetaMask or Coinbase Wallet.');
+      console.error('[XMTP] Failed to initialize XMTP:', err);
+      setError('Failed to initialize XMTP. Please ensure you are using MetaMask or Coinbase Wallet.');
       return;
     }
   };

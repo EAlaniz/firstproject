@@ -9,6 +9,8 @@ export const config = createConfig({
     coinbaseWallet({
       appName: '10K - Move. Earn. Connect.',
       appLogoUrl: 'https://www.move10k.xyz/10k-icon.png',
+      jsonRpcUrl: ENV_CONFIG.RPC_URL,
+      chainId: base.id,
     }),
   ],
   transports: {

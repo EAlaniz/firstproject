@@ -64,6 +64,7 @@ createRoot(rootElement).render(
               timeout: 30000,
               enableLogging: true,
               rpcUrl: ENV_CONFIG.RPC_URL,
+              chainId: base.id,
             },
             miniApp: {
               enabled: isFarcasterMiniApp(),
