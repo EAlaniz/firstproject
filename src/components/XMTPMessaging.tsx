@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useAccount, useWalletClient } from 'wagmi';
 import { initXMTP, getClient } from '../xmtpClient';
-import { useXMTP } from '../contexts/XMTPContext';
 import { Conversation, DecodedMessage } from '@xmtp/browser-sdk';
-import { X, MessageCircle, Send, Users, Plus } from 'lucide-react';
+import { X, MessageCircle, Send, Users, Plus, Search } from 'lucide-react';
 
 interface XMTPMessagingProps {
   isOpen: boolean;
@@ -13,20 +12,21 @@ interface XMTPMessagingProps {
 const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
   const { address } = useAccount();
   const { data: walletClient } = useWalletClient();
-  
-  // Context-based XMTP (for advanced features)
-  const xmtpContext = useXMTP();
-  
-  // Direct client approach (for current working functionality)
+
+  // Direct client approach (current working functionality)
   const [xmtpClient, setXmtpClient] = useState<any>(null);
   const [recipient, setRecipient] = useState('');
   const [message, setMessage] = useState('');
   const [status, setStatus] = useState('');
   
-  // Enhanced UI state
+  // Enhanced features using direct client
+  const [conversations, setConversations] = useState<any[]>([]);
+  const [selectedConversation, setSelectedConversation] = useState<any>(null);
+  const [messages, setMessages] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [viewMode, setViewMode] = useState<'simple' | 'advanced'>('simple');
-  const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [showNewMessage, setShowNewMessage] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Initialize direct client (preserves current working functionality)
   useEffect(() => {
@@ -39,6 +39,11 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
         const client = await initXMTP(walletClient);
         setXmtpClient(client);
         setStatus('XMTP client initialized');
+        
+        // Load conversations after client is ready
+        if (client) {
+          await loadConversations(client);
+        }
       } catch (e) {
         console.error('[XMTP] Init failed:', e);
         setStatus('Failed to initialize XMTP');
@@ -48,29 +53,74 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
     init();
   }, [walletClient, address, isOpen]);
 
-  // Initialize context client when wallet is available
-  useEffect(() => {
-    if (walletClient && address && !xmtpContext.client && !xmtpContext.isInitializing) {
-      const initContext = async () => {
-        try {
-          const { ethers } = await import('ethers');
-          const provider = new ethers.BrowserProvider(walletClient);
-          const signer = await provider.getSigner();
-          await xmtpContext.initializeClient(signer);
-        } catch (error) {
-          console.error('Failed to initialize XMTP context:', error);
-        }
-      };
-      initContext();
+  // Load conversations using direct client
+  const loadConversations = async (client: any) => {
+    try {
+      setIsLoading(true);
+      const convos = await client.conversations.list();
+      setConversations(convos);
+      console.log('Loaded conversations:', convos.length);
+    } catch (error) {
+      console.error('Failed to load conversations:', error);
+    } finally {
+      setIsLoading(false);
     }
-  }, [walletClient, address, xmtpContext]);
+  };
 
-  // Load conversations when context client is ready
-  useEffect(() => {
-    if (xmtpContext.client && xmtpContext.conversations.length === 0) {
-      xmtpContext.loadConversations();
+  // Load messages for a conversation using direct client
+  const loadMessages = async (conversation: any) => {
+    try {
+      setIsLoading(true);
+      const msgs = await conversation.messages();
+      setMessages(msgs);
+      console.log('Loaded messages:', msgs.length);
+    } catch (error) {
+      console.error('Failed to load messages:', error);
+    } finally {
+      setIsLoading(false);
     }
-  }, [xmtpContext.client, xmtpContext.conversations.length]);
+  };
+
+  // Subscribe to new messages using direct client
+  const subscribeToMessages = (conversation: any) => {
+    try {
+      const unsubscribe = conversation.streamMessages((message: any) => {
+        setMessages(prev => [...prev, message]);
+      });
+      
+      // Return cleanup function
+      return unsubscribe;
+    } catch (error) {
+      console.error('Failed to subscribe to messages:', error);
+    }
+  };
+
+  // Create new conversation using direct client
+  const createConversation = async (recipientAddress: string) => {
+    const client = xmtpClient || getClient();
+    if (!client) return null;
+
+    try {
+      let conversation;
+      if (typeof client.conversations.newDm === 'function') {
+        conversation = await client.conversations.newDm(recipientAddress);
+      } else if (typeof client.conversations.newDmWithIdentifier === 'function') {
+        conversation = await client.conversations.newDmWithIdentifier({
+          kind: 'ETHEREUM',
+          identifier: recipientAddress,
+        });
+      } else {
+        throw new Error('No valid method found to create DM conversation');
+      }
+      
+      // Add to conversations list
+      setConversations(prev => [conversation, ...prev]);
+      return conversation;
+    } catch (error) {
+      console.error('Failed to create conversation:', error);
+      return null;
+    }
+  };
 
   // Handle simple message sending (current working approach)
   const handleSendMessage = async () => {
@@ -111,34 +161,41 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
     }
   };
 
-  // Handle advanced message sending (context approach)
+  // Handle advanced message sending using direct client
   const handleAdvancedSendMessage = async () => {
     if (!message.trim()) return;
     
     try {
       if (selectedConversation) {
-        await xmtpContext.sendMessage(selectedConversation, message);
+        await selectedConversation.send(message);
         setMessage('');
       } else if (recipient) {
-        const conversation = await xmtpContext.createConversation(recipient);
+        const conversation = await createConversation(recipient);
         if (conversation) {
-          await xmtpContext.sendMessage(conversation, message);
+          await conversation.send(message);
           setMessage('');
           setRecipient('');
           setSelectedConversation(conversation);
+          await loadMessages(conversation);
         }
       }
     } catch (error) {
       console.error('Error sending message:', error);
+      setStatus('Error sending message: ' + (error as Error).message);
     }
   };
 
   // Handle conversation selection
-  const handleSelectConversation = async (conversation: Conversation) => {
+  const handleSelectConversation = async (conversation: any) => {
     setSelectedConversation(conversation);
-    await xmtpContext.loadMessages(conversation);
-    xmtpContext.subscribeToMessages(conversation);
+    await loadMessages(conversation);
+    subscribeToMessages(conversation);
   };
+
+  // Filter conversations based on search
+  const filteredConversations = conversations.filter(conv => 
+    conv.peerAddress?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   // Simple view (current working functionality)
   const renderSimpleView = () => (
@@ -175,7 +232,7 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
     </div>
   );
 
-  // Advanced view (new features)
+  // Advanced view with conversation management
   const renderAdvancedView = () => (
     <div className="flex flex-col h-[600px]">
       {/* Conversations List */}
@@ -191,6 +248,19 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
                 <Plus size={16} />
               </button>
             </div>
+            
+            {/* Search conversations */}
+            <div className="relative mb-3">
+              <Search size={16} className="absolute left-2 top-2.5 text-gray-400" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search conversations..."
+                className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
+
             {showNewMessage && (
               <div className="mb-3">
                 <input
@@ -198,69 +268,92 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
                   value={recipient}
                   onChange={(e) => setRecipient(e.target.value)}
                   placeholder="0xRecipientAddress"
-                  className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />
                 <button
                   onClick={() => setShowNewMessage(false)}
-                  className="text-xs text-gray-500 mt-1"
+                  className="mt-1 text-xs text-gray-500 hover:text-gray-700"
                 >
                   Cancel
                 </button>
               </div>
             )}
           </div>
+
+          {/* Conversations list */}
           <div className="flex-1 overflow-y-auto">
-            {xmtpContext.conversations.map((convo, index) => (
-              <div
-                key={convo.id || index}
-                onClick={() => handleSelectConversation(convo)}
-                className={`p-3 cursor-pointer hover:bg-gray-50 ${
-                  selectedConversation?.id === convo.id ? 'bg-purple-50 border-r-2 border-purple-500' : ''
-                }`}
-              >
-                <div className="text-sm font-medium text-gray-900">
-                  {convo.peerAddress?.slice(0, 6)}...{convo.peerAddress?.slice(-4)}
+            {isLoading ? (
+              <div className="p-4 text-center text-gray-500">Loading conversations...</div>
+            ) : filteredConversations.length === 0 ? (
+              <div className="p-4 text-center text-gray-500">
+                {searchTerm ? 'No conversations found' : 'No conversations yet'}
+              </div>
+            ) : (
+              filteredConversations.map((conversation) => (
+                <div
+                  key={conversation.topic || conversation.id}
+                  onClick={() => handleSelectConversation(conversation)}
+                  className={`p-3 cursor-pointer hover:bg-gray-50 border-l-4 ${
+                    selectedConversation?.topic === conversation.topic || selectedConversation?.id === conversation.id
+                      ? 'border-purple-500 bg-purple-50'
+                      : 'border-transparent'
+                  }`}
+                >
+                  <div className="text-sm font-medium text-gray-900">
+                    {conversation.peerAddress?.slice(0, 6)}...{conversation.peerAddress?.slice(-4)}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {conversation.topic?.slice(0, 20) || conversation.id?.slice(0, 20)}...
+                  </div>
                 </div>
-                <div className="text-xs text-gray-500">Click to view messages</div>
-              </div>
-            ))}
-            {xmtpContext.conversations.length === 0 && (
-              <div className="p-4 text-center text-gray-500 text-sm">
-                No conversations yet
-              </div>
+              ))
             )}
           </div>
         </div>
 
-        {/* Messages Area */}
+        {/* Messages area */}
         <div className="flex-1 flex flex-col">
           {selectedConversation ? (
             <>
-              {/* Messages List */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                {xmtpContext.messages.map((msg, index) => (
-                  <div
-                    key={msg.id || index}
-                    className={`p-2 rounded-lg max-w-xs ${
-                      msg.senderAddress === address
-                        ? 'bg-purple-100 ml-auto'
-                        : 'bg-gray-100'
-                    }`}
-                  >
-                    <div className="text-xs text-gray-500 mb-1">
-                      {msg.senderAddress?.slice(0, 6)}...{msg.senderAddress?.slice(-4)}
+              {/* Messages header */}
+              <div className="p-4 border-b border-gray-200">
+                <h3 className="font-semibold text-gray-900">
+                  {selectedConversation.peerAddress?.slice(0, 6)}...{selectedConversation.peerAddress?.slice(-4)}
+                </h3>
+              </div>
+
+              {/* Messages list */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                {isLoading ? (
+                  <div className="text-center text-gray-500">Loading messages...</div>
+                ) : messages.length === 0 ? (
+                  <div className="text-center text-gray-500">No messages yet</div>
+                ) : (
+                  messages.map((msg, index) => (
+                    <div
+                      key={index}
+                      className={`flex ${msg.senderAddress === address ? 'justify-end' : 'justify-start'}`}
+                    >
+                      <div
+                        className={`max-w-xs px-3 py-2 rounded-lg ${
+                          msg.senderAddress === address
+                            ? 'bg-purple-600 text-white'
+                            : 'bg-gray-200 text-gray-900'
+                        }`}
+                      >
+                        <div className="text-sm">{String(msg.content)}</div>
+                        <div className={`text-xs mt-1 ${
+                          msg.senderAddress === address ? 'text-purple-200' : 'text-gray-500'
+                        }`}>
+                          {new Date(msg.sent).toLocaleTimeString()}
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-sm">{String(msg.content)}</div>
-                  </div>
-                ))}
-                {xmtpContext.messages.length === 0 && (
-                  <div className="text-center text-gray-500 text-sm">
-                    No messages yet
-                  </div>
+                  ))
                 )}
               </div>
 
-              {/* Message Input */}
+              {/* Message input */}
               <div className="p-4 border-t border-gray-200">
                 <div className="flex space-x-2">
                   <input
@@ -273,8 +366,7 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
                   />
                   <button
                     onClick={handleAdvancedSendMessage}
-                    disabled={!message.trim()}
-                    className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 disabled:opacity-50"
+                    className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
                   >
                     <Send size={16} />
                   </button>
@@ -285,7 +377,8 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
             <div className="flex-1 flex items-center justify-center text-gray-500">
               <div className="text-center">
                 <MessageCircle size={48} className="mx-auto mb-4 opacity-50" />
-                <p>Select a conversation to start messaging</p>
+                <h3 className="text-lg font-semibold mb-2">Select a conversation</h3>
+                <p className="text-sm">Choose a conversation from the list to start messaging</p>
               </div>
             </div>
           )}
@@ -302,7 +395,7 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
       <div className="absolute inset-0 bg-black bg-opacity-50 transition-opacity" onClick={onClose} />
       
       {/* Modal */}
-      <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden">
+      <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex items-center space-x-4">
