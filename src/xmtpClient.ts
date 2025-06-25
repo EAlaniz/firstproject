@@ -21,6 +21,29 @@ export const getEnvironmentInfo = () => {
 
 let xmtpClient: Client | null = null;
 
+// Create a proper signer wrapper that implements the required interface
+class WalletClientSigner {
+  private walletClient: any;
+  private address: string;
+
+  constructor(walletClient: any, address: string) {
+    this.walletClient = walletClient;
+    this.address = address;
+  }
+
+  getIdentifier(): string {
+    return this.address;
+  }
+
+  async signMessage(message: string): Promise<string> {
+    return this.walletClient.signMessage({ message });
+  }
+
+  getChainId(): bigint {
+    return BigInt(base.id);
+  }
+}
+
 export async function initXMTPClient(): Promise<Client> {
   if (xmtpClient) return xmtpClient;
 
@@ -55,12 +78,15 @@ export async function initXMTPClient(): Promise<Client> {
       });
     }
 
-    // Get account address for logging
+    // Get account address
     const [account] = await walletClient.getAddresses();
     console.log('Wallet account:', account);
 
-    // Create XMTP client with the wallet client as signer
-    xmtpClient = await Client.create(walletClient as any, { 
+    // Create proper signer wrapper
+    const signer = new WalletClientSigner(walletClient, account);
+
+    // Create XMTP client with proper signer
+    xmtpClient = await Client.create(signer as any, { 
       env: 'production',
       codecs: [],
     });
