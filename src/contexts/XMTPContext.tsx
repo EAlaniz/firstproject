@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
-import { Client, Conversation, DecodedMessage, SortDirection } from '@xmtp/xmtp-js';
+import { Client, Conversation, DecodedMessage, SortDirection } from '@xmtp/browser-sdk';
 import { useAccount, useWalletClient } from 'wagmi';
 import { Signer, isAddress } from 'ethers';
 import { ENV_CONFIG } from '../constants';
@@ -117,17 +117,17 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     initializationLockRef.current = true;
 
     const handleXMTPRegistration = async (signer: Signer) => {
-      // Create XMTP client with V3-style optimizations
+      // Create XMTP client with V3 API
       try {
         const xmtpClient = await Client.create(signer, { 
           env: xmtpEnv, 
           appVersion: '10k-move-earn-connect/1.0.0' 
         });
         
-        console.log('XMTP client created successfully with optimizations');
+        console.log('XMTP V3 client created successfully');
         return xmtpClient;
       } catch (error) {
-        console.error('Failed to create XMTP client:', error);
+        console.error('Failed to create XMTP V3 client:', error);
         
         // Handle signature rejection specifically
         if (error && typeof error === 'object' && 'code' in error && error.code === 4001) {
@@ -135,7 +135,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         } else if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string' && error.message.includes('User denied')) {
           throw new Error('Signature request was denied. Please try again to enable messaging.');
         } else {
-          throw new Error('Failed to initialize XMTP. Please try again with Coinbase Wallet.');
+          throw new Error('Failed to initialize XMTP V3. Please try again with Coinbase Wallet.');
         }
       }
     };
@@ -143,18 +143,18 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     try {
       setIsInitializing(true);
       setError(null);
-      console.log('Initializing XMTP client for address:', address);
+      console.log('Initializing XMTP V3 client for address:', address);
       console.log('Using XMTP environment:', xmtpEnv);
 
-      // Check if user is registered on XMTP
+      // Check if user is registered on XMTP V3
       const canMessage = await Client.canMessage(address, { env: xmtpEnv });
       console.log('Can message check result:', canMessage);
       
       if (!canMessage) {
-        console.log('User not registered on XMTP, attempting to register...');
-        setError('Registering wallet on XMTP... This may take a moment.');
+        console.log('User not registered on XMTP V3, attempting to register...');
+        setError('Registering wallet on XMTP V3... This may take a moment.');
         
-        // Attempt to register the user on XMTP
+        // Attempt to register the user on XMTP V3
         try {
           const xmtpClient = await handleXMTPRegistration(signer);
           
@@ -165,14 +165,14 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
           // Save state to localStorage
           saveXMTPState(address, { isRegistered: true, timestamp: Date.now() });
           
-          console.log('XMTP client initialized and user registered successfully');
+          console.log('XMTP V3 client initialized and user registered successfully');
           setError(null);
           
           // Load conversations after successful initialization
           await loadConversations();
           return;
         } catch (registrationErr) {
-          console.error('Error registering on XMTP:', registrationErr);
+          console.error('Error registering on XMTP V3:', registrationErr);
           
           // Handle signature rejection specifically
           if (registrationErr && typeof registrationErr === 'object' && 'code' in registrationErr && registrationErr.code === 4001) {
@@ -182,7 +182,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
           } else {
             const errorMessage = registrationErr instanceof Error 
               ? registrationErr.message 
-              : 'Failed to register on XMTP. Please try again with Coinbase Wallet.';
+              : 'Failed to register on XMTP V3. Please try again with Coinbase Wallet.';
             setError(errorMessage);
           }
           setIsRegistered(false);
@@ -190,8 +190,8 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         }
       }
 
-      // User is already registered, create XMTP client
-      console.log('User already registered, creating XMTP client...');
+      // User is already registered, create XMTP V3 client
+      console.log('User already registered, creating XMTP V3 client...');
       const xmtpClient = await handleXMTPRegistration(signer);
       
       setClient(xmtpClient);
@@ -201,13 +201,13 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       // Save state to localStorage
       saveXMTPState(address, { isRegistered: true, timestamp: Date.now() });
       
-      console.log('XMTP client initialized successfully for existing user');
+      console.log('XMTP V3 client initialized successfully for existing user');
       
       // Load conversations after successful initialization
       await loadConversations();
       
     } catch (err) {
-      console.error('Error initializing XMTP client:', err);
+      console.error('Error initializing XMTP V3 client:', err);
       
       // Handle signature rejection specifically
       if (err && typeof err === 'object' && 'code' in err && err.code === 4001) {
@@ -217,7 +217,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       } else {
         const errorMessage = err instanceof Error 
           ? err.message 
-          : 'Failed to initialize XMTP. Please try again.';
+          : 'Failed to initialize XMTP V3. Please try again.';
         setError(errorMessage);
       }
       setIsRegistered(false);
@@ -274,16 +274,16 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       return null;
     }
 
-    // Check if recipient is registered on XMTP
+    // Check if recipient is registered on XMTP V3
     let canMessage = false;
     try {
       canMessage = await Client.canMessage(address, { env: xmtpEnv });
     } catch {
-      setError('Error checking recipient XMTP registration.');
+      setError('Error checking recipient XMTP V3 registration.');
       return null;
     }
     if (!canMessage) {
-      setError('Recipient is not registered on XMTP. They must connect their wallet to XMTP to receive messages.');
+      setError('Recipient is not registered on XMTP V3. They must connect their wallet to XMTP to receive messages.');
       return null;
     }
 
@@ -304,9 +304,9 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     if (!client) return null;
 
     try {
-      // Note: Group chats in XMTP are still in development
+      // Note: Group chats in XMTP V3 are still in development
       // This is a placeholder for when group functionality is available
-      console.log('Group chat creation not yet implemented in XMTP');
+      console.log('Group chat creation not yet implemented in XMTP V3');
       setError('Group chats not yet supported');
       return null;
     } catch (err) {
@@ -385,7 +385,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     if (address) {
       const persistedState = loadXMTPState(address);
       if (persistedState && persistedState.isRegistered) {
-        console.log('Loading persisted XMTP state for address:', address);
+        console.log('Loading persisted XMTP V3 state for address:', address);
         setIsRegistered(true);
         initializedAddressRef.current = address;
       }
@@ -396,7 +396,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   useEffect(() => {
     const recreateClientForPersistedUser = async () => {
       if (address && isRegistered && !client && walletClient && !isInitializing) {
-        console.log('Recreating XMTP client for persisted user:', address);
+        console.log('Recreating XMTP V3 client for persisted user:', address);
         try {
           const { ethers } = await import('ethers');
           const provider = new ethers.BrowserProvider(walletClient);
@@ -409,12 +409,12 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
           });
           
           setClient(xmtpClient);
-          console.log('XMTP client recreated successfully for persisted user');
+          console.log('XMTP V3 client recreated successfully for persisted user');
           
           // Load conversations
           await loadConversations();
         } catch (error) {
-          console.error('Failed to recreate XMTP client:', error);
+          console.error('Failed to recreate XMTP V3 client:', error);
           // If recreation fails, reset the persisted state
           setIsRegistered(false);
           initializedAddressRef.current = null;

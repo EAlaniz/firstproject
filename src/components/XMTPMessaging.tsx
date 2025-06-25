@@ -4,7 +4,6 @@ import { Conversation, DecodedMessage } from '@xmtp/xmtp-js';
 import { Send, Users, Plus, X, MessageCircle, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
 import { useAccount, useWalletClient } from 'wagmi';
 import { isFarcasterMiniApp } from './EnhancedWalletConnector'; // Updated: use EnhancedWalletConnector
-import { useEnvironmentXMTP } from '../hooks/useEnvironmentXMTP';
 import { getEnvironmentInfo } from './EnhancedWalletConnector';
 
 // Extend the Window type to include farcaster (if present)
@@ -51,7 +50,6 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const { environment, isFarcaster, isMobile, isDesktop, isAutoInitializing, environmentError, requirements } = useEnvironmentXMTP();
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {

@@ -22,8 +22,6 @@ import {
   ExternalLink,
   LogOut
 } from 'lucide-react';
-import MessagingPanel from './components/MessagingPanel';
-import FarcasterMiniApp from './components/FarcasterMiniApp';
 import { EnhancedWalletConnector } from './components/EnhancedWalletConnector';
 import { sdk } from '@farcaster/frame-sdk';
 import { XMTPProvider } from './contexts/XMTPContext';
@@ -106,13 +104,11 @@ function App() {
   const [dailyGoal, setDailyGoal] = useState(10000);
   
   // Modal states
-  const [showMessagingPanel, setShowMessagingPanel] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showMobileWalletModal, setShowMobileWalletModal] = useState(false);
   const [showSocialModal, setShowSocialModal] = useState(false);
   const [showCommunityModal, setShowCommunityModal] = useState(false);
   const [showRewardsModal, setShowRewardsModal] = useState(false);
-  const [showFarcasterModal, setShowFarcasterModal] = useState(false);
   const [showXMTPMessaging, setShowXMTPMessaging] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
   
@@ -296,16 +292,6 @@ function App() {
   // --- MODALS AND OVERLAYS (always rendered) ---
   const ModalsAndOverlays = (
     <>
-      {/* Messaging Panel */}
-      <MessagingPanel
-        isOpen={showMessagingPanel}
-        onClose={() => setShowMessagingPanel(false)}
-        currentSteps={currentSteps}
-        dailyGoal={dailyGoal}
-        isGoalReached={isGoalReached}
-        currentStreak={currentStreak}
-      />
-
       {/* Social Hub Modal - Gated Content */}
       <Modal isOpen={showSocialModal} onClose={() => setShowSocialModal(false)} title="Social Hub">
         {!isGoalReached ? (
@@ -541,7 +527,7 @@ function App() {
           
           <div className="space-y-3">
             <button 
-              onClick={() => setShowMessagingPanel(true)}
+              onClick={() => setShowXMTPMessaging(true)}
               className="w-full flex items-center justify-center space-x-3 p-3 sm:p-4 bg-black text-white rounded-xl hover:bg-gray-800 transition-colors"
             >
               <MessageCircle className="w-5 h-5" />
@@ -732,28 +718,6 @@ function App() {
         </div>
       </Modal>
 
-      {/* Farcaster Mini App Modal */}
-      <Modal isOpen={showFarcasterModal} onClose={() => setShowFarcasterModal(false)} title="Farcaster Social">
-        <FarcasterMiniApp
-          currentSteps={currentSteps}
-          dailyGoal={dailyGoal}
-          isGoalReached={isGoalReached}
-          currentStreak={currentStreak}
-          totalTokens={totalTokens}
-        />
-      </Modal>
-
-      {/* Farcaster Integration Button - Hidden on mobile */}
-      <div className="fixed bottom-4 right-4 z-40 hidden sm:block">
-        <button
-          onClick={() => setShowFarcasterModal(true)}
-          className="bg-purple-600 text-white p-3 rounded-full shadow-lg hover:bg-purple-700 transition-colors"
-          title="Open Farcaster Social"
-        >
-          <MessageCircle className="w-6 h-6" />
-        </button>
-      </div>
-
       {/* XMTP Messaging */}
       <XMTPMessaging 
         isOpen={showXMTPMessaging} 
@@ -877,7 +841,7 @@ function App() {
                 {/* Action Buttons */}
                 <div className="flex items-center space-x-2">
                   <button
-                    onClick={() => setShowMessagingPanel(true)}
+                    onClick={() => setShowXMTPMessaging(true)}
                     className="p-2 hover:bg-gray-100 rounded-full transition-colors"
                     title="Messages"
                   >
