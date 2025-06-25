@@ -15,30 +15,9 @@ import { base } from 'wagmi/chains';
 import { config } from './wagmi';
 import { AuthKitProvider } from '@farcaster/auth-kit';
 import { ENV_CONFIG } from './constants';
+import { isFarcasterMiniApp } from './components/EnhancedWalletConnector';
 import App from './App';
 import './index.css';
-
-// Detect if we're in a Farcaster mini app environment
-const isFarcasterMiniApp = () => {
-  return (
-    window.location.hostname.includes('farcaster.xyz') ||
-    window.location.hostname.includes('warpcast.com') ||
-    window.location.hostname.includes('wrpcd.net') ||
-    window.location.search.includes('fid=') ||
-    window.location.search.includes('farcaster=') ||
-    window.navigator.userAgent.includes('Farcaster') ||
-    window.navigator.userAgent.includes('Warpcast') ||
-    // Add more specific detection for mini app preview
-    window.location.search.includes('miniApp=true') ||
-    window.location.pathname.includes('/miniapp') ||
-    // Check for Farcaster mini app specific parameters
-    window.location.search.includes('frame=') ||
-    window.location.search.includes('embed=') ||
-    // Check for mobile preview environments
-    window.location.hostname.includes('preview') ||
-    window.location.hostname.includes('debug')
-  );
-};
 
 const queryClient = new QueryClient({
   defaultOptions: {

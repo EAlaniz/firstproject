@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import MessagingPanel from './components/MessagingPanel';
 import FarcasterMiniApp from './components/FarcasterMiniApp';
-import MiniAppWalletConnector from './components/MiniAppWalletConnector';
+import EnhancedWalletConnector from './components/EnhancedWalletConnector';
 import { sdk } from '@farcaster/frame-sdk';
 import { XMTPProvider } from './contexts/XMTPContext';
 import XMTPMessaging from './components/XMTPMessaging';
@@ -721,11 +721,11 @@ function App() {
                 <h3 className="text-lg font-medium mb-2">Connect Your Wallet</h3>
                 <p className="text-gray-600 mb-6">Connect your wallet to access all features</p>
                 
-                <MiniAppWalletConnector>
+                <EnhancedWalletConnector>
                   <button className="w-full bg-black text-white py-3 rounded-xl hover:bg-gray-800 transition-colors">
                     Connect Wallet
                   </button>
-                </MiniAppWalletConnector>
+                </EnhancedWalletConnector>
               </div>
             </>
           )}
@@ -809,12 +809,12 @@ function App() {
               </div>
               
               <div className="flex justify-center px-4">
-                <MiniAppWalletConnector>
+                <EnhancedWalletConnector>
                   <button className="bg-black text-white px-6 py-3 rounded-full hover:bg-gray-800 transition-colors cursor-pointer w-full flex items-center justify-center space-x-2">
                     <Zap className="w-4 h-4" />
                     <span>Connect Wallet</span>
                   </button>
-                </MiniAppWalletConnector>
+                </EnhancedWalletConnector>
               </div>
               
               <div className="pt-8 sm:pt-12 text-sm text-gray-500">
@@ -834,12 +834,12 @@ function App() {
               <p className="text-gray-600">Please switch to Base network to continue</p>
             </div>
             
-            <MiniAppWalletConnector>
+            <EnhancedWalletConnector>
               <div className="bg-black text-white px-6 py-3 rounded-full hover:bg-gray-800 transition-colors cursor-pointer w-full flex items-center justify-center space-x-2">
                 <Zap className="w-4 h-4" />
                 <span>Switch Network</span>
               </div>
-            </MiniAppWalletConnector>
+            </EnhancedWalletConnector>
           </div>
         </div>
       ) : (
@@ -885,7 +885,7 @@ function App() {
                   </button>
                   
                   {/* Wallet */}
-                  <MiniAppWalletConnector
+                  <EnhancedWalletConnector
                     className="bg-gray-100 text-black px-4 py-2 rounded-full hover:bg-gray-200 transition-colors cursor-pointer text-sm"
                     onOpenModal={() => setShowMobileWalletModal(true)}
                   />

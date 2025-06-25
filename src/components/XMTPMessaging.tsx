@@ -3,7 +3,9 @@ import { useXMTP } from '../contexts/XMTPContext';
 import { Conversation, DecodedMessage } from '@xmtp/xmtp-js';
 import { Send, Users, Plus, X, MessageCircle, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
 import { useAccount, useWalletClient } from 'wagmi';
-import { isFarcasterMiniApp } from './MiniAppWalletConnector'; // Fixed: use named import
+import { isFarcasterMiniApp } from './EnhancedWalletConnector'; // Updated: use EnhancedWalletConnector
+import { useEnvironmentXMTP } from '../hooks/useEnvironmentXMTP';
+import { getEnvironmentInfo } from './EnhancedWalletConnector';
 
 // Extend the Window type to include farcaster (if present)
 declare global {
@@ -48,6 +50,8 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
   const [isSending, setIsSending] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const { environment, isFarcaster, isMobile, isDesktop, isAutoInitializing, environmentError, requirements } = useEnvironmentXMTP();
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -294,24 +298,17 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
             ) : !isRegistered ? (
               <div className="p-4 text-center text-gray-500">
                 <MessageCircle className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                <p className="text-sm mb-2">Initialize XMTP to start messaging</p>
-                <p className="text-xs text-gray-400 mb-3">
-                  Requires MetaMask or Coinbase Wallet for secure messaging
+                <p className="text-sm mb-2">
+                  {isAutoInitializing ? 'Setting up messaging...' : 'Setting up messaging'}
                 </p>
-                <button
-                  onClick={handleInitializeXMTP}
-                  disabled={isInitializing}
-                  className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-                >
-                  {isInitializing ? (
-                    <div className="flex items-center justify-center space-x-2">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Initializing XMTP...</span>
-                    </div>
-                  ) : (
-                    'Initialize XMTP'
-                  )}
-                </button>
+                <p className="text-xs text-gray-400">
+                  {requirements.fallbackMessage}
+                </p>
+                {environmentError && (
+                  <p className="text-xs text-red-500 mt-2">
+                    {environmentError}
+                  </p>
+                )}
               </div>
             ) : conversations.length === 0 ? (
               <div className="p-4 text-center text-gray-500">
