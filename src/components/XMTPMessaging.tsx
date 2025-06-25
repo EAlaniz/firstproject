@@ -1,6 +1,32 @@
 import React, { useEffect, useState } from 'react';
 import { useAccount, useWalletClient } from 'wagmi';
 import { Client } from '@xmtp/browser-sdk';
+import { ethers } from 'ethers';
+
+// Adapter: Wrap ViEM WalletClient in ethers.js compatible signer interface
+function createEthersSignerFromViem(walletClient: any) {
+  return {
+    getAddress: async () => {
+      const address = await walletClient.getAddresses();
+      return address[0];
+    },
+    signMessage: async (message: string | Uint8Array) => {
+      // ViEM expects Uint8Array, ethers.js uses string or Uint8Array
+      if (typeof message === 'string') {
+        // Convert string to Uint8Array UTF-8
+        message = new TextEncoder().encode(message);
+      }
+      return await walletClient.signMessage({ message });
+    },
+    // XMTP needs getIdentifier for identity
+    getIdentifier: async () => {
+      // XMTP calls getIdentifier internally by hashing wallet address and signing something
+      // Here, we simulate getIdentifier as a method to satisfy XMTP SDK
+      // You can leave it empty, XMTP will patch this method on the signer internally
+      return undefined;
+    }
+  };
+}
 
 export default function XmtpMessenger() {
   const { address } = useAccount();
@@ -21,18 +47,14 @@ export default function XmtpMessenger() {
     async function initXmtp() {
       setStatus('Initializing XMTP client...');
       try {
-        // Create signer compatible with XMTP
-        const signer = walletClient;
+        // Wrap ViEM wallet client in ethers.js compatible signer
+        const signer = createEthersSignerFromViem(walletClient);
         const client = await Client.create(signer, { env: 'production' });
         setXmtpClient(client);
         setStatus('XMTP client initialized');
-
-        // Debug available conversation methods
-        console.log('Client conversations object:', client.conversations);
-        console.log('Available conversation methods:', Object.keys(client.conversations));
       } catch (error) {
         console.error('Failed to initialize XMTP client', error);
-        setStatus('Failed to initialize XMTP client');
+        setStatus('Failed to initialize XMTP client: ' + (error instanceof Error ? error.message : String(error)));
         setXmtpClient(null);
       }
     }
@@ -57,14 +79,7 @@ export default function XmtpMessenger() {
     try {
       setStatus(`Creating conversation with ${recipient}...`);
 
-      let conversation;
-      if (typeof xmtpClient.conversations.newConversation === 'function') {
-        conversation = await xmtpClient.conversations.newConversation(recipient);
-      } else if (typeof xmtpClient.conversations.new === 'function') {
-        conversation = await xmtpClient.conversations.new(recipient);
-      } else {
-        throw new Error('No valid method found to create conversation on XMTP client');
-      }
+      const conversation = await xmtpClient.conversations.newConversation(recipient);
 
       setStatus('Sending message...');
       await conversation.send(message);
