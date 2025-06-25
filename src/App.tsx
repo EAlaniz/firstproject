@@ -377,14 +377,14 @@ function App() {
               >
                 <MessageCircle className="w-5 h-5" />
               </button>
-              <Wallet>
-                <button
-                  onClick={() => setShowWalletConnector(true)}
-                  className="bg-gray-100 text-black px-4 py-2 rounded-full hover:bg-gray-200 transition-colors cursor-pointer text-sm"
-                >
-                  Wallet
-                </button>
-                {showWalletConnector && (
+              <button
+                onClick={() => setShowWalletConnector(true)}
+                className="bg-gray-100 text-black px-4 py-2 rounded-full hover:bg-gray-200 transition-colors cursor-pointer text-sm"
+              >
+                Wallet
+              </button>
+              {showWalletConnector && (
+                <Wallet>
                   <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
                     <div className="bg-white w-full sm:max-w-sm sm:w-full max-h-[90vh] overflow-y-auto sm:rounded-2xl rounded-t-2xl">
                       <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200">
@@ -419,8 +419,8 @@ function App() {
                       </div>
                     </div>
                   </div>
-                )}
-              </Wallet>
+                </Wallet>
+              )}
             </div>
           </div>
           {/* Mobile Menu Button */}
