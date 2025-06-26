@@ -746,6 +746,7 @@ function AppContent() {
       {/* XMTP Messaging Modal */}
       {showXMTPMessaging && (
         <XMTPMessaging
+          isOpen={showXMTPMessaging}
           onClose={() => setShowXMTPMessaging(false)}
         />
       )}
