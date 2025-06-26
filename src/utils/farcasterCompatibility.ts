@@ -1,3 +1,12 @@
+export const isFarcasterMiniApp = () => {
+  return (
+    window.location.hostname.includes('warpcast.com') ||
+    window.location.hostname.includes('farcaster.xyz') ||
+    window.location.hostname.includes('farcaster.com') ||
+    (typeof window !== 'undefined' && 'farcaster' in window)
+  );
+};
+
 export const farcasterCompatibility = {
   // Check if running in Farcaster environment
   isFarcasterMiniApp: () => {

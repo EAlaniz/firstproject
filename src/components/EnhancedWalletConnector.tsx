@@ -9,25 +9,8 @@ import {
   LogOut,
   Zap
 } from 'lucide-react'
-
-// 🌐 Environment detection
-export const getEnvironmentInfo = () => {
-  const userAgent = navigator.userAgent.toLowerCase()
-  const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent)
-
-  const isFarcaster =
-    window.location.hostname.includes('warpcast.com') ||
-    window.location.hostname.includes('farcaster.xyz') ||
-    window.location.hostname.includes('farcaster.com') ||
-    (typeof window !== 'undefined' && 'farcaster' in window && window.farcaster !== undefined)
-
-  const isDesktop = !isMobile && !isFarcaster
-  const environment = isFarcaster ? 'farcaster' : isMobile ? 'mobile' : 'desktop'
-
-  return { isFarcaster, isMobile, isDesktop, environment }
-}
-
-export const isFarcasterMiniApp = () => getEnvironmentInfo().isFarcaster
+import { isFarcasterMiniApp } from '../utils/farcasterCompatibility'
+import { wagmiConfig } from '../../wagmi.config'
 
 interface EnhancedWalletConnectorProps {
   className?: string
@@ -45,50 +28,31 @@ export const EnhancedWalletConnector: React.FC<EnhancedWalletConnectorProps> = (
   const { address, isConnected } = useAccount()
   const { disconnect } = useDisconnect()
   const { connect, connectors, isPending } = useConnect()
-  const { isFarcaster, isMobile } = getEnvironmentInfo()
   const [, setWalletClient] = useState<WalletClient | null>(null)
 
-  // Get the Coinbase Wallet connector
-  console.log('Available connectors:', connectors.map(c => ({ id: c.id, name: c.name })));
-  console.log('Full connector details:', connectors.map(c => ({
-    id: c.id,
-    name: c.name,
-    type: c.type,
-    ready: c.ready
-  })));
-  const coinbaseConnector = connectors.find(connector => 
-    connector.id === 'coinbaseWallet' || connector.id === 'io.coinbase.wallet' || connector.id.includes('coinbase')
+  // Filter connectors: Only show WalletConnect and others if not in Farcaster mini app
+  const filteredConnectors = isFarcasterMiniApp()
+    ? connectors.filter(connector => connector.id === 'injected' || connector.id === 'io.coinbase.wallet' || connector.id === 'coinbaseWallet')
+    : connectors
+
+  // Get the Coinbase Wallet connector (or injected)
+  const coinbaseConnector = filteredConnectors.find(connector => 
+    connector.id === 'coinbaseWallet' || connector.id === 'io.coinbase.wallet' || connector.id === 'injected'
   );
-  console.log('Coinbase connector found:', !!coinbaseConnector);
-  if (coinbaseConnector) {
-    console.log('Coinbase connector details:', {
-      id: coinbaseConnector.id,
-      name: coinbaseConnector.name,
-      type: coinbaseConnector.type,
-      ready: coinbaseConnector.ready
-    });
-  }
 
   // 🔌 Load wallet client for XMTP on connect
   useEffect(() => {
     const loadClient = async () => {
       if (isConnected) {
         try {
-          // Use explicit RPC URL to avoid the "No rpcUrl provided" warning
-          const rpcUrl = import.meta.env.VITE_RPC_URL || 'https://flashy-convincing-paper.base-mainnet.quiknode.pro/fe55bc09278a1ccc534942fad989695b412ab4ea/'
-          
-          console.log('🔧 EnhancedWalletConnector creating wallet client with RPC URL:', rpcUrl);
-          
-          const client = await getWalletClient()
-          
-          console.log('✅ Wallet client created successfully:', {
-            address: client?.account?.address,
-            chainId: client?.chain?.id,
-            transport: client?.transport?.type
-          });
-          
+          let client: WalletClient | null = null;
+          if (isFarcasterMiniApp() && window.ethereum) {
+            client = await getWalletClient(wagmiConfig, { chainId: 8453 });
+          } else {
+            client = await getWalletClient(wagmiConfig);
+          }
           setWalletClient(client)
-          if (onWalletClientReady) onWalletClientReady(client)
+          if (onWalletClientReady && client) onWalletClientReady(client)
         } catch (error) {
           console.error('Failed to get wallet client:', error)
         }
@@ -107,10 +71,10 @@ export const EnhancedWalletConnector: React.FC<EnhancedWalletConnectorProps> = (
         console.error('Connection failed:', error);
       }
     } else {
-      console.error('Coinbase Wallet connector not found');
+      console.error('Coinbase Wallet/injected connector not found');
       // Fallback: try to connect with the first available connector
-      if (connectors.length > 0) {
-        connect({ connector: connectors[0] });
+      if (filteredConnectors.length > 0) {
+        connect({ connector: filteredConnectors[0] });
       }
     }
   }
@@ -120,7 +84,7 @@ export const EnhancedWalletConnector: React.FC<EnhancedWalletConnectorProps> = (
   }
 
   // ✅ Farcaster Mini App view
-  if (isFarcaster) {
+  if (isFarcasterMiniApp()) {
     return isConnected && address ? (
       <div className={`flex items-center space-x-2 ${className}`}>
         <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
@@ -143,12 +107,20 @@ export const EnhancedWalletConnector: React.FC<EnhancedWalletConnectorProps> = (
           <div className="text-sm font-medium">Not Connected</div>
           <div className="text-xs text-gray-500">Farcaster Mini App</div>
         </div>
+        <button 
+          onClick={handleConnect}
+          disabled={isPending}
+          className={`bg-blue-600 text-white px-4 py-2 rounded-full hover:bg-blue-700 transition-colors flex items-center space-x-2 ${className} ${isPending ? 'opacity-50 cursor-not-allowed' : ''}`}
+        >
+          <Smartphone className="w-4 h-4" />
+          <span>{isPending ? 'Connecting...' : 'Connect Wallet'}</span>
+        </button>
       </div>
     )
   }
 
   // 📱 Mobile Wallet Connection
-  if (isMobile) {
+  if (isFarcasterMiniApp()) {
     return isConnected && address ? (
       <div className={`flex flex-col items-center space-y-1 ${className}`}>
         <div className="flex items-center space-x-2">
