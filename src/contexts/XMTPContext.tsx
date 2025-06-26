@@ -269,21 +269,46 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     }
   };
 
+  // Debug utility to check recipient registration and log XMTP state
+  export async function debugXMTP(client: Client | null, recipientAddress: string) {
+    if (!client) {
+      console.error('[XMTP Debug] Client is not initialized');
+      return;
+    }
+    try {
+      const canMessage = await Client.canMessage([
+        { identifier: recipientAddress, identifierKind: 'Ethereum' }
+      ], 'production');
+      console.log(`[XMTP Debug] Can message ${recipientAddress}?`, canMessage);
+      const conversations = await client.conversations.list();
+      console.log('[XMTP Debug] Conversations:', conversations);
+      if (conversations.length > 0) {
+        for (const conv of conversations) {
+          const msgs = await conv.messages();
+          console.log(`[XMTP Debug] Messages for conversation ${conv.id}:`, msgs);
+        }
+      }
+    } catch (err) {
+      console.error('[XMTP Debug] Error during debugXMTP:', err);
+    }
+  }
+
   const sendMessage = async (message: string, targetConversation?: XMTPConversation) => {
     if (!client) {
       setError('XMTP not initialized');
+      console.error('[XMTP] sendMessage: Client not initialized');
       return;
     }
 
     const conversation = targetConversation || selectedConversation;
     if (!conversation) {
       setError('No conversation selected');
+      console.error('[XMTP] sendMessage: No conversation selected');
       return;
     }
 
     try {
       setStatus('Sending message...');
-      
       // --- Force sync before sending (type workaround) ---
       if (typeof (client as any).sync === 'function') {
         try {
@@ -293,70 +318,65 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
           console.warn('⚠️ Device sync before send failed:', syncErr);
         }
       }
-      
       // --- Check recipient registration before send ---
       let canMessage = false;
+      let peerAddress = (conversation as any).peerAddress || (conversation as any).id;
       try {
-        const peerAddress = (conversation as any).peerAddress || (conversation as any).id;
         const canMsgResult = await Client.canMessage([
           { identifier: peerAddress, identifierKind: 'Ethereum' }
         ], 'production');
         canMessage = Array.isArray(canMsgResult) ? canMsgResult[0] : !!canMsgResult;
+        console.log(`[XMTP] Can message recipient (${peerAddress})?`, canMessage);
       } catch (checkError) {
         setError('Error checking recipient XMTP registration before send.');
+        console.error('[XMTP] Error checking recipient registration before send:', checkError);
         return;
       }
       if (!canMessage) {
         setError('Recipient is not registered on XMTP V3. They must connect their wallet to XMTP to receive messages.');
+        console.warn(`[XMTP] Recipient (${peerAddress}) is not registered on XMTP V3.`);
         return;
       }
-      
-      // Send message using V3 API with retry logic
+      // --- Send message ---
       let retries = 0;
       const maxRetries = 3;
-      
       while (retries < maxRetries) {
         try {
-          await conversation.send(message);
+          const sentMsg = await conversation.send(message);
+          // Optimistically add the sent message to the UI only if it matches DecodedMessage shape
+          if (sentMsg && typeof sentMsg === 'object' && 'id' in sentMsg && 'content' in sentMsg) {
+            setMessages(prev => [...prev, sentMsg as DecodedMessage<string>]);
+            console.log('[XMTP] Sent message object:', sentMsg);
+          } else {
+            console.warn('[XMTP] Sent message did not match expected DecodedMessage shape:', sentMsg);
+          }
           console.log('✅ Message sent successfully');
           setStatus('Message sent');
-          return; // Success, exit retry loop
+          return;
         } catch (sendError) {
           retries++;
-          console.log(`🔄 Message send attempt ${retries} failed:`, sendError);
-          
-          // Check if it's an inbox validation error
+          console.error(`[XMTP] Message send attempt ${retries} failed:`, sendError);
           const errorMessage = sendError instanceof Error ? sendError.message : String(sendError);
-          
           if (errorMessage.includes('InboxValidationFailed') || errorMessage.includes('synced 1 messages')) {
-            // This is actually a success case - the message was sent but there's a validation warning
             console.log('✅ Message sent successfully (with validation warning)');
             setStatus('Message sent');
             return;
           }
-          
           if (retries >= maxRetries) {
-            throw sendError; // Re-throw if we've exhausted retries
+            setError('Failed to send message after retries.');
+            throw sendError;
           }
-          
-          // Wait before retrying
           await new Promise(resolve => setTimeout(resolve, 1000 * retries));
         }
       }
-      
     } catch (err) {
-      console.error('Failed to send message after retries:', err);
-      
-      // Provide user-friendly error message
+      console.error('[XMTP] Failed to send message after retries:', err);
       const errorMessage = err instanceof Error ? err.message : String(err);
-      
       if (errorMessage.includes('InboxValidationFailed') || errorMessage.includes('synced 1 messages')) {
-        // This is actually a success - the message was sent
         console.log('✅ Message sent successfully (ignoring validation warning)');
         setStatus('Message sent');
         return;
       }
-      
       setError('Failed to send message. Please try again.');
     }
   };
@@ -364,24 +384,24 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   const createConversation = async (recipientAddress: string): Promise<XMTPConversation | null> => {
     if (!client) {
       setError('XMTP not initialized');
+      console.error('[XMTP] createConversation: Client not initialized');
       return null;
     }
 
     try {
       setStatus('Creating conversation...');
-      
       // Validate recipient address
       if (!recipientAddress || !recipientAddress.startsWith('0x') || recipientAddress.length !== 42) {
         setError('Invalid Ethereum address format');
+        console.error('[XMTP] createConversation: Invalid Ethereum address format:', recipientAddress);
         return null;
       }
-      
       // Prevent self-messaging
       if (recipientAddress.toLowerCase() === address?.toLowerCase()) {
         setError('Cannot create conversation with yourself');
+        console.warn('[XMTP] createConversation: Attempted to create conversation with self.');
         return null;
       }
-      
       // --- Check recipient registration with canMessage ---
       let canMessage = false;
       try {
@@ -389,16 +409,18 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
           { identifier: recipientAddress, identifierKind: 'Ethereum' }
         ], 'production');
         canMessage = Array.isArray(canMsgResult) ? canMsgResult[0] : !!canMsgResult;
+        console.log(`[XMTP] Can message recipient (${recipientAddress})?`, canMessage);
       } catch (checkError) {
         setError('Error checking recipient XMTP registration.');
+        console.error('[XMTP] Error checking recipient registration in createConversation:', checkError);
         return null;
       }
       if (!canMessage) {
         setError('Recipient is not registered on XMTP V3. They must connect their wallet to XMTP to receive messages.');
+        console.warn(`[XMTP] Recipient (${recipientAddress}) is not registered on XMTP V3.`);
         return null;
       }
-      
-      // Use V3 API to create conversation - try different methods based on available API
+      // --- Create conversation ---
       let conversation;
       if (typeof client.conversations.newDm === 'function') {
         conversation = await client.conversations.newDm(recipientAddress);
@@ -408,23 +430,18 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
           identifierKind: 'Ethereum',
         });
       } else {
-        throw new Error('No valid method found to create DM conversation');
+        const errMsg = 'No valid method found to create DM conversation';
+        setError(errMsg);
+        console.error('[XMTP] createConversation:', errMsg);
+        return null;
       }
-      
-      console.log('✅ Created new conversation with:', recipientAddress);
-      
-      // Add to conversations list
       setConversations(prev => [conversation as XMTPConversation, ...prev]);
       setStatus('Conversation created');
-      
+      console.log(`[XMTP] Created new conversation with: ${recipientAddress}`);
       return conversation as XMTPConversation;
-      
     } catch (err) {
-      console.error('Failed to create conversation:', err);
-      
-      // Provide user-friendly error messages
+      console.error('[XMTP] Failed to create conversation:', err);
       const errorMessage = err instanceof Error ? err.message : String(err);
-      
       if (errorMessage.includes('not registered') || errorMessage.includes('not found')) {
         setError('Recipient is not registered on XMTP. They need to connect their wallet to XMTP first.');
       } else if (errorMessage.includes('already exists')) {
@@ -432,7 +449,6 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       } else {
         setError('Failed to create conversation. Please try again.');
       }
-      
       return null;
     }
   };
