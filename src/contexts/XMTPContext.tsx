@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { useAccount, useWalletClient } from 'wagmi';
 import { Client, DecodedMessage, Dm, Group, StreamCallback } from '@xmtp/browser-sdk';
 import { createAutoSigner, validateSigner, getSignerInfo } from '../utils/xmtpSigner';
@@ -50,6 +50,28 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   const [selectedConversation, setSelectedConversation] = useState<XMTPConversation | null>(null);
   const [messages, setMessages] = useState<DecodedMessage<string>[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Define loadConversations before useEffect to avoid TDZ
+  const loadConversations = useCallback(async () => {
+    if (!client) return;
+
+    try {
+      setIsLoading(true);
+      setStatus('Loading conversations...');
+      
+      const convos = await client.conversations.list();
+      setConversations(convos as XMTPConversation[]);
+      
+      console.log(`📋 Loaded ${convos.length} conversations`);
+      setStatus(`Ready (${convos.length} conversations)`);
+      
+    } catch (err) {
+      console.error('Failed to load conversations:', err);
+      setError('Failed to load conversations');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [client]);
 
   // Load conversations when client is ready
   useEffect(() => {
@@ -176,27 +198,6 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       console.error('🛑 XMTP Client creation failed:', err);
     } finally {
       setIsInitializing(false);
-    }
-  };
-
-  const loadConversations = async () => {
-    if (!client) return;
-
-    try {
-      setIsLoading(true);
-      setStatus('Loading conversations...');
-      
-      const convos = await client.conversations.list();
-      setConversations(convos as XMTPConversation[]);
-      
-      console.log(`📋 Loaded ${convos.length} conversations`);
-      setStatus(`Ready (${convos.length} conversations)`);
-      
-    } catch (err) {
-      console.error('Failed to load conversations:', err);
-      setError('Failed to load conversations');
-    } finally {
-      setIsLoading(false);
     }
   };
 
