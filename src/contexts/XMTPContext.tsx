@@ -318,24 +318,32 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
           console.warn('⚠️ Device sync before send failed:', syncErr);
         }
       }
-      // --- Check recipient registration before send ---
+      // --- Check recipient registration before send (only for DMs) ---
       let canMessage = false;
       let peerAddress = (conversation as any).peerAddress || (conversation as any).id;
-      try {
-        const canMsgResult = await Client.canMessage([
-          { identifier: peerAddress, identifierKind: 'Ethereum' }
-        ], 'production');
-        canMessage = Array.isArray(canMsgResult) ? canMsgResult[0] : !!canMsgResult;
-        console.log(`[XMTP] Can message recipient (${peerAddress})?`, canMessage);
-      } catch (checkError) {
-        setError('Error checking recipient XMTP registration before send.');
-        console.error('[XMTP] Error checking recipient registration before send:', checkError);
-        return;
-      }
-      if (!canMessage) {
-        setError('Recipient is not registered on XMTP V3. They must connect their wallet to XMTP to receive messages.');
-        console.warn(`[XMTP] Recipient (${peerAddress}) is not registered on XMTP V3.`);
-        return;
+      const isEthAddress = typeof peerAddress === 'string' && /^0x[a-fA-F0-9]{40}$/.test(peerAddress);
+      if (isEthAddress) {
+        // Only check canMessage for DMs
+        try {
+          const canMsgResult = await Client.canMessage([
+            { identifier: peerAddress, identifierKind: 'Ethereum' }
+          ], 'production');
+          canMessage = Array.isArray(canMsgResult) ? canMsgResult[0] : !!canMsgResult;
+          console.log(`[XMTP] Can message recipient (${peerAddress})?`, canMessage);
+        } catch (checkError) {
+          setError('Error checking recipient XMTP registration before send.');
+          console.error('[XMTP] Error checking recipient registration before send:', checkError);
+          return;
+        }
+        if (!canMessage) {
+          setError('Recipient is not registered on XMTP V3. They must connect their wallet to XMTP to receive messages.');
+          console.warn(`[XMTP] Recipient (${peerAddress}) is not registered on XMTP V3.`);
+          return;
+        }
+      } else {
+        // For group conversations or non-eth addresses, skip canMessage check
+        canMessage = true;
+        console.log(`[XMTP] Skipping canMessage check for non-Ethereum address or group: ${peerAddress}`);
       }
       // --- Send message ---
       let retries = 0;
