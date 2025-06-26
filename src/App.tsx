@@ -6,6 +6,9 @@ import Modal from './components/Modal';
 import XMTPMessaging from './components/XMTPMessaging';
 import { useXMTP, XMTPProvider } from './contexts/XMTPContext';
 import { Activity, Trophy, Circle, MessageCircle, Menu, X, User, ExternalLink, Settings, Lock, LogOut } from 'lucide-react';
+import { isFarcasterMiniApp } from './utils/farcasterCompatibility';
+// Import the Farcaster Frame SDK for mini app splash screen control
+import { sdk } from '@farcaster/frame-sdk';
 
 // Inner App component that uses XMTP context
 function AppContent() {
@@ -150,6 +153,20 @@ function AppContent() {
     console.log('  - Is Connected:', isConnected);
     console.log('  - Address:', address);
   }, [isConnected, address]);
+
+  // Call Farcaster mini app ready when UI is ready
+  useEffect(() => {
+    if (isFarcasterMiniApp()) {
+      (async () => {
+        try {
+          await sdk.actions.ready({ disableNativeGestures: true });
+          console.log('✅ Farcaster mini app: called sdk.actions.ready({ disableNativeGestures: true })');
+        } catch (err) {
+          console.error('❌ Farcaster mini app: failed to call sdk.actions.ready()', err);
+        }
+      })();
+    }
+  }, []);
 
   // Main return with conditional rendering
   return (
