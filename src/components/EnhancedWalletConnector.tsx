@@ -31,9 +31,7 @@ export const EnhancedWalletConnector: React.FC<EnhancedWalletConnectorProps> = (
   const [, setWalletClient] = useState<WalletClient | null>(null)
 
   // Filter connectors: Only show WalletConnect and others if not in Farcaster mini app
-  const filteredConnectors = isFarcasterMiniApp()
-    ? connectors.filter(connector => connector.id === 'injected' || connector.id === 'io.coinbase.wallet' || connector.id === 'coinbaseWallet')
-    : connectors
+  const filteredConnectors = connectors
 
   // Get the Coinbase Wallet connector (or injected)
   const coinbaseConnector = filteredConnectors.find(connector => 
@@ -46,11 +44,7 @@ export const EnhancedWalletConnector: React.FC<EnhancedWalletConnectorProps> = (
       if (isConnected) {
         try {
           let client: WalletClient | null = null;
-          if (isFarcasterMiniApp() && window.ethereum) {
-            client = await getWalletClient(wagmiConfig, { chainId: 8453 });
-          } else {
-            client = await getWalletClient(wagmiConfig);
-          }
+          client = await getWalletClient(wagmiConfig);
           setWalletClient(client)
           if (onWalletClientReady && client) onWalletClientReady(client)
         } catch (error) {
@@ -83,49 +77,14 @@ export const EnhancedWalletConnector: React.FC<EnhancedWalletConnectorProps> = (
     disconnect()
   }
 
-  // ✅ Farcaster Mini App view
-  if (isFarcasterMiniApp()) {
-    return isConnected && address ? (
-      <div className={`flex items-center space-x-2 ${className}`}>
-        <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-          <Zap className="w-4 h-4 text-purple-600" />
-        </div>
-        <div className="hidden sm:block">
-          <div className="text-sm font-medium">{address.slice(0, 6)}...{address.slice(-4)}</div>
-          <div className="text-xs text-purple-600">Connected to Farcaster</div>
-        </div>
-        <button onClick={handleDisconnect} className="p-1 hover:bg-gray-100 rounded-full transition-colors" title="Disconnect">
-          <LogOut className="w-4 h-4 text-gray-500" />
-        </button>
-      </div>
-    ) : (
-      <div className={`flex items-center space-x-2 ${className}`}>
-        <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
-          <Zap className="w-4 h-4 text-gray-400" />
-        </div>
-        <div className="hidden sm:block">
-          <div className="text-sm font-medium">Not Connected</div>
-          <div className="text-xs text-gray-500">Farcaster Mini App</div>
-        </div>
-        <button 
-          onClick={handleConnect}
-          disabled={isPending}
-          className={`bg-blue-600 text-white px-4 py-2 rounded-full hover:bg-blue-700 transition-colors flex items-center space-x-2 ${className} ${isPending ? 'opacity-50 cursor-not-allowed' : ''}`}
-        >
-          <Smartphone className="w-4 h-4" />
-          <span>{isPending ? 'Connecting...' : 'Connect Wallet'}</span>
-        </button>
-      </div>
-    )
-  }
+  // --- UNIFIED UI FOR ALL ENVIRONMENTS ---
 
-  // 📱 Mobile Wallet Connection
-  if (isFarcasterMiniApp()) {
-    return isConnected && address ? (
+  if (isConnected && address) {
+    return (
       <div className={`flex flex-col items-center space-y-1 ${className}`}>
         <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-            <Smartphone className="w-4 h-4 text-blue-600" />
+          <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+            <User className="w-4 h-4 text-black" />
           </div>
           <div className="hidden sm:block">
             <div className="text-sm font-medium">{address.slice(0, 6)}...{address.slice(-4)}</div>
@@ -135,24 +94,9 @@ export const EnhancedWalletConnector: React.FC<EnhancedWalletConnectorProps> = (
           </button>
         </div>
       </div>
-    ) : (
-      <div className="relative flex flex-col items-center">
-        <button 
-          onClick={handleConnect}
-          disabled={isPending}
-          className={`bg-blue-600 text-white px-4 py-2 rounded-full hover:bg-blue-700 transition-colors flex items-center space-x-2 ${className} ${isPending ? 'opacity-50 cursor-not-allowed' : ''}`}
-        >
-          <Smartphone className="w-4 h-4" />
-          <span>{isPending ? 'Connecting...' : 'Connect Wallet'}</span>
-        </button>
-        <div className="text-xs text-gray-500 mt-2 text-center">
-          You'll be redirected to the Coinbase Wallet app to connect securely.
-        </div>
-      </div>
     )
   }
 
-  // 🖥️ Desktop UI
   if (onOpenModal) {
     return (
       <div className={`flex flex-col items-center space-y-1 ${className}`}>
@@ -168,17 +112,15 @@ export const EnhancedWalletConnector: React.FC<EnhancedWalletConnectorProps> = (
   }
 
   return (
-    <div className="relative">
-      {children || (
-        <button 
-          onClick={handleConnect}
-          disabled={isPending}
-          className={`bg-black text-white px-4 py-2 rounded-full hover:bg-gray-800 transition-colors flex items-center space-x-2 ${className} ${isPending ? 'opacity-50 cursor-not-allowed' : ''}`}
-        >
-          <Monitor className="w-4 h-4" />
-          <span>{isPending ? 'Connecting...' : 'Connect Wallet'}</span>
-        </button>
-      )}
+    <div className="relative flex flex-col items-center">
+      <button 
+        onClick={handleConnect}
+        disabled={isPending}
+        className={`bg-gray-100 text-black px-4 py-2 rounded-full hover:bg-gray-200 transition-colors flex items-center space-x-2 ${className} ${isPending ? 'opacity-50 cursor-not-allowed' : ''}`}
+      >
+        <User className="w-4 h-4" />
+        <span>{isPending ? 'Connecting...' : 'Connect Wallet'}</span>
+      </button>
     </div>
   )
 }
