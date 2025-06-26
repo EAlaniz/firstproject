@@ -10,8 +10,8 @@ import { isFarcasterMiniApp } from './utils/farcasterCompatibility';
 // Import the Farcaster Frame SDK for mini app splash screen control
 import { sdk } from '@farcaster/frame-sdk';
 
-// Inner App component that uses XMTP context
 function AppContent() {
+  // your existing state hooks
   const [showWalletConnector, setShowWalletConnector] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,6 +27,24 @@ function AppContent() {
   const { data: walletClient } = useWalletClient();
   const { disconnect } = useDisconnect();
 
+  // Add this useEffect near the top inside your component
+  useEffect(() => {
+    // Dev-only mock for window.farcaster.isMiniApp if undefined
+    if (!window.farcaster) {
+      window.farcaster = { isMiniApp: true };
+      console.warn('Mocking window.farcaster.isMiniApp for local dev');
+    }
+
+    (async () => {
+      try {
+        await sdk.actions.ready();
+        sdk.back.enableWebNavigation();
+        console.log('✅ Farcaster sdk.actions.ready() and sdk.back.enableWebNavigation() called successfully');
+      } catch (err) {
+        console.error('❌ Failed to call Farcaster SDK ready or navigation enable', err);
+      }
+    })();
+  }, []);
   // Use XMTP context
   const { client: xmtpClient, initializeClient, isInitializing } = useXMTP();
 
@@ -153,20 +171,6 @@ function AppContent() {
     console.log('  - Is Connected:', isConnected);
     console.log('  - Address:', address);
   }, [isConnected, address]);
-
-  // Call Farcaster mini app ready when UI is ready
-  useEffect(() => {
-    if (isFarcasterMiniApp()) {
-      (async () => {
-        try {
-          await sdk.actions.ready({ disableNativeGestures: true });
-          console.log('✅ Farcaster mini app: called sdk.actions.ready({ disableNativeGestures: true })');
-        } catch (err) {
-          console.error('❌ Farcaster mini app: failed to call sdk.actions.ready()', err);
-        }
-      })();
-    }
-  }, []);
 
   // Main return with conditional rendering
   return (
