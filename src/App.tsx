@@ -1,35 +1,23 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useConfig, useAccount, useBalance, useWalletClient, useDisconnect } from 'wagmi';
-import { APP_CONFIG, ENV_CONFIG, SHARE_CONFIG } from './constants';
-import Header from './components/Header';
-import StepTracker from './components/StepTracker';
+import React, { useState, useEffect } from 'react';
+import { useAccount, useBalance, useWalletClient, useDisconnect } from 'wagmi';
+import { ENV_CONFIG } from './constants';
 import { EnhancedWalletConnector } from './components/EnhancedWalletConnector';
 import Modal from './components/Modal';
 import XMTPMessaging from './components/XMTPMessaging';
 import { useXMTP, XMTPProvider } from './contexts/XMTPContext';
-import { base } from 'wagmi/chains';
 import { Activity, Trophy, Circle, MessageCircle, Menu, X, User, ExternalLink, Settings, Lock, LogOut } from 'lucide-react';
 
 // Inner App component that uses XMTP context
 function AppContent() {
-  // Test wagmi config to ensure provider is working
-  const config = useConfig();
-
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalContent, setModalContent] = useState<React.ReactNode>(null);
   const [showWalletConnector, setShowWalletConnector] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [currentStep, setCurrentStep] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [showXMTPMessaging, setShowXMTPMessaging] = useState(false);
-  const [isWalletConnected, setIsWalletConnected] = useState(false);
-  const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [currentSteps, setCurrentSteps] = useState(7240);
   const [dailyGoal, setDailyGoal] = useState(10000);
-  const [currentStreak, setCurrentStreak] = useState(12);
-  const [totalTokens, setTotalTokens] = useState(156);
+  const [currentStreak] = useState(12);
+  const [totalTokens] = useState(156);
 
   const { address, isConnected } = useAccount();
   const { data: balance } = useBalance({ address: address });
@@ -46,8 +34,6 @@ function AppContent() {
 
   // Update wallet connection state
   useEffect(() => {
-    setIsWalletConnected(isConnected);
-    setWalletAddress(address || null);
     console.log('Wallet state updated:', { isConnected, address, walletClient: !!walletClient });
   }, [isConnected, address, walletClient]);
 
@@ -83,142 +69,12 @@ function AppContent() {
     }
   }, [currentSteps, dailyGoal]);
 
-  // Function to update steps while respecting the goal limit
-  const updateSteps = (newSteps: number) => {
-    const limitedSteps = Math.min(newSteps, dailyGoal);
-    setCurrentSteps(limitedSteps);
-  };
-
   // Function to handle goal changes and adjust current steps if needed
   const handleGoalChange = (newGoal: number) => {
     setDailyGoal(newGoal);
     // If current steps exceed the new goal, cap them at the goal
     if (currentSteps > newGoal) {
       setCurrentSteps(newGoal);
-    }
-  };
-
-  const handleStepComplete = (step: number) => {
-    setCurrentStep(step + 1);
-    setSuccess(`Step ${step + 1} completed!`);
-  };
-
-  const handleError = (errorMessage: string) => {
-    setError(errorMessage);
-    setIsLoading(false);
-  };
-
-  const handleSuccess = (successMessage: string) => {
-    setSuccess(successMessage);
-    setIsLoading(false);
-  };
-
-  const openModal = (content: React.ReactNode) => {
-    setModalContent(content);
-    setIsModalOpen(true);
-  };
-
-  const closeModal = () => {
-    setIsModalOpen(false);
-    setModalContent(null);
-  };
-
-  const handleWalletConnect = () => {
-    setShowWalletConnector(true);
-  };
-
-  const getStepContent = (step: number) => {
-    switch (step) {
-      case 0:
-        return (
-          <div className="text-center space-y-6">
-            <div className="space-y-4">
-              <h2 className="text-2xl font-bold text-gray-900">
-                Welcome to {APP_CONFIG.name}
-              </h2>
-              <p className="text-gray-600 max-w-md mx-auto">
-                Track your daily steps, earn rewards, and connect with friends in the decentralized wellness community.
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <h3 className="font-semibold text-blue-900 mb-2">🚶‍♂️ Step Tracking</h3>
-                <p className="text-blue-700 text-sm">
-                  Connect your wallet to start tracking your daily steps and earning rewards.
-                </p>
-              </div>
-
-              <div className="bg-green-50 p-4 rounded-lg">
-                <h3 className="font-semibold text-green-900 mb-2">💰 Token Rewards</h3>
-                <p className="text-green-700 text-sm">
-                  Earn tokens for achieving your daily step goals and maintaining streaks.
-                </p>
-              </div>
-
-              <div className="bg-purple-50 p-4 rounded-lg">
-                <h3 className="font-semibold text-purple-900 mb-2">🤝 Social Connection</h3>
-                <p className="text-purple-700 text-sm">
-                  Share your progress and connect with friends in the wellness community.
-                </p>
-              </div>
-            </div>
-
-            <button
-              onClick={() => handleStepComplete(0)}
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
-            >
-              Get Started
-            </button>
-          </div>
-        );
-
-      case 1:
-        return (
-          <div className="text-center space-y-6">
-            <div className="space-y-4">
-              <h2 className="text-2xl font-bold text-gray-900">
-                Connect Your Wallet
-              </h2>
-              <p className="text-gray-600 max-w-md mx-auto">
-                Connect your wallet to start tracking steps and earning rewards on Base Chain.
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              <div className="bg-yellow-50 p-4 rounded-lg">
-                <h3 className="font-semibold text-yellow-900 mb-2">🔗 Wallet Connection</h3>
-                <p className="text-yellow-700 text-sm">
-                  We support Coinbase Wallet for seamless integration with Base Chain.
-                </p>
-              </div>
-
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <h3 className="font-semibold text-blue-900 mb-2">🔐 Secure & Private</h3>
-                <p className="text-blue-700 text-sm">
-                  Your data stays private. We only access your wallet address for rewards.
-                </p>
-              </div>
-
-              <div className="bg-green-50 p-4 rounded-lg">
-                <h3 className="font-semibold text-green-900 mb-2">⚡ Fast & Cheap</h3>
-                <p className="text-green-700 text-sm">
-                  Base Chain provides fast transactions with minimal gas fees.
-                </p>
-              </div>
-            </div>
-
-            <button
-              onClick={() => setShowWalletConnector(true)}
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
-            >
-              Connect Wallet
-            </button>
-          </div>
-        );
-
-      default:
-        return null;
     }
   };
 
@@ -486,7 +342,7 @@ function AppContent() {
                 <button
                   onClick={() => {
                     if (currentSteps >= dailyGoal) {
-                      handleShare('twitter', SHARE_CONFIG.defaultText(currentSteps));
+                      handleShare('twitter', 'Share your progress with the community!');
                     }
                   }}
                   disabled={currentSteps < dailyGoal}
@@ -890,7 +746,6 @@ function AppContent() {
       {/* XMTP Messaging Modal */}
       {showXMTPMessaging && (
         <XMTPMessaging
-          isOpen={showXMTPMessaging}
           onClose={() => setShowXMTPMessaging(false)}
         />
       )}

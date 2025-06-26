@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useAccount, useDisconnect, useConnect } from 'wagmi'
 import { getWalletClient } from '@wagmi/core'
-import { base } from 'wagmi/chains'
-import { createWalletClient, http } from 'viem'
+import type { WalletClient } from 'viem'
 import {
   Monitor,
   Smartphone,
@@ -34,7 +33,7 @@ interface EnhancedWalletConnectorProps {
   className?: string
   children?: React.ReactNode
   onOpenModal?: () => void
-  onWalletClientReady?: (client: any) => void // <-- XMTP support
+  onWalletClientReady?: (client: WalletClient) => void // <-- XMTP support
 }
 
 export const EnhancedWalletConnector: React.FC<EnhancedWalletConnectorProps> = ({
@@ -47,7 +46,7 @@ export const EnhancedWalletConnector: React.FC<EnhancedWalletConnectorProps> = (
   const { disconnect } = useDisconnect()
   const { connect, connectors, isPending } = useConnect()
   const { isFarcaster, isMobile } = getEnvironmentInfo()
-  const [walletClient, setWalletClient] = useState<any>(null)
+  const [, setWalletClient] = useState<WalletClient | null>(null)
 
   // Get the Coinbase Wallet connector
   console.log('Available connectors:', connectors.map(c => ({ id: c.id, name: c.name })));
@@ -98,7 +97,7 @@ export const EnhancedWalletConnector: React.FC<EnhancedWalletConnectorProps> = (
       }
     }
     loadClient()
-  }, [isConnected, address])
+  }, [isConnected, address, onWalletClientReady])
 
   const handleConnect = () => {
     if (coinbaseConnector) {

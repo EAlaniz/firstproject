@@ -1,9 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { useAccount, useWalletClient } from 'wagmi';
-import { Client, Conversation, DecodedMessage, Dm, Group, StreamCallback } from '@xmtp/browser-sdk';
-import { initXMTP, getClient, isXMTPInitialized, getXMTPStatus } from '../xmtpClient';
+import { Client, DecodedMessage, Dm, Group, StreamCallback } from '@xmtp/browser-sdk';
 import { createAutoSigner, validateSigner, getSignerInfo } from '../utils/xmtpSigner';
-import { base } from 'wagmi/chains';
 
 type XMTPConversation = Dm<string> | Group<string>;
 
@@ -37,7 +35,7 @@ interface XMTPProviderProps {
 }
 
 export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
-  const { address, isConnected } = useAccount();
+  const { address } = useAccount();
   const { data: walletClient } = useWalletClient();
   
   // Client state
@@ -58,7 +56,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     if (client && isInitialized) {
       loadConversations();
     }
-  }, [client, isInitialized]);
+  }, [client, isInitialized, loadConversations]);
 
   const initializeClient = async () => {
     if (!walletClient || !address) {
