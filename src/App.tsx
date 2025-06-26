@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useConfig, useAccount, useBalance, useWalletClient } from 'wagmi';
+import { useConfig, useAccount, useBalance, useWalletClient, useDisconnect } from 'wagmi';
 import { APP_CONFIG, ENV_CONFIG } from './constants';
 import Header from './components/Header';
 import StepTracker from './components/StepTracker';
@@ -36,6 +36,7 @@ const [totalTokens, setTotalTokens] = useState(156);
 const { address, isConnected } = useAccount();
 const { data: balance } = useBalance({ address: address });
 const { data: walletClient } = useWalletClient();
+const { disconnect } = useDisconnect();
 
 // Update wallet connection state
 useEffect(() => {
@@ -104,6 +105,7 @@ const handleWalletDisconnect = () => {
 setIsWalletConnected(false);
 setWalletAddress(null);
 setSuccess('Wallet disconnected successfully');
+disconnect();
 };
 
 const getStepContent = (step: number) => {
