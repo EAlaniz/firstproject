@@ -34,6 +34,30 @@ interface XMTPProviderProps {
   children: ReactNode;
 }
 
+// Debug utility to check recipient registration and log XMTP state
+export async function debugXMTP(client: Client | null, recipientAddress: string) {
+  if (!client) {
+    console.error('[XMTP Debug] Client is not initialized');
+    return;
+  }
+  try {
+    const canMessage = await Client.canMessage([
+      { identifier: recipientAddress, identifierKind: 'Ethereum' }
+    ], 'production');
+    console.log(`[XMTP Debug] Can message ${recipientAddress}?`, canMessage);
+    const conversations = await client.conversations.list();
+    console.log('[XMTP Debug] Conversations:', conversations);
+    if (conversations.length > 0) {
+      for (const conv of conversations) {
+        const msgs = await conv.messages();
+        console.log(`[XMTP Debug] Messages for conversation ${conv.id}:`, msgs);
+      }
+    }
+  } catch (err) {
+    console.error('[XMTP Debug] Error during debugXMTP:', err);
+  }
+}
+
 export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   const { address } = useAccount();
   const { data: walletClient } = useWalletClient();
@@ -268,30 +292,6 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       setIsLoading(false);
     }
   };
-
-  // Debug utility to check recipient registration and log XMTP state
-  export async function debugXMTP(client: Client | null, recipientAddress: string) {
-    if (!client) {
-      console.error('[XMTP Debug] Client is not initialized');
-      return;
-    }
-    try {
-      const canMessage = await Client.canMessage([
-        { identifier: recipientAddress, identifierKind: 'Ethereum' }
-      ], 'production');
-      console.log(`[XMTP Debug] Can message ${recipientAddress}?`, canMessage);
-      const conversations = await client.conversations.list();
-      console.log('[XMTP Debug] Conversations:', conversations);
-      if (conversations.length > 0) {
-        for (const conv of conversations) {
-          const msgs = await conv.messages();
-          console.log(`[XMTP Debug] Messages for conversation ${conv.id}:`, msgs);
-        }
-      }
-    } catch (err) {
-      console.error('[XMTP Debug] Error during debugXMTP:', err);
-    }
-  }
 
   const sendMessage = async (message: string, targetConversation?: XMTPConversation) => {
     if (!client) {
