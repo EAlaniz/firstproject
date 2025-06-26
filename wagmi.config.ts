@@ -8,13 +8,27 @@ const rpcUrl = import.meta.env.VITE_RPC_URL || 'https://flashy-convincing-paper.
 
 console.log('🔧 Wagmi Config RPC URL:', rpcUrl);
 
+// Check if running in Farcaster environment
+const isFarcaster = typeof window !== 'undefined' && (
+  window.location.hostname.includes('warpcast.com') ||
+  window.location.hostname.includes('farcaster.xyz') ||
+  window.location.hostname.includes('farcaster.com')
+);
+
 export const wagmiConfig = createConfig({
   chains: [base],
   connectors: [
     coinbaseWallet({
-      appName: 'farcaster-mini',
+      appName: '10K - Move. Earn. Connect.',
       appLogoUrl: 'https://www.move10k.xyz/10k-icon.png',
       jsonRpcUrl: rpcUrl, // ✅ MUST BE PROVIDED for Base network
+      // Farcaster-specific options
+      ...(isFarcaster && {
+        // Disable WalletConnect explorer API calls in Farcaster
+        disableExplorer: true,
+        // Use simpler connection flow
+        overrideIsMetaMask: false,
+      }),
     }),
   ],
   transports: {
@@ -22,4 +36,13 @@ export const wagmiConfig = createConfig({
   },
   pollingInterval: 4000,
   ssr: false,
+  // Farcaster-specific configuration
+  ...(isFarcaster && {
+    // Reduce polling to avoid excessive API calls
+    pollingInterval: 8000,
+    // Disable some features that might cause CSP issues
+    batch: {
+      multicall: false,
+    },
+  }),
 }) 

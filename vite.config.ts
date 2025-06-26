@@ -40,7 +40,7 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    exclude: ['lucide-react', 'workers'],
+    exclude: ['lucide-react', 'workers', '@xmtp/browser-sdk'],
     include: ['buffer', 'protobufjs/minimal'],
   },
   define: {
@@ -51,6 +51,13 @@ export default defineConfig({
       buffer: 'buffer',
       'protobufjs/minimal': path.resolve(__dirname, 'node_modules/protobufjs/minimal.js'),
       'eventemitter3': path.resolve(__dirname, 'node_modules/eventemitter3/index.js'),
+    },
+  },
+  // Farcaster-specific optimizations
+  esbuild: {
+    // Suppress specific warnings in Farcaster environment
+    logOverride: {
+      'this-is-undefined-in-esm': 'silent',
     },
   },
 });

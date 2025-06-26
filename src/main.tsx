@@ -8,8 +8,12 @@ import { base } from 'wagmi/chains';
 import { AuthKitProvider } from '@farcaster/auth-kit';
 import { http } from 'viem';
 import { isFarcasterMiniApp } from './components/EnhancedWalletConnector';
+import { farcasterCompatibility } from './utils/farcasterCompatibility';
 import App from './App';
 import './index.css';
+
+// Initialize Farcaster compatibility fixes early
+farcasterCompatibility.init();
 
 const queryClient = new QueryClient({
   defaultOptions: {
