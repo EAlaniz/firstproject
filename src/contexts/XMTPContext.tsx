@@ -26,6 +26,9 @@ interface XMTPContextType {
   // Status
   status: string;
   isLoading: boolean;
+  
+  // New forceXMTPResync function
+  forceXMTPResync: () => Promise<void>;
 }
 
 const XMTPContext = createContext<XMTPContextType | undefined>(undefined);
@@ -50,11 +53,44 @@ export async function debugXMTP(client: Client | null, recipientAddress: string)
     if (conversations.length > 0) {
       for (const conv of conversations) {
         const msgs = await conv.messages();
-        console.log(`[XMTP Debug] Messages for conversation ${conv.id}:`, msgs);
+        console.log(`[XMTP Debug] Messages in conversation ${conv.id}:`, msgs.length);
       }
     }
-  } catch (err) {
-    console.error('[XMTP Debug] Error during debugXMTP:', err);
+  } catch (error) {
+    console.error('[XMTP Debug] Error:', error);
+  }
+}
+
+// Helper to clear local XMTP state (for dev/debug use only)
+export function clearXMTPState() {
+  try {
+    // Clear XMTP IndexedDB
+    indexedDB.deleteDatabase('xmtp-encrypted-store');
+    console.log('[XMTP Debug] Cleared local XMTP state');
+    // Reload the page to reinitialize
+    window.location.reload();
+  } catch (error) {
+    console.error('[XMTP Debug] Error clearing XMTP state:', error);
+  }
+}
+
+// Helper to check for clock skew (can cause MLS validation errors)
+export function checkClockSkew() {
+  try {
+    // Simple check - in production you might want to compare with a server time
+    const now = Date.now();
+    const timeString = new Date().toISOString();
+    console.log(`[XMTP Debug] Current time: ${timeString} (${now})`);
+    
+    // Basic sanity check - if time is before 2024, something is wrong
+    if (now < new Date('2024-01-01').getTime()) {
+      console.warn('[XMTP Debug] ⚠️ System clock appears to be incorrect. This may cause XMTP validation errors.');
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error('[XMTP Debug] Error checking clock:', error);
+    return false;
   }
 }
 
@@ -220,13 +256,31 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       await new Promise(resolve => setTimeout(resolve, 2000));
       console.log('✅ Device sync completed');
       
-      // --- Force device sync after client creation (type workaround) ---
-      if (typeof (xmtpClient as any).sync === 'function') {
-        try {
-          await (xmtpClient as any).sync();
-          console.log('✅ Forced device sync completed');
-        } catch (syncErr) {
-          console.warn('⚠️ Device sync failed:', syncErr);
+      // After successful client creation, force device and conversation sync
+      if (clientRef.current) {
+        console.log('[XMTP] Forcing device and conversation sync after client creation...');
+        
+        // Check clock skew
+        checkClockSkew();
+        
+        // Force device sync if available
+        if (typeof (clientRef.current as any).waitForDeviceSync === 'function') {
+          try {
+            await (clientRef.current as any).waitForDeviceSync();
+            console.log('[XMTP] ✅ Device sync completed after client creation');
+          } catch (syncErr) {
+            console.warn('[XMTP] ⚠️ Device sync failed after client creation:', syncErr);
+          }
+        }
+        
+        // Force conversation sync if available
+        if (typeof (clientRef.current as any).conversations?.sync === 'function') {
+          try {
+            await (clientRef.current as any).conversations.sync();
+            console.log('[XMTP] ✅ Conversation sync completed after client creation');
+          } catch (syncErr) {
+            console.warn('[XMTP] ⚠️ Conversation sync failed after client creation:', syncErr);
+          }
         }
       }
       
@@ -499,20 +553,59 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     }
   }, [address, cleanupStreams]);
 
+  // Force XMTP resync - useful for resolving group sync issues
+  const forceXMTPResync = async () => {
+    if (!clientRef.current) {
+      console.warn('[XMTP] No client to resync');
+      return;
+    }
+    
+    try {
+      setStatus('Forcing XMTP resync...');
+      console.log('[XMTP] Starting forced resync...');
+      
+      // Check clock first
+      checkClockSkew();
+      
+      // Force device sync if available
+      if (typeof (clientRef.current as any).waitForDeviceSync === 'function') {
+        await (clientRef.current as any).waitForDeviceSync();
+        console.log('[XMTP] ✅ Device sync completed');
+      }
+      
+      // Force conversation sync if available
+      if (typeof (clientRef.current as any).conversations?.sync === 'function') {
+        await (clientRef.current as any).conversations.sync();
+        console.log('[XMTP] ✅ Conversation sync completed');
+      }
+      
+      // Reload conversations
+      await loadConversations();
+      
+      setStatus('XMTP resync completed');
+      console.log('[XMTP] ✅ Forced resync completed successfully');
+    } catch (error) {
+      console.error('[XMTP] Error during forced resync:', error);
+      setError('Failed to resync XMTP');
+      setStatus('Resync failed');
+    }
+  };
+
   const contextValue: XMTPContextType = {
-    client,
+    client: clientRef.current,
     isInitialized,
     isInitializing,
     error,
+    status,
     conversations,
     selectedConversation,
     messages,
-    initializeClient,
-    selectConversation,
     sendMessage,
     createConversation,
-    status,
-    isLoading,
+    selectConversation,
+    initializeClient,
+    forceXMTPResync,
+    isLoading: isInitializing,
   };
 
   return (
