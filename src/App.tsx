@@ -1,190 +1,184 @@
-  import React, { useState, useEffect } from 'react';
-  import { useAccount, useBalance, useWalletClient, useDisconnect } from 'wagmi';
-  import { ENV_CONFIG } from './constants';
-  import { EnhancedWalletConnector } from './components/EnhancedWalletConnector';
-  import Modal from './components/Modal';
-  import XMTPMessaging from './components/XMTPMessaging';
-  import { useXMTP, XMTPProvider } from './contexts/XMTPContext';
-  import { Activity, Trophy, Circle, MessageCircle, Menu, X, User, ExternalLink, Settings, Lock, LogOut } from 'lucide-react';
-  import { isFarcasterMiniApp } from './utils/farcasterCompatibility';
-  // Import the Farcaster Frame SDK for mini app splash screen control
-  import { sdk } from '@farcaster/frame-sdk';
-  
+import React, { useState, useEffect } from 'react';
+import { useAccount, useBalance, useWalletClient, useDisconnect } from 'wagmi';
+import { ENV_CONFIG } from './constants';
+import { EnhancedWalletConnector } from './components/EnhancedWalletConnector';
+import Modal from './components/Modal';
+import XMTPMessaging from './components/XMTPMessaging';
+import { useXMTP, XMTPProvider } from './contexts/XMTPContext';
+import { Activity, Trophy, Circle, MessageCircle, Menu, X, User, ExternalLink, Settings, Lock, LogOut } from 'lucide-react';
+import { isFarcasterMiniApp } from './utils/farcasterCompatibility';
+// Import the Farcaster Frame SDK for mini app splash screen control
+import { sdk } from '@farcaster/frame-sdk';
+
+// Inner App component that uses XMTP context
+function AppContent() {
+  const [showWalletConnector, setShowWalletConnector] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [showXMTPMessaging, setShowXMTPMessaging] = useState(false);
+  const [currentSteps, setCurrentSteps] = useState(7240);
+  const [dailyGoal, setDailyGoal] = useState(10000);
+  const [currentStreak] = useState(12);
+  const [totalTokens] = useState(156);
+
+  const { address, isConnected } = useAccount();
+  const { data: balance } = useBalance({ address: address });
+  const { data: walletClient } = useWalletClient();
+  const { disconnect } = useDisconnect();
+
+  // Use XMTP context
+  const { client: xmtpClient, initializeClient, isInitializing } = useXMTP();
+
+  // Debug modal state
   useEffect(() => {
-    sdk.actions.ready()
-    sdk.back.enableWebNavigation()
-  }, [])
+    console.log('Modal state changed:', { showWalletConnector, isConnected });
+  }, [showWalletConnector, isConnected]);
 
+  // Update wallet connection state
+  useEffect(() => {
+    console.log('Wallet state updated:', { isConnected, address, walletClient: !!walletClient });
+  }, [isConnected, address, walletClient]);
 
-  // Inner App component that uses XMTP context
-  function AppContent() {
-    const [showWalletConnector, setShowWalletConnector] = useState(false);
-    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [success, setSuccess] = useState<string | null>(null);
-    const [showXMTPMessaging, setShowXMTPMessaging] = useState(false);
-    const [currentSteps, setCurrentSteps] = useState(7240);
-    const [dailyGoal, setDailyGoal] = useState(10000);
-    const [currentStreak] = useState(12);
-    const [totalTokens] = useState(156);
+  // Close wallet modal when wallet connects
+  useEffect(() => {
+    if (isConnected && showWalletConnector) {
+      const timer = setTimeout(() => {
+        setShowWalletConnector(false);
+      }, 1500); // 1.5 second delay to show success
+      return () => clearTimeout(timer);
+    }
+  }, [isConnected, showWalletConnector]);
 
-    const { address, isConnected } = useAccount();
-    const { data: balance } = useBalance({ address: address });
-    const { data: walletClient } = useWalletClient();
-    const { disconnect } = useDisconnect();
+  // Clear messages after timeout
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => setError(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
 
-    // Use XMTP context
-    const { client: xmtpClient, initializeClient, isInitializing } = useXMTP();
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => setSuccess(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [success]);
 
-    // Debug modal state
-    useEffect(() => {
-      console.log('Modal state changed:', { showWalletConnector, isConnected });
-    }, [showWalletConnector, isConnected]);
+  // Ensure current steps never exceed the daily goal
+  useEffect(() => {
+    if (currentSteps > dailyGoal) {
+      setCurrentSteps(dailyGoal);
+    }
+  }, [currentSteps, dailyGoal]);
 
-    // Update wallet connection state
-    useEffect(() => {
-      console.log('Wallet state updated:', { isConnected, address, walletClient: !!walletClient });
-    }, [isConnected, address, walletClient]);
+  // Function to handle goal changes and adjust current steps if needed
+  const handleGoalChange = (newGoal: number) => {
+    setDailyGoal(newGoal);
+    // If current steps exceed the new goal, cap them at the goal
+    if (currentSteps > newGoal) {
+      setCurrentSteps(newGoal);
+    }
+  };
 
-    // Close wallet modal when wallet connects
-    useEffect(() => {
-      if (isConnected && showWalletConnector) {
-        const timer = setTimeout(() => {
-          setShowWalletConnector(false);
-        }, 1500); // 1.5 second delay to show success
-        return () => clearTimeout(timer);
+  const handleShare = async (platform: string, text: string) => {
+    try {
+      if (platform === 'twitter') {
+        const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(window.location.href)}`;
+        window.open(url, '_blank');
+      } else if (platform === 'farcaster') {
+        // Farcaster sharing logic
+        const url = `https://warpcast.com/~/compose?text=${encodeURIComponent(text)}`;
+        window.open(url, '_blank');
       }
-    }, [isConnected, showWalletConnector]);
+      setSuccess('Shared successfully!');
+    } catch (error) {
+      console.error('Share error:', error);
+      setError('Failed to share. Please try again.');
+    }
+  };
 
-    // Clear messages after timeout
-    useEffect(() => {
-      if (error) {
-        const timer = setTimeout(() => setError(null), 5000);
-        return () => clearTimeout(timer);
-      }
-    }, [error]);
+  // Function to handle XMTP initialization when user clicks Messages
+  const handleXMTPInitialization = async () => {
+    if (!isConnected || !address || !walletClient) {
+      setError('Please connect your wallet first');
+      return;
+    }
 
-    useEffect(() => {
-      if (success) {
-        const timer = setTimeout(() => setSuccess(null), 3000);
-        return () => clearTimeout(timer);
-      }
-    }, [success]);
+    if (xmtpClient) {
+      // XMTP already initialized, just show the messaging interface
+      setShowXMTPMessaging(true);
+      return;
+    }
 
-    // Ensure current steps never exceed the daily goal
-    useEffect(() => {
-      if (currentSteps > dailyGoal) {
-        setCurrentSteps(dailyGoal);
-      }
-    }, [currentSteps, dailyGoal]);
+    if (isInitializing) {
+      setError('XMTP initialization already in progress...');
+      return;
+    }
 
-    // Function to handle goal changes and adjust current steps if needed
-    const handleGoalChange = (newGoal: number) => {
-      setDailyGoal(newGoal);
-      // If current steps exceed the new goal, cap them at the goal
-      if (currentSteps > newGoal) {
-        setCurrentSteps(newGoal);
-      }
-    };
+    console.log('🚀 User initiated XMTP initialization');
+    console.log('🔍 Current wallet state:', {
+      address,
+      chainId: walletClient.chain?.id,
+      chainName: walletClient.chain?.name
+    });
+    
+    // Check if wallet is on Base network
+    if (walletClient.chain?.id !== 8453) {
+      console.log('⚠️  Wallet not on Base network. Current:', walletClient.chain?.id, 'Expected: 8453');
+      setError('Please switch your Coinbase Wallet to Base network before enabling XMTP messaging. You can do this by: 1) Opening Coinbase Wallet extension, 2) Clicking the network selector, 3) Selecting "Base"');
+      return;
+    }
+    
+    setError(null);
 
-    const handleShare = async (platform: string, text: string) => {
-      try {
-        if (platform === 'twitter') {
-          const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(window.location.href)}`;
-          window.open(url, '_blank');
-        } else if (platform === 'farcaster') {
-          // Farcaster sharing logic
-          const url = `https://warpcast.com/~/compose?text=${encodeURIComponent(text)}`;
-          window.open(url, '_blank');
+    try {
+      console.log('🔄 Starting XMTP initialization process...');
+      console.log('🔄 XMTP is requesting your signature to enable messaging...');
+      
+      await initializeClient();
+      console.log('✅ XMTP initialized successfully');
+      setSuccess('XMTP messaging enabled successfully!');
+      setShowXMTPMessaging(true);
+    } catch (error) {
+      console.error('❌ XMTP initialization failed:', error);
+      setError('XMTP setup failed. Please try again.');
+    }
+  };
+
+  // Debug logging for configuration verification
+  useEffect(() => {
+    console.log('🔧 App Debug Info:');
+    console.log('  - RPC URL:', ENV_CONFIG.RPC_URL);
+    console.log('  - Is Connected:', isConnected);
+    console.log('  - Address:', address);
+  }, [isConnected, address]);
+
+  // Call Farcaster mini app ready when UI is ready
+  useEffect(() => {
+    if (isFarcasterMiniApp()) {
+      (async () => {
+        try {
+          await sdk.actions.ready({ disableNativeGestures: true });
+          console.log('✅ Farcaster mini app: called sdk.actions.ready({ disableNativeGestures: true })');
+        } catch (err) {
+          console.error('❌ Farcaster mini app: failed to call sdk.actions.ready()', err);
         }
-        setSuccess('Shared successfully!');
-      } catch (error) {
-        console.error('Share error:', error);
-        setError('Failed to share. Please try again.');
-      }
-    };
+      })();
+    }
+  }, []);
 
-    // Function to handle XMTP initialization when user clicks Messages
-    const handleXMTPInitialization = async () => {
-      if (!isConnected || !address || !walletClient) {
-        setError('Please connect your wallet first');
-        return;
-      }
-
-      if (xmtpClient) {
-        // XMTP already initialized, just show the messaging interface
-        setShowXMTPMessaging(true);
-        return;
-      }
-
-      if (isInitializing) {
-        setError('XMTP initialization already in progress...');
-        return;
-      }
-
-      console.log('🚀 User initiated XMTP initialization');
-      console.log('🔍 Current wallet state:', {
-        address,
-        chainId: walletClient.chain?.id,
-        chainName: walletClient.chain?.name
-      });
-      
-      // Check if wallet is on Base network
-      if (walletClient.chain?.id !== 8453) {
-        console.log('⚠️  Wallet not on Base network. Current:', walletClient.chain?.id, 'Expected: 8453');
-        setError('Please switch your Coinbase Wallet to Base network before enabling XMTP messaging. You can do this by: 1) Opening Coinbase Wallet extension, 2) Clicking the network selector, 3) Selecting "Base"');
-        return;
-      }
-      
-      setError(null);
-
-      try {
-        console.log('🔄 Starting XMTP initialization process...');
-        console.log('🔄 XMTP is requesting your signature to enable messaging...');
-        
-        await initializeClient();
-        console.log('✅ XMTP initialized successfully');
-        setSuccess('XMTP messaging enabled successfully!');
-        setShowXMTPMessaging(true);
-      } catch (error) {
-        console.error('❌ XMTP initialization failed:', error);
-        setError('XMTP setup failed. Please try again.');
-      }
-    };
-
-    // Debug logging for configuration verification
-    useEffect(() => {
-      console.log('🔧 App Debug Info:');
-      console.log('  - RPC URL:', ENV_CONFIG.RPC_URL);
-      console.log('  - Is Connected:', isConnected);
-      console.log('  - Address:', address);
-    }, [isConnected, address]);
-
-    // Call Farcaster mini app ready when UI is ready
-    useEffect(() => {
-      if (isFarcasterMiniApp()) {
-        (async () => {
-          try {
-            await sdk.actions.ready({ disableNativeGestures: true });
-            console.log('✅ Farcaster mini app: called sdk.actions.ready({ disableNativeGestures: true })');
-          } catch (err) {
-            console.error('❌ Farcaster mini app: failed to call sdk.actions.ready()', err);
-          }
-        })();
-      }
-    }, []);
-
-    // Main return with conditional rendering
-    return (
-      <div className="min-h-screen bg-white text-black">
-        {!isConnected ? (
-          // Landing page for disconnected users
-          <>
-            {/* Header */}
-            <header className="border-b border-gray-200 px-4 sm:px-6 py-4">
-              <div className="max-w-6xl mx-auto flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-black rounded-full flex items-center justify-center">
+  // Main return with conditional rendering
+  return (
+    <div className="min-h-screen bg-white text-black">
+      {!isConnected ? (
+        // Landing page for disconnected users
+        <>
+          {/* Header */}
+          <header className="border-b border-gray-200 px-4 sm:px-6 py-4">
+            <div className="max-w-6xl mx-auto flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-black rounded-full flex items-center justify-center">
                   <Activity className="w-5 h-5 text-white" />
                 </div>
                 <span className="text-xl font-medium">10K</span>
