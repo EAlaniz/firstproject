@@ -1,210 +1,183 @@
 # 10K - Move. Earn. Connect.
 
-A Farcaster Mini App for step tracking, social connection, and token rewards on Base Chain with XMTP messaging integration.
+An inclusive wellness platform that rewards your daily movement with tokens and connects you with a community of movers on Base Chain.
 
-## 🚀 Quick Start
+## 🚀 Features
+
+- **Step Tracking**: Connect your wallet to start tracking daily steps
+- **Token Rewards**: Earn tokens for achieving daily step goals and maintaining streaks
+- **Social Connection**: Share achievements and connect with friends via XMTP messaging
+- **Base Chain Integration**: Fast, low-cost transactions with excellent UX
+- **Multi-Wallet Support**: Works with Coinbase Wallet and other Web3 wallets
+
+## 🔧 XMTP Signer Implementation
+
+This project implements a comprehensive XMTP (Extensible Message Transport Protocol) signer system that supports both Externally Owned Accounts (EOAs) and Smart Contract Wallets (SCWs).
+
+### Signer Types
+
+#### 1. EOA (Externally Owned Account) Signer
+- **Purpose**: Standard wallets like MetaMask, Coinbase Wallet
+- **Implementation**: `createEOASigner()` in `src/utils/xmtpSigner.ts`
+- **Features**:
+  - Message signing with wallet client
+  - Ethereum address identification
+  - Automatic signature conversion to Uint8Array
+
+#### 2. SCW (Smart Contract Wallet) Signer
+- **Purpose**: Smart contract wallets like Safe, Argent, Rainbow
+- **Implementation**: `createSCWSigner()` in `src/utils/xmtpSigner.ts`
+- **Features**:
+  - Chain ID specification for signature verification
+  - Support for multiple blockchain networks
+  - Enhanced security for smart contract interactions
+
+### Auto-Detection System
+
+The `createAutoSigner()` function automatically detects wallet type and creates the appropriate signer:
+
+```typescript
+// Automatically detects EOA vs SCW and creates appropriate signer
+const signer = createAutoSigner(walletClient);
+```
+
+### Supported Networks
+
+- **Mainnet** (Chain ID: 1)
+- **Base** (Chain ID: 8453) - Primary network
+- **Arbitrum** (Chain ID: 42161)
+- **Optimism** (Chain ID: 10)
+- **Polygon** (Chain ID: 137)
+- **zkSync** (Chain ID: 324)
+- **Linea** (Chain ID: 59144)
+- **Fantom** (Chain ID: 250)
+
+### XMTP Context Integration
+
+The app uses a React context (`XMTPContext`) to manage XMTP state:
+
+```typescript
+// Wrap your app with XMTPProvider
+<XMTPProvider>
+  <App />
+</XMTPProvider>
+
+// Use XMTP functionality in components
+const { 
+  isInitialized, 
+  conversations, 
+  sendMessage, 
+  createConversation 
+} = useXMTP();
+```
+
+## 🛠️ Development
 
 ### Prerequisites
-- Node.js 18+ 
+
+- Node.js 18+
 - npm or yarn
-- A Base Chain RPC URL
-- OnchainKit API key (optional)
+- A Web3 wallet (Coinbase Wallet recommended)
 
 ### Installation
 
-1. **Clone and install dependencies**
 ```bash
-git clone <your-repo-url>
+# Clone the repository
+git clone <repository-url>
 cd move10k
+
+# Install dependencies
 npm install
-```
 
-2. **Set up environment variables**
-```bash
-cp .env.example .env
-```
-
-Edit `.env` with your configuration:
-```env
-# XMTP Configuration
-VITE_XMTP_ENV=production
-
-# RPC Configuration  
-VITE_RPC_URL=https://your-base-rpc-url.com/
-
-# Contract Configuration
-VITE_STEP_TRACKER_CONTRACT=0x0000000000000000000000000000000000000000
-
-# OnchainKit Configuration (optional)
-VITE_ONCHAINKIT_API_KEY=your_onchainkit_api_key_here
-```
-
-3. **Start development server**
-```bash
+# Start development server
 npm run dev
 ```
 
-4. **Build for production**
-```bash
-npm run build
-```
+### Environment Setup
 
-## 🏗️ Architecture
+The app is configured to work with Base Chain by default. No additional environment variables are required for basic functionality.
 
-### Core Technologies
-- **React 18** with TypeScript
-- **Vite** for fast development and building
-- **Wagmi** for Ethereum interactions
-- **XMTP** for decentralized messaging
-- **Farcaster Auth Kit** for mini app authentication
-- **Tailwind CSS** for styling
-- **Base Chain** for blockchain operations
+### XMTP Configuration
 
-### Key Features
-- ✅ **Step Tracking**: Real-time step counting with smart contract integration
-- ✅ **XMTP Messaging**: Decentralized wallet-to-wallet messaging
-- ✅ **Farcaster Mini App**: Native integration with Farcaster ecosystem
-- ✅ **Token Rewards**: Earn tokens for completing daily goals
-- ✅ **Social Features**: Share achievements and connect with community
-- ✅ **Wallet Support**: MetaMask and Coinbase Wallet compatibility
-- ✅ **Responsive Design**: Mobile-first design optimized for mini apps
+XMTP is automatically initialized when a wallet connects. The system:
 
-## 🔧 Configuration
+1. **Detects wallet type** (EOA vs SCW)
+2. **Creates appropriate signer** using our utility functions
+3. **Validates signer** before XMTP client creation
+4. **Initializes XMTP client** with proper error handling
+5. **Manages conversations** and messaging state
 
-### Environment Variables
+### Key Files
 
-| Variable | Description | Required | Default |
-|----------|-------------|----------|---------|
-| `VITE_XMTP_ENV` | XMTP environment (production/dev) | No | `production` |
-| `VITE_RPC_URL` | Base Chain RPC endpoint | Yes | - |
-| `VITE_STEP_TRACKER_CONTRACT` | Smart contract address | Yes | - |
-| `VITE_ONCHAINKIT_API_KEY` | OnchainKit API key | No | - |
+- `src/utils/xmtpSigner.ts` - XMTP signer implementation
+- `src/contexts/XMTPContext.tsx` - React context for XMTP state
+- `src/xmtpClient.ts` - XMTP client initialization
+- `src/components/XMTPMessaging.tsx` - Messaging UI component
 
-### Wallet Configuration
+## 📱 Usage
 
-The app supports multiple wallet providers:
-- **Coinbase Wallet** (primary)
-- **MetaMask** (fallback)
-- **Farcaster Auth Kit** (mini app mode)
+### Connecting Wallet
 
-### XMTP Integration
+1. Click "Get Started" on the landing page
+2. Connect your Coinbase Wallet (or other Web3 wallet)
+3. Approve the connection in your wallet
 
-XMTP messaging is fully integrated with:
-- **Automatic registration** for new users
-- **Real-time message polling** (3-second intervals)
-- **Conversation management** with proper cleanup
-- **Error handling** with user-friendly messages
-- **Production environment** with proper app versioning
+### Enabling XMTP Messaging
 
-## 🧪 Development
+1. Click "Enable Messages" button in the header
+2. Sign the XMTP authentication message in your wallet
+3. Start chatting with other users!
 
-### Available Scripts
+### Step Tracking
 
-```bash
-npm run dev          # Start development server
-npm run build        # Build for production
-npm run preview      # Preview production build
-npm run lint         # Run ESLint
-```
+1. Set your daily step goal (5K, 7.5K, 10K, 12.5K, or 15K steps)
+2. Use the step tracker to log your progress
+3. Earn tokens for completing goals
 
-### Project Structure
+## 🔐 Security
 
-```
-src/
-├── components/          # React components
-│   ├── XMTPMessaging.tsx    # XMTP chat interface
-│   ├── MiniAppWalletConnector.tsx  # Wallet connection
-│   ├── FarcasterMiniApp.tsx # Mini app wrapper
-│   └── ...
-├── contexts/           # React contexts
-│   └── XMTPContext.tsx # XMTP state management
-├── hooks/             # Custom React hooks
-├── utils/             # Utility functions
-├── constants.ts       # App configuration
-├── wagmi.ts          # Wagmi configuration
-└── App.tsx           # Main app component
-```
+- **Wallet Integration**: Uses wagmi for secure wallet connections
+- **XMTP Encryption**: All messages are end-to-end encrypted
+- **Signature Validation**: Proper signature verification for all transactions
+- **No Private Key Storage**: Private keys never leave your wallet
 
-### Mini App Detection
+## 🌐 Supported Environments
 
-The app automatically detects Farcaster mini app environment and adjusts behavior:
-- **Wallet connection**: Uses native wallet in mini app mode
-- **UI layout**: Optimized for mobile mini app interface
-- **Navigation**: Simplified for mini app constraints
+- **Desktop**: Full functionality with all features
+- **Mobile**: Optimized for mobile wallets and responsive design
+- **Farcaster**: Mini app integration for Farcaster users
 
-## 🚀 Deployment
+## 📊 Technical Stack
 
-### Vercel (Recommended)
-
-1. **Connect your repository** to Vercel
-2. **Set environment variables** in Vercel dashboard
-3. **Deploy** with automatic builds
-
-### Manual Deployment
-
-```bash
-npm run build
-# Upload dist/ folder to your hosting provider
-```
-
-### Farcaster Mini App Submission
-
-1. **Deploy** your app to a public URL
-2. **Test** in Farcaster mini app environment
-3. **Submit** for review through Farcaster's developer portal
-
-## 🔍 Troubleshooting
-
-### Common Issues
-
-#### XMTP Initialization Fails
-- Ensure wallet is connected before initializing XMTP
-- Check browser console for detailed error messages
-- Verify wallet supports EIP-191 signatures (MetaMask, Coinbase Wallet)
-
-#### Wallet Connection Issues
-- Check RPC URL configuration
-- Verify network is set to Base Chain
-- Ensure proper CSP headers for wallet connections
-
-#### Build Errors
-- Run `npm install` to ensure all dependencies
-- Check TypeScript configuration
-- Verify environment variables are set
-
-#### Mini App Issues
-- Test in actual Farcaster mini app environment
-- Check mini app detection logic
-- Verify wallet connection flow in mini app mode
-
-### Debug Mode
-
-Enable debug logging by setting:
-```env
-VITE_DEBUG=true
-```
-
-### Support
-
-For issues related to:
-- **XMTP**: Check [XMTP documentation](https://xmtp.org/docs)
-- **Farcaster**: Visit [Farcaster developer docs](https://docs.farcaster.xyz/)
-- **Base Chain**: See [Base documentation](https://docs.base.org/)
-
-## 📄 License
-
-MIT License - see LICENSE file for details.
+- **Frontend**: React 18 + TypeScript
+- **Styling**: Tailwind CSS
+- **Wallet**: wagmi + viem
+- **Messaging**: XMTP V3 SDK
+- **Blockchain**: Base Chain (Ethereum L2)
+- **Build Tool**: Vite
 
 ## 🤝 Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Add tests if applicable
+4. Test thoroughly
 5. Submit a pull request
 
----
+## 📄 License
 
-**Built with ❤️ for the Farcaster community**# Updated Wed Jun 25 15:49:13 PDT 2025
-# Vercel deployment test - Wed Jun 25 15:52:21 PDT 2025
-// trigger vercel redeploy Wed Jun 25 16:42:55 PDT 2025
+This project is licensed under the MIT License.
+
+## 🆘 Support
+
+For issues related to:
+- **Wallet Connection**: Check your wallet settings and network configuration
+- **XMTP Messaging**: Ensure you've signed the authentication message
+- **Step Tracking**: Verify your device permissions for step counting
+
+## 🔗 Links
+
+- [Base Chain](https://base.org/)
+- [XMTP Documentation](https://docs.xmtp.org/)
+- [Coinbase Wallet](https://www.coinbase.com/wallet)
+- [wagmi Documentation](https://wagmi.sh/)

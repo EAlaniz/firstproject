@@ -7,6 +7,7 @@ interface ModalProps {
   title: string;
   children: React.ReactNode;
   size?: 'sm' | 'md' | 'lg';
+  noHeader?: boolean;
 }
 
 const Modal: React.FC<ModalProps> = ({ 
@@ -14,7 +15,8 @@ const Modal: React.FC<ModalProps> = ({
   onClose, 
   title, 
   children, 
-  size = 'md' 
+  size = 'md',
+  noHeader = false
 }) => {
   if (!isOpen) return null;
 
@@ -34,19 +36,21 @@ const Modal: React.FC<ModalProps> = ({
       
       {/* Modal */}
       <div className={`relative bg-white rounded-lg shadow-xl ${sizeClasses[size]} w-full mx-4 max-h-[90vh] overflow-y-auto`}>
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            <X size={24} />
-          </button>
-        </div>
+        {/* Header - Only show if noHeader is false */}
+        {!noHeader && (
+          <div className="flex items-center justify-between p-6 border-b border-gray-200">
+            <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X size={24} />
+            </button>
+          </div>
+        )}
         
         {/* Content */}
-        <div className="p-6">
+        <div className={noHeader ? "p-6" : "p-6"}>
           {children}
         </div>
       </div>

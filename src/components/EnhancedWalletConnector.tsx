@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useAccount, useDisconnect, useConnect } from 'wagmi'
 import { getWalletClient } from '@wagmi/core'
 import { base } from 'wagmi/chains'
+import { createWalletClient, http } from 'viem'
 import {
   Monitor,
   Smartphone,
@@ -49,15 +50,49 @@ export const EnhancedWalletConnector: React.FC<EnhancedWalletConnectorProps> = (
   const [walletClient, setWalletClient] = useState<any>(null)
 
   // Get the Coinbase Wallet connector
-  const coinbaseConnector = connectors.find(connector => connector.id === 'coinbaseWallet')
+  console.log('Available connectors:', connectors.map(c => ({ id: c.id, name: c.name })));
+  console.log('Full connector details:', connectors.map(c => ({
+    id: c.id,
+    name: c.name,
+    type: c.type,
+    ready: c.ready
+  })));
+  const coinbaseConnector = connectors.find(connector => 
+    connector.id === 'coinbaseWallet' || connector.id === 'io.coinbase.wallet' || connector.id.includes('coinbase')
+  );
+  console.log('Coinbase connector found:', !!coinbaseConnector);
+  if (coinbaseConnector) {
+    console.log('Coinbase connector details:', {
+      id: coinbaseConnector.id,
+      name: coinbaseConnector.name,
+      type: coinbaseConnector.type,
+      ready: coinbaseConnector.ready
+    });
+  }
 
   // 🔌 Load wallet client for XMTP on connect
   useEffect(() => {
     const loadClient = async () => {
       if (isConnected) {
-        const client = await getWalletClient()
-        setWalletClient(client)
-        if (onWalletClientReady) onWalletClientReady(client)
+        try {
+          // Use explicit RPC URL to avoid the "No rpcUrl provided" warning
+          const rpcUrl = import.meta.env.VITE_RPC_URL || 'https://flashy-convincing-paper.base-mainnet.quiknode.pro/fe55bc09278a1ccc534942fad989695b412ab4ea/'
+          
+          console.log('🔧 EnhancedWalletConnector creating wallet client with RPC URL:', rpcUrl);
+          
+          const client = await getWalletClient()
+          
+          console.log('✅ Wallet client created successfully:', {
+            address: client?.account?.address,
+            chainId: client?.chain?.id,
+            transport: client?.transport?.type
+          });
+          
+          setWalletClient(client)
+          if (onWalletClientReady) onWalletClientReady(client)
+        } catch (error) {
+          console.error('Failed to get wallet client:', error)
+        }
       } else {
         setWalletClient(null)
       }
@@ -67,7 +102,17 @@ export const EnhancedWalletConnector: React.FC<EnhancedWalletConnectorProps> = (
 
   const handleConnect = () => {
     if (coinbaseConnector) {
-      connect({ connector: coinbaseConnector })
+      try {
+        connect({ connector: coinbaseConnector });
+      } catch (error) {
+        console.error('Connection failed:', error);
+      }
+    } else {
+      console.error('Coinbase Wallet connector not found');
+      // Fallback: try to connect with the first available connector
+      if (connectors.length > 0) {
+        connect({ connector: connectors[0] });
+      }
     }
   }
 

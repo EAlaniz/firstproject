@@ -14,6 +14,9 @@ export const ENV_CONFIG = {
   // Base Chain RPC URL
   BASE_RPC_URL: import.meta.env.VITE_BASE_RPC_URL || 'https://mainnet.base.org',
   
+  // RPC URL for auth kit and other services (same as wagmi config)
+  RPC_URL: import.meta.env.VITE_RPC_URL || 'https://flashy-convincing-paper.base-mainnet.quiknode.pro/fe55bc09278a1ccc534942fad989695b412ab4ea/',
+  
   // Step Tracker Contract
   // XMTP Environment - Set to production for cross-platform compatibility
   XMTP_ENV: 'production' as const,
@@ -94,4 +97,8 @@ export const FARCASTER_CONFIG = {
 // Validate required environment variables
 if (!ENV_CONFIG.BASE_RPC_URL) {
   console.warn('VITE_BASE_RPC_URL not set, using public Base RPC endpoint');
+}
+
+if (!ENV_CONFIG.RPC_URL) {
+  console.warn('VITE_RPC_URL not set, using QuickNode RPC endpoint');
 }

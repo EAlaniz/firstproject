@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAccount, useWalletClient } from 'wagmi';
-import { initXMTP, getClient } from '../xmtpClient';
+import { getClient } from '../xmtpClient';
 import { Conversation, DecodedMessage } from '@xmtp/browser-sdk';
 import { X, MessageCircle, Send, Users, Plus, Search } from 'lucide-react';
 
@@ -27,25 +27,28 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
   const [showNewMessage, setShowNewMessage] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Initialize direct client (preserves current working functionality)
+  // Use the already initialized XMTP client from the main App
   useEffect(() => {
     if (!isOpen) return;
     if (!walletClient || !address) return;
 
     const init = async () => {
       try {
-        setStatus('Initializing XMTP...');
-        const client = await initXMTP(walletClient);
-        setXmtpClient(client);
-        setStatus('XMTP client initialized');
-        
-        // Load conversations after client is ready
+        setStatus('Loading XMTP client...');
+        // Use the already initialized client from the main App
+        const client = getClient();
         if (client) {
+          setXmtpClient(client);
+          setStatus('XMTP client loaded');
+          
+          // Load conversations after client is ready
           await loadConversations(client);
+        } else {
+          setStatus('XMTP client not available. Please ensure XMTP is initialized.');
         }
       } catch (e) {
-        console.error('[XMTP] Init failed:', e);
-        setStatus('Failed to initialize XMTP');
+        console.error('[XMTP] Load failed:', e);
+        setStatus('Failed to load XMTP client');
       }
     };
 
