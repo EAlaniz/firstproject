@@ -189,12 +189,22 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       });
       
       // Wait a moment for device sync to complete
-      setStatus('Waiting for device sync...');
+      setStatus('Syncing inbox...');
       console.log('⏳ Waiting for device sync to complete...');
       
       // Give some time for the client to fully initialize
       await new Promise(resolve => setTimeout(resolve, 2000));
       console.log('✅ Device sync completed');
+      
+      // --- Force device sync after client creation (type workaround) ---
+      if (typeof (xmtpClient as any).sync === 'function') {
+        try {
+          await (xmtpClient as any).sync();
+          console.log('✅ Forced device sync completed');
+        } catch (syncErr) {
+          console.warn('⚠️ Device sync failed:', syncErr);
+        }
+      }
       
       setClient(xmtpClient);
       setIsInitialized(true);
@@ -274,6 +284,33 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     try {
       setStatus('Sending message...');
       
+      // --- Force sync before sending (type workaround) ---
+      if (typeof (client as any).sync === 'function') {
+        try {
+          await (client as any).sync();
+          console.log('✅ Forced device sync before send');
+        } catch (syncErr) {
+          console.warn('⚠️ Device sync before send failed:', syncErr);
+        }
+      }
+      
+      // --- Check recipient registration before send ---
+      let canMessage = false;
+      try {
+        const peerAddress = (conversation as any).peerAddress || (conversation as any).id;
+        const canMsgResult = await Client.canMessage([
+          { identifier: peerAddress, identifierKind: 'Ethereum' }
+        ], 'production');
+        canMessage = Array.isArray(canMsgResult) ? canMsgResult[0] : !!canMsgResult;
+      } catch (checkError) {
+        setError('Error checking recipient XMTP registration before send.');
+        return;
+      }
+      if (!canMessage) {
+        setError('Recipient is not registered on XMTP V3. They must connect their wallet to XMTP to receive messages.');
+        return;
+      }
+      
       // Send message using V3 API with retry logic
       let retries = 0;
       const maxRetries = 3;
@@ -335,29 +372,30 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       
       // Validate recipient address
       if (!recipientAddress || !recipientAddress.startsWith('0x') || recipientAddress.length !== 42) {
-        setError('Invalid recipient address format');
+        setError('Invalid Ethereum address format');
         return null;
       }
       
-      // Check if recipient is the same as sender
+      // Prevent self-messaging
       if (recipientAddress.toLowerCase() === address?.toLowerCase()) {
         setError('Cannot create conversation with yourself');
         return null;
       }
       
-      // Check if recipient is registered on XMTP
+      // --- Check recipient registration with canMessage ---
+      let canMessage = false;
       try {
-        const canMessage = await Client.canMessage([{
-          identifier: recipientAddress,
-          identifierKind: 'Ethereum'
-        }]);
-        if (!canMessage) {
-          setError('Recipient is not registered on XMTP. They need to connect their wallet to XMTP first.');
-          return null;
-        }
+        const canMsgResult = await Client.canMessage([
+          { identifier: recipientAddress, identifierKind: 'Ethereum' }
+        ], 'production');
+        canMessage = Array.isArray(canMsgResult) ? canMsgResult[0] : !!canMsgResult;
       } catch (checkError) {
-        console.warn('Could not check recipient registration:', checkError);
-        // Continue anyway - the conversation creation will fail if they're not registered
+        setError('Error checking recipient XMTP registration.');
+        return null;
+      }
+      if (!canMessage) {
+        setError('Recipient is not registered on XMTP V3. They must connect their wallet to XMTP to receive messages.');
+        return null;
       }
       
       // Use V3 API to create conversation - try different methods based on available API
