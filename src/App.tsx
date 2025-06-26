@@ -10,9 +10,6 @@ import XMTPDiagnostics from './components/XMTPDiagnostics';
 import { initXMTP } from './xmtpClient';
 import { base } from 'wagmi/chains';
 import { Activity, Trophy, Circle, MessageCircle, Menu, X } from 'lucide-react';
-import { Wallet, WalletDropdown, WalletDropdownLink, WalletDropdownDisconnect } from '@coinbase/onchainkit/wallet';
-import { Address, Avatar, Name, Identity, EthBalance } from '@coinbase/onchainkit/identity';
-import { color } from '@coinbase/onchainkit/theme';
 
 function App() {
 // Test wagmi config to ensure provider is working
@@ -282,65 +279,6 @@ setError('Failed to share. Please try again.');
 }
 };
 
-// Modern landing page for wallet connect
-if (!isWalletConnected) {
-return (
-<div className="min-h-screen bg-white text-black">
-{/* Header */}
-<header className="border-b border-gray-200 px-4 sm:px-6 py-4">
-<div className="max-w-6xl mx-auto flex items-center justify-between">
-<div className="flex items-center space-x-3">
-<div className="w-8 h-8 bg-black rounded-full flex items-center justify-center">
-<Activity className="w-5 h-5 text-white" />
-</div>
-<span className="text-xl font-medium">10K</span>
-</div>
-<button
-onClick={() => setShowWalletConnector(true)}
-className="bg-black text-white px-4 sm:px-6 py-2 rounded-full hover:bg-gray-800 transition-colors cursor-pointer text-sm font-medium"
->
-Connect
-</button>
-</div>
-</header>
-{/* Hero Section */}
-<main className="max-w-4xl mx-auto px-4 sm:px-6 py-12 sm:py-20">
-<div className="text-center space-y-6 sm:space-y-8">
-<div className="space-y-4">
-<h1 className="text-4xl sm:text-6xl font-light tracking-tight leading-tight">
-Move. Earn. Connect.
-</h1>
-<p className="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed px-4">
-An inclusive wellness platform that rewards your daily movement with tokens and connects you with a community of movers.
-</p>
-</div>
-<div className="flex justify-center px-4">
-<button
-onClick={() => setShowWalletConnector(true)}
-className="bg-black text-white px-6 sm:px-8 py-3 sm:py-4 rounded-full hover:bg-gray-800 transition-colors cursor-pointer font-medium flex items-center space-x-2 w-full sm:w-auto justify-center"
->
-<span>Get Started</span>
-</button>
-</div>
-<div className="pt-8 sm:pt-12 text-sm text-gray-500">
-Powered by Base Chain • Low fees • Fast transactions
-</div>
-</div>
-</main>
-{/* Wallet Connector Modal */}
-{showWalletConnector && (
-<Modal
-isOpen={showWalletConnector}
-onClose={() => setShowWalletConnector(false)}
-title="Connect Wallet"
->
-<EnhancedWalletConnector />
-</Modal>
-)}
-</div>
-);
-}
-
 // Main dashboard after connect
 return (
 <div className="min-h-screen bg-white text-black">
@@ -396,42 +334,58 @@ className="p-2 hover:bg-gray-100 rounded-full transition-colors"
 </div>
 </div>
 {showWalletConnector && (
-  <Wallet>
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
-      <div className="bg-white w-full sm:max-w-sm sm:w-full max-h-[90vh] overflow-y-auto sm:rounded-2xl rounded-t-2xl">
-        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200">
-          <h2 className="text-lg sm:text-xl font-medium">Wallet</h2>
-          <button
-            onClick={() => setShowWalletConnector(false)}
-            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-        <div className="p-4 sm:p-6">
-          {address && (
-            <Identity className="px-4 pt-3 pb-2" address={address} hasCopyAddressOnClick>
-              <Avatar />
-              <Name />
-              <Address className={color.foregroundMuted} />
-              <EthBalance />
-            </Identity>
-          )}
-          <WalletDropdown>
-            <WalletDropdownLink
-              icon="wallet"
-              href="https://keys.coinbase.com"
-              target="_blank"
-              rel="noopener noreferrer"
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+    <div className="bg-white w-full sm:max-w-sm sm:w-full max-h-[90vh] overflow-y-auto sm:rounded-2xl rounded-t-2xl">
+      <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200">
+        <h2 className="text-lg sm:text-xl font-medium">Wallet</h2>
+        <button
+          onClick={() => setShowWalletConnector(false)}
+          className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+      <div className="p-4 sm:p-6">
+        {address && (
+          <div className="space-y-4">
+            <div className="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg">
+              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                <span className="text-blue-600 font-medium text-sm">
+                  {address.slice(2, 4).toUpperCase()}
+                </span>
+              </div>
+              <div className="flex-1">
+                <div className="font-medium text-sm">Connected Wallet</div>
+                <div className="text-gray-500 text-xs font-mono">
+                  {address.slice(0, 6)}...{address.slice(-4)}
+                </div>
+              </div>
+            </div>
+            {balance && (
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <div className="text-sm text-gray-600">Balance</div>
+                <div className="font-medium">
+                  {parseFloat(balance.formatted).toFixed(4)} {balance.symbol}
+                </div>
+              </div>
+            )}
+            <button
+              onClick={handleWalletDisconnect}
+              className="w-full bg-red-50 text-red-600 px-4 py-2 rounded-lg hover:bg-red-100 transition-colors text-sm font-medium"
             >
-              Wallet
-            </WalletDropdownLink>
-            <WalletDropdownDisconnect />
-          </WalletDropdown>
-        </div>
+              Disconnect Wallet
+            </button>
+          </div>
+        )}
+        {!address && (
+          <div className="text-center py-8">
+            <div className="text-gray-500 mb-4">No wallet connected</div>
+            <EnhancedWalletConnector />
+          </div>
+        )}
       </div>
     </div>
-  </Wallet>
+  </div>
 )}
 </header>
 {/* Main Content */}
