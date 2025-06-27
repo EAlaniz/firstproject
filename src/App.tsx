@@ -65,11 +65,13 @@ function AppContent() {
     console.log('Wallet state updated:', { isConnected, address, walletClient: !!walletClient });
   }, [isConnected, address, walletClient]);
 
-  // Close wallet modal when wallet connects
+  const prevIsConnected = React.useRef(isConnected);
+
   useEffect(() => {
-    if (isConnected && showWalletConnector) {
-      setShowWalletConnector(false); // Close immediately
+    if (!prevIsConnected.current && isConnected && showWalletConnector) {
+      setShowWalletConnector(false); // Only close on new connection
     }
+    prevIsConnected.current = isConnected;
   }, [isConnected, showWalletConnector]);
 
   // Clear messages after timeout
