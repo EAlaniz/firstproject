@@ -397,12 +397,23 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     }
     
     try {
+      setStatus('Preparing to send...');
+      // 1. Ensure local state is hydrated (await messages)
+      await conversation.messages();
+      // 2. Check for forked state (getDebugInformation)
+      if (typeof (conversation as any).getDebugInformation === 'function') {
+        const debug = await (conversation as any).getDebugInformation();
+        console.log('🧠 Conversation debug info:', debug);
+        if (debug?.maybeForked) {
+          setError('This conversation is out of sync (forked). Please try resyncing or rebuilding the conversation.');
+          setStatus('Conversation forked, send blocked.');
+          return;
+        }
+      }
       setStatus('Sending message...');
-      
       // Check recipient registration for DMs only
       let canMessage = false;
       let peerAddress = (conversation as any).peerAddress || (conversation as any).id;
-      
       if (peerAddress && peerAddress.startsWith('0x') && peerAddress.length === 42) {
         try {
           const canMessageResult = await Client.canMessage([
@@ -416,33 +427,26 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       } else {
         console.log(`[XMTP] Skipping canMessage check for non-Ethereum address or group: ${peerAddress}`);
       }
-      
       let retries = 0;
       const maxRetries = 3;
-      
       while (retries < maxRetries) {
         try {
           const sentMsg = await conversation.send(message);
-          
           // Optimistically add the sent message to the UI
           if (sentMsg && typeof sentMsg === 'object' && 'id' in sentMsg && 'content' in sentMsg) {
             setMessages(prev => [...prev, sentMsg as DecodedMessage<string>]);
           }
-          
           setStatus('Message sent');
           console.log('[XMTP] ✅ Message sent successfully');
-          
           // Call success callback if provided
           if (onSuccess) {
             onSuccess();
           }
-          
           return;
         } catch (sendError) {
           retries++;
           const errorMessage = sendError instanceof Error ? sendError.message : String(sendError);
           console.error(`[XMTP] Message send attempt ${retries} failed:`, sendError);
-          
           // Smart retry logic with resync for InboxValidationFailed
           if (errorMessage.includes('InboxValidationFailed') && retries === maxRetries) {
             console.log('[XMTP] InboxValidationFailed detected, forcing resync and retrying...');
@@ -450,12 +454,10 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
             retries = 0;
             continue;
           }
-          
           if (retries >= maxRetries) {
             setError('Failed to send message after retries.');
             throw sendError;
           }
-          
           // Exponential backoff
           const delay = 1000 * Math.pow(2, retries - 1);
           console.log(`[XMTP] Retrying in ${delay}ms...`);
