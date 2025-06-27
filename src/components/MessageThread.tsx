@@ -18,12 +18,9 @@ const MessageThread: React.FC<MessageThreadProps> = ({ conversationId, loadMoreM
   // Defensive: use empty array if messages is undefined/null
   const safeMessages = Array.isArray(messages) ? messages : [];
 
-  // Example filter (replace with your actual filter logic if needed)
-  const filteredMessages = safeMessages.filter(msg => true);
-
-  // Filter messages for this conversation
+  // Filter messages for this conversation (defensive)
   const threadMessages = conversationId
-    ? messages.filter(m => m.conversationId === conversationId)
+    ? safeMessages.filter(m => m.conversationId === conversationId)
     : [];
 
   const msgCursor = conversationId ? messageCursors[conversationId] : null;
@@ -123,10 +120,10 @@ const MessageThread: React.FC<MessageThreadProps> = ({ conversationId, loadMoreM
       )}
       {isLoading ? (
         <div className="text-gray-400 text-sm px-4 py-2">Loading messages...</div>
-      ) : filteredMessages.length === 0 ? (
+      ) : threadMessages.length === 0 ? (
         <div className="text-center text-gray-400">No messages yet</div>
       ) : (
-        groupMessages(filteredMessages).map((group, groupIdx) => {
+        groupMessages(threadMessages).map((group, groupIdx) => {
           const isOwn = group.sender?.toLowerCase() === address?.toLowerCase();
           return (
             <div key={groupIdx} className={`mb-4 flex flex-col ${isOwn ? 'items-end' : 'items-start'}`}>
