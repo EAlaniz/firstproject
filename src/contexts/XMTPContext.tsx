@@ -111,6 +111,30 @@ export function checkClockSkew() {
   }
 }
 
+// Activate persistent logging for deep diagnostics (works in all environments)
+if (typeof window !== 'undefined' && typeof (Client as any).activatePersistentLibXMTPLogWriter === 'function') {
+  try {
+    (Client as any).activatePersistentLibXMTPLogWriter();
+    // You can also pass a custom log writer or options if needed
+  } catch (e) {
+    // Ignore if not supported
+  }
+}
+
+// Utility: Log MLS debug info for a conversation
+export async function logMLSConversationDebug(convo: Dm<string> | Group<string>) {
+  // getDebugInformation is available on official SDK but not in types
+  if (typeof (convo as any).getDebugInformation === 'function') {
+    const debug = await (convo as any).getDebugInformation();
+    console.log('MLS debug:', debug);
+    if (debug.maybeForked) {
+      console.warn('⚠️ This conversation may be forked! Consider resyncing or rebuilding the client.');
+    }
+    return debug;
+  }
+  return null;
+}
+
 export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   const { address } = useAccount();
   const { data: walletClient } = useWalletClient();
@@ -240,14 +264,16 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         console.warn('⚠️ Manual signature failed, continuing anyway:', signErr);
       }
       
-      // Create XMTP client with timeout
-      console.log('🔧 About to call Client.create with validated signer and production env...');
-      console.log('📝 Expected signature message format: "XMTP : Authenticate to inbox"');
-      console.log('⏱️  This may take up to 60 seconds while waiting for your signature...');
-      
+      // --- Official Inbox App: historySyncUrl, loggingLevel, dbEncryptionKey, dbPath ---
+      // TODO: If you want to use a custom dbEncryptionKey/dbPath, add them here and persist across sessions
+      const historySyncUrl = 'https://prod.protocol.xmtp.network/history/v2'; // Official default, can be customized
       const createPromise = Client.create(signer, {
         env: 'production',
         codecs: [],
+        historySyncUrl,
+        loggingLevel: 'debug',
+        // dbEncryptionKey: '...', // Uncomment and persist if you want encrypted DB
+        // dbPath: '...', // Uncomment and persist if you want custom DB path
       });
       
       console.log('✅ Client.create() promise created, waiting for signature...');
@@ -265,6 +291,11 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       console.log('📧 Client details:', {
         env: 'production'
       });
+      
+      // --- Official Inbox App: Always await conversations.list() before ready ---
+      setStatus('Syncing conversations...');
+      await xmtpClient.conversations.list();
+      setStatus('Conversations synced.');
       
       clientRef.current = xmtpClient;
       setClient(xmtpClient);

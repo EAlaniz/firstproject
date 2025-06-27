@@ -10,6 +10,13 @@ import { isFarcasterMiniApp } from './utils/farcasterCompatibility';
 // Import the Farcaster Frame SDK for mini app splash screen control
 import { sdk } from '@farcaster/frame-sdk';
 
+// Add this type declaration at the top of the file
+declare global {
+  interface Window {
+    farcaster?: { isMiniApp?: boolean };
+  }
+}
+
 function AppContent() {
   // your existing state hooks
   const [showWalletConnector, setShowWalletConnector] = useState(false);
@@ -61,10 +68,7 @@ function AppContent() {
   // Close wallet modal when wallet connects
   useEffect(() => {
     if (isConnected && showWalletConnector) {
-      const timer = setTimeout(() => {
-        setShowWalletConnector(false);
-      }, 1500); // 1.5 second delay to show success
-      return () => clearTimeout(timer);
+      setShowWalletConnector(false); // Close immediately
     }
   }, [isConnected, showWalletConnector]);
 
