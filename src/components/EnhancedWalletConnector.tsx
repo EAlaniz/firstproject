@@ -30,6 +30,11 @@ export const EnhancedWalletConnector: React.FC<EnhancedWalletConnectorProps> = (
   const { connect, connectors, isPending } = useConnect()
   const [, setWalletClient] = useState<WalletClient | null>(null)
 
+  // Debug: Log available connectors
+  useEffect(() => {
+    console.log('🔌 Available connectors:', connectors.map(c => ({ id: c.id, name: c.name, ready: c.ready })));
+  }, [connectors]);
+
   // Filter connectors: Only show WalletConnect and others if not in Farcaster mini app
   const filteredConnectors = connectors
 
@@ -37,6 +42,15 @@ export const EnhancedWalletConnector: React.FC<EnhancedWalletConnectorProps> = (
   const coinbaseConnector = filteredConnectors.find(connector => 
     connector.id === 'coinbaseWallet' || connector.id === 'io.coinbase.wallet' || connector.id === 'injected'
   );
+
+  // Debug: Log Coinbase connector status
+  useEffect(() => {
+    if (coinbaseConnector) {
+      console.log('✅ Coinbase Wallet connector found:', { id: coinbaseConnector.id, name: coinbaseConnector.name, ready: coinbaseConnector.ready });
+    } else {
+      console.log('❌ Coinbase Wallet connector not found. Available connectors:', filteredConnectors.map(c => c.id));
+    }
+  }, [coinbaseConnector, filteredConnectors]);
 
   // 🔌 Load wallet client for XMTP on connect
   useEffect(() => {
@@ -60,6 +74,7 @@ export const EnhancedWalletConnector: React.FC<EnhancedWalletConnectorProps> = (
   const handleConnect = () => {
     if (coinbaseConnector) {
       try {
+        console.log('🔗 Attempting to connect with Coinbase Wallet...');
         connect({ connector: coinbaseConnector });
       } catch (error) {
         console.error('Connection failed:', error);
@@ -68,7 +83,10 @@ export const EnhancedWalletConnector: React.FC<EnhancedWalletConnectorProps> = (
       console.error('Coinbase Wallet/injected connector not found');
       // Fallback: try to connect with the first available connector
       if (filteredConnectors.length > 0) {
+        console.log('🔄 Falling back to first available connector:', filteredConnectors[0].id);
         connect({ connector: filteredConnectors[0] });
+      } else {
+        console.error('No connectors available');
       }
     }
   }
@@ -121,6 +139,11 @@ export const EnhancedWalletConnector: React.FC<EnhancedWalletConnectorProps> = (
         <User className="w-4 h-4" />
         <span>{isPending ? 'Connecting...' : 'Connect Wallet'}</span>
       </button>
+      {!coinbaseConnector && (
+        <div className="mt-2 text-xs text-red-500 text-center">
+          Coinbase Wallet not detected
+        </div>
+      )}
     </div>
   )
 }

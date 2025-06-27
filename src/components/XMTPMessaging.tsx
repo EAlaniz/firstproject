@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Menu } from 'lucide-react';
 import { useXMTP } from '../contexts/XMTPContext';
 import ConversationsList from './ConversationsList';
 import MessageThread from './MessageThread';
 import MessageInput from './MessageInput';
 import NewConversationModal from './NewConversationModal';
+import { getCanSendStatus } from '../utils/xmtpGroupValidation';
 import { toast } from 'react-hot-toast';
 
 interface XMTPMessagingProps {
@@ -13,10 +14,16 @@ interface XMTPMessagingProps {
 }
 
 const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
-  const { isInitialized, selectedConversation, selectConversation, conversations, isLoading, sendMessage, loadMoreConversations, conversationCursor, conversationPreviews, unreadConversations, loadMoreMessages, messageCursors } = useXMTP();
+  const { client: xmtpClient, isInitialized, selectedConversation, selectConversation, conversations, isLoading, sendMessage, loadMoreConversations, conversationCursor, conversationPreviews, unreadConversations, loadMoreMessages, messageCursors } = useXMTP();
   const [isNewConversationModalOpen, setIsNewConversationModalOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  
+  // NEW: Enhanced canSend status with proper validation
+  const [canSendStatus, setCanSendStatus] = useState<{ canSend: boolean; reason: string }>({ 
+    canSend: true, 
+    reason: 'Checking...' 
+  });
 
   const handleSelectConversation = (conversationId: string) => {
     const conversation = conversations.find(c => c.id === conversationId);
@@ -33,6 +40,27 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
     setIsSidebarOpen(false);
     onClose();
   };
+
+  // NEW: Enhanced canSend validation using the utility
+  useEffect(() => {
+    if (!isInitialized || !selectedConversation || !xmtpClient) {
+      setCanSendStatus({ canSend: true, reason: 'No conversation selected' });
+      return;
+    }
+
+    const validateCanSend = async () => {
+      try {
+        const status = await getCanSendStatus(xmtpClient, selectedConversation);
+        setCanSendStatus(status);
+        console.log('[XMTP] canSend status:', status);
+      } catch (error) {
+        console.error('[XMTP] canSend validation failed:', error);
+        setCanSendStatus({ canSend: false, reason: 'Validation failed' });
+      }
+    };
+
+    validateCanSend();
+  }, [isInitialized, selectedConversation, xmtpClient]);
 
   // Add handleSend for MessageInput
   async function handleSend(text: string) {
@@ -52,24 +80,9 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
     }
   }
 
-  // Determine if sending is allowed (group must be synced and have 2+ members)
-  let canSend = true;
-  let groupMembershipIsPublished = true;
-  if (selectedConversation) {
-    const isGroup = 'members' in selectedConversation;
-    if (isGroup) {
-      const group = selectedConversation as any;
-      // Use membershipIsPublished if available
-      groupMembershipIsPublished = group.membershipIsPublished !== undefined ? group.membershipIsPublished : true;
-      let memberCount = 0;
-      if (Array.isArray(group.members)) {
-        memberCount = group.members.length;
-      } else if (group.members && typeof group.members === 'object') {
-        memberCount = Object.keys(group.members).length;
-      }
-      canSend = memberCount > 1 && !('error' in selectedConversation) && groupMembershipIsPublished;
-    }
-  }
+  // UPDATED: Use the enhanced canSend status
+  const canSend = canSendStatus.canSend;
+
   // Debug log
   React.useEffect(() => {
     console.log('[XMTP] canSend:', canSend, selectedConversation);
@@ -177,8 +190,11 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
                     {!isLoading && selectedConversation && (
                       <>
                         <MessageInput onSend={handleSend} disabled={isSending || isLoading} canSend={canSend} />
-                        {!canSend && selectedConversation && 'members' in selectedConversation && (
-                          <div className="text-yellow-500 text-xs mt-2 px-4">Group membership is syncing. Please wait before sending.</div>
+                        {/* UPDATED: Use enhanced error message */}
+                        {!canSend && selectedConversation && (
+                          <div className="text-yellow-500 text-xs mt-2 px-4">
+                            {canSendStatus.reason}
+                          </div>
                         )}
                       </>
                     )}

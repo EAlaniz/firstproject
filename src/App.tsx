@@ -4,6 +4,7 @@ import { ENV_CONFIG } from './constants';
 import { EnhancedWalletConnector } from './components/EnhancedWalletConnector';
 import Modal from './components/Modal';
 import XMTPMessaging from './components/XMTPMessaging';
+import { XMTPDebugPanel } from './components/XMTPDebugPanel';
 import { useXMTP, XMTPProvider } from './contexts/XMTPContext';
 import type { XMTPConversation } from './contexts/XMTPContext';
 import { Activity, Trophy, Circle, MessageCircle, Menu, X, User, ExternalLink, Settings, Lock, LogOut } from 'lucide-react';
@@ -27,6 +28,7 @@ function AppContent() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [showXMTPMessaging, setShowXMTPMessaging] = useState(false);
+  const [showXMTPDebugPanel, setShowXMTPDebugPanel] = useState(false);
   const [currentSteps, setCurrentSteps] = useState(7240);
   const [dailyGoal, setDailyGoal] = useState(10000);
   const [currentStreak] = useState(12);
@@ -300,6 +302,16 @@ function AppContent() {
                       {xmtpClient ? 'Messages' : isInitializing ? 'Initializing...' : 'Enable Messages'}
                     </span>
                   </button>
+                  {/* Debug Panel Button - Only show in development */}
+                  {import.meta.env.DEV && xmtpClient && (
+                    <button
+                      onClick={() => setShowXMTPDebugPanel(true)}
+                      className="bg-yellow-100 text-yellow-700 px-4 py-2 rounded-full hover:bg-yellow-200 transition-colors cursor-pointer text-sm"
+                      title="XMTP Debug Panel"
+                    >
+                      🐛 Debug
+                    </button>
+                  )}
                 </div>
               </div>
               {/* Mobile Menu Button */}
@@ -810,6 +822,14 @@ function AppContent() {
         <XMTPMessaging
           isOpen={showXMTPMessaging}
           onClose={() => setShowXMTPMessaging(false)}
+        />
+      )}
+
+      {/* XMTP Debug Panel - Only in development */}
+      {showXMTPDebugPanel && (
+        <XMTPDebugPanel
+          isOpen={showXMTPDebugPanel}
+          onClose={() => setShowXMTPDebugPanel(false)}
         />
       )}
 

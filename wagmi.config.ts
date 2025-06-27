@@ -22,6 +22,8 @@ export const wagmiConfig = createConfig({
       appName: '10K - Move. Earn. Connect.',
       appLogoUrl: 'https://www.move10k.xyz/10k-icon.png',
       jsonRpcUrl: rpcUrl, // ✅ MUST BE PROVIDED for Base network
+      // FIXED: Add explicit chain configuration to prevent ethereum-mainnet fallback
+      chainId: 8453, // Base mainnet
       // Farcaster-specific options
       ...(isFarcaster && {
         // Disable WalletConnect explorer API calls in Farcaster

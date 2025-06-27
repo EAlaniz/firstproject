@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, ReactNode, useCa
 import { useAccount, useWalletClient } from 'wagmi';
 import { Client, DecodedMessage, Dm, Group, StreamCallback } from '@xmtp/browser-sdk';
 import { createAutoSigner } from '../utils/xmtpSigner';
+import { validateGroupMembership } from '../utils/xmtpGroupValidation';
 
 // Utility: Convert hex string to Uint8Array (browser-safe, no Buffer)
 function hexToBytes(hex: string): Uint8Array {
@@ -182,18 +183,43 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   // New states
   const [isSyncing, setIsSyncing] = useState(true);
 
+  // Safety wrapper for setConversations to prevent undefined
+  const safeSetConversations = useCallback((updater: XMTPConversation[] | ((prev: XMTPConversation[]) => XMTPConversation[])) => {
+    setConversations(prev => {
+      const newValue = typeof updater === 'function' ? updater(prev || []) : updater;
+      console.log('🔄 Setting conversations:', { count: newValue?.length || 0, isArray: Array.isArray(newValue) });
+      return newValue || [];
+    });
+  }, []);
+
+  // Safety wrapper for setMessages to prevent undefined
+  const safeSetMessages = useCallback((updater: DecodedMessage<string>[] | ((prev: DecodedMessage<string>[]) => DecodedMessage<string>[])) => {
+    setMessages(prev => {
+      const newValue = typeof updater === 'function' ? updater(prev || []) : updater;
+      console.log('🔄 Setting messages:', { count: newValue?.length || 0, isArray: Array.isArray(newValue) });
+      return newValue || [];
+    });
+  }, []);
+
   // Load cached conversations on init
   useEffect(() => {
     const cached = localStorage.getItem('xmtp-conversations');
     if (cached) {
-      setConversations(JSON.parse(cached));
-      setIsSyncing(true);
+      try {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed)) {
+          safeSetConversations(parsed);
+          setIsSyncing(true);
+        }
+      } catch (error) {
+        console.error('Failed to parse cached conversations:', error);
+      }
     }
-  }, []);
+  }, [safeSetConversations]);
 
   // Save conversations to cache
   useEffect(() => {
-    if (!conversations.length) return;
+    if (!conversations || !conversations.length) return;
     localStorage.setItem('xmtp-conversations', JSON.stringify(conversations));
     setIsSyncing(false);
   }, [conversations]);
@@ -203,14 +229,21 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     if (!selectedConversation) return;
     const cached = localStorage.getItem(`xmtp-messages-${selectedConversation.id}`);
     if (cached) {
-      setMessages(JSON.parse(cached));
-      setIsSyncing(true);
+      try {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed)) {
+          safeSetMessages(parsed);
+          setIsSyncing(true);
+        }
+      } catch (error) {
+        console.error('Failed to parse cached messages:', error);
+      }
     }
-  }, [selectedConversation]);
+  }, [selectedConversation, safeSetMessages]);
 
   // Save messages for selected conversation
   useEffect(() => {
-    if (!messages.length || !selectedConversation) return;
+    if (!messages || !messages.length || !selectedConversation) return;
     localStorage.setItem(`xmtp-messages-${selectedConversation.id}`, JSON.stringify(messages));
     setIsSyncing(false);
   }, [messages, selectedConversation]);
@@ -223,7 +256,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   }, [selectedConversation]);
   useEffect(() => {
     const cached = localStorage.getItem('selected-convo');
-    if (cached && conversations.length) {
+    if (cached && conversations && conversations.length) {
       const match = conversations.find(c => c.id === cached);
       if (match) setSelectedConversation(match);
     }
@@ -257,7 +290,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
             return { ...conv, preview };
           })
         );
-        setConversations(prev => append ? [...prev, ...convosWithPreviews] : convosWithPreviews);
+        safeSetConversations(prev => append ? [...(prev || []), ...convosWithPreviews] : convosWithPreviews);
         // Update previews state
         setConversationPreviews(prev => {
           const next = { ...prev };
@@ -265,11 +298,11 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
           return next;
         });
         setConversationCursor(page.cursor || null);
-        setStatus(`Ready (${append ? (conversations.length + page.conversations.length) : page.conversations.length} conversations)`);
+        setStatus(`Ready (${append ? ((conversations?.length || 0) + page.conversations.length) : page.conversations.length} conversations)`);
       } else {
         // Fallback: load all
         const convos = await client.conversations.list();
-        setConversations(convos as XMTPConversation[]);
+        safeSetConversations(convos as XMTPConversation[]);
         setConversationCursor(null);
         setStatus(`Ready (${convos.length} conversations)`);
       }
@@ -278,7 +311,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [client, conversationCursor, conversations.length]);
+  }, [client, conversationCursor, conversations?.length, safeSetConversations]);
 
   // Poll conversations every 10 seconds for auto-refresh
   React.useEffect(() => {
@@ -296,19 +329,19 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
 
   // Paginated message loading per conversation
   async function loadMessages(conversationId: string, append = false) {
-    const conversation = conversations.find(c => c.id === conversationId);
+    const conversation = conversations?.find(c => c.id === conversationId);
     if (!conversation) return;
     setIsLoading(true);
     try {
       const cursor = messageCursors[conversationId] || null;
       if (typeof (conversation as any).messages === 'function') {
         const page = await (conversation as any).messages({ pageSize: 20, cursor: append ? cursor : null });
-        setMessages(prev => append ? [...page.messages, ...prev] : page.messages);
+        safeSetMessages(prev => append ? [...page.messages, ...(prev || [])] : page.messages);
         setMessageCursors(cursors => ({ ...cursors, [conversationId]: page.cursor || null }));
       } else {
         // Fallback: load all
         const msgs = await conversation.messages();
-        setMessages(msgs);
+        safeSetMessages(msgs);
         setMessageCursors(cursors => ({ ...cursors, [conversationId]: null }));
       }
     } catch (err) {
@@ -465,6 +498,24 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       console.log(`[XMTP] ✅ Comprehensive sync completed in ${syncDuration}ms`);
       console.log('✅ XMTP context initialized successfully');
       
+      // NEW: Validate group membership for the current user
+      try {
+        console.log('🔍 Validating user group membership...');
+        // Use the correct XMTP client API for groups
+        if (typeof (xmtpClient as any).groups?.list === 'function') {
+          const groups = await (xmtpClient as any).groups.list();
+          
+          for (const group of groups) {
+            const validation = await validateGroupMembership(xmtpClient, group);
+            console.log(`📋 Group ${group.groupId} validation:`, validation);
+          }
+        } else {
+          console.log('📋 Groups API not available in this XMTP client version');
+        }
+      } catch (error) {
+        console.warn('⚠️ Group membership validation failed (non-critical):', error);
+      }
+      
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       console.error('❌ XMTP initialization failed:', err);
@@ -491,7 +542,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     }
     try {
       setSelectedConversation(conversation);
-      setMessages([]);
+      safeSetMessages([]);
       setStatus('Loading messages...');
       await loadMessages(conversation.id, false); // Load first page
       // Mark as read and clear unread badge
@@ -509,7 +560,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
           return;
         }
         if (message) {
-          setMessages(prev => [...prev, message]);
+          safeSetMessages(prev => [...(prev || []), message]);
           // If not currently selected, mark as unread
           setUnreadConversations(prev => {
             if (selectedConversation && conversation.id === selectedConversation.id) return prev;
@@ -583,7 +634,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
           const sentMsg = await conversation.send(message);
           // Optimistically add the sent message to the UI
           if (sentMsg && typeof sentMsg === 'object' && 'id' in sentMsg && 'content' in sentMsg) {
-            setMessages(prev => [...prev, sentMsg as DecodedMessage<string>]);
+            safeSetMessages(prev => [...(prev || []), sentMsg as DecodedMessage<string>]);
           }
           setStatus('Message sent');
           console.log('[XMTP] ✅ Message sent successfully');
@@ -661,7 +712,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       console.log(`[XMTP] Created new conversation with: ${recipientAddress}`);
       
       // Add to conversations list
-      setConversations(prev => [...prev, conversation as XMTPConversation]);
+      safeSetConversations(prev => [...(prev || []), conversation as XMTPConversation]);
       
       // Select the new conversation
       await selectConversation(conversation as XMTPConversation);
@@ -741,9 +792,9 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     if (address) {
       setClient(null);
       setIsInitialized(false);
-      setConversations([]);
+      safeSetConversations([]);
       setSelectedConversation(null);
-      setMessages([]);
+      safeSetMessages([]);
       setError(null);
       setLastSyncTime(null);
       // Cleanup streams
@@ -755,7 +806,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       conversationStreams.current.clear();
       clientRef.current = null;
     }
-  }, [address]);
+  }, [address, safeSetConversations, safeSetMessages]);
 
   const contextValue: XMTPContextType = {
     client: clientRef.current,
@@ -763,9 +814,9 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     isInitializing,
     error,
     status,
-    conversations,
+    conversations: conversations || [],
     selectedConversation,
-    messages,
+    messages: messages || [],
     sendMessage,
     createConversation,
     selectConversation,

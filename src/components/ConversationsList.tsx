@@ -17,22 +17,26 @@ const ConversationsList: React.FC<ConversationsListProps> = ({ onSelect, onNewCo
   const { conversations, messages } = useXMTP();
   const [search, setSearch] = useState('');
 
+  // Ensure conversations is always an array
+  const safeConversations = conversations || [];
+
   // Filter conversations by search
   const filtered = useMemo(() => {
-    if (!search.trim()) return conversations;
-    return conversations.filter(c => c.id.toLowerCase().includes(search.toLowerCase()));
-  }, [conversations, search]);
+    if (!search.trim()) return safeConversations;
+    return safeConversations.filter(c => c.id.toLowerCase().includes(search.toLowerCase()));
+  }, [safeConversations, search]);
 
   // Get last message for preview
   function getLastMessage(conversationId: string) {
-    const convMsgs = messages.filter(m => m.conversationId === conversationId);
+    const safeMessages = messages || [];
+    const convMsgs = safeMessages.filter(m => m.conversationId === conversationId);
     if (!convMsgs.length) return '';
     return convMsgs[convMsgs.length - 1].content;
   }
 
   // Format address for display
   function formatAddress(address: string) {
-    if (address.length <= 12) return address;
+    if (!address || address.length <= 12) return address || 'Unknown';
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   }
 
@@ -62,7 +66,7 @@ const ConversationsList: React.FC<ConversationsListProps> = ({ onSelect, onNewCo
 
       {/* Conversations List - Responsive */}
       <div className="flex-1 overflow-y-auto">
-        {filtered.length === 0 ? (
+        {!filtered || filtered.length === 0 ? (
           <div className="p-6 text-center text-gray-400">
             <MessageCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
             <p className="text-sm sm:text-base">
@@ -127,7 +131,7 @@ const ConversationsList: React.FC<ConversationsListProps> = ({ onSelect, onNewCo
       {/* Mobile Footer Info */}
       <div className="p-3 sm:p-4 border-t bg-white md:hidden">
         <div className="text-center text-xs text-gray-500">
-          {filtered.length} conversation{filtered.length !== 1 ? 's' : ''}
+          {filtered ? filtered.length : 0} conversation{(filtered ? filtered.length : 0) !== 1 ? 's' : ''}
         </div>
       </div>
     </div>

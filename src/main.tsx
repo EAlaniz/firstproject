@@ -8,11 +8,16 @@ import { base } from 'wagmi/chains';
 import { AuthKitProvider } from '@farcaster/auth-kit';
 import { http } from 'viem';
 import { isFarcasterMiniApp, farcasterCompatibility } from './utils/farcasterCompatibility';
+import { setupCoinbaseWalletFix, setupCoinbaseWalletSDKFix } from './utils/coinbaseWalletFix';
 import App from './App';
 import './index.css';
 
 // Initialize Farcaster compatibility fixes early
 farcasterCompatibility.init();
+
+// NEW: Setup Coinbase Wallet fix
+setupCoinbaseWalletFix();
+setupCoinbaseWalletSDKFix();
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -38,7 +43,7 @@ console.log('🔧 RPC Configuration:', {
     domain: 'www.move10k.xyz',
     redirectUrl: window.location.origin,
     chainId: base.id,
-    rpcUrl: RPC_URL,
+    viemTransport: viemTransport,
   },
 });
 
@@ -54,7 +59,7 @@ createRoot(rootElement).render(
             domain: 'www.move10k.xyz',
             redirectUrl: window.location.origin,
             chainId: base.id,
-            rpcUrl: RPC_URL,
+            viemTransport: viemTransport,
             options: {
               timeout: 30000,
               enableLogging: true,
