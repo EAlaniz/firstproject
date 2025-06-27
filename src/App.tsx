@@ -5,10 +5,13 @@ import { EnhancedWalletConnector } from './components/EnhancedWalletConnector';
 import Modal from './components/Modal';
 import XMTPMessaging from './components/XMTPMessaging';
 import { useXMTP, XMTPProvider } from './contexts/XMTPContext';
+import type { XMTPConversation } from './contexts/XMTPContext';
 import { Activity, Trophy, Circle, MessageCircle, Menu, X, User, ExternalLink, Settings, Lock, LogOut } from 'lucide-react';
 import { isFarcasterMiniApp } from './utils/farcasterCompatibility';
 // Import the Farcaster Frame SDK for mini app splash screen control
 import { sdk } from '@farcaster/frame-sdk';
+import ConversationsList from './components/ConversationsList';
+import { Toaster } from 'react-hot-toast';
 
 // Add this type declaration at the top of the file
 declare global {
@@ -28,6 +31,8 @@ function AppContent() {
   const [dailyGoal, setDailyGoal] = useState(10000);
   const [currentStreak] = useState(12);
   const [totalTokens] = useState(156);
+  const [selectedConversation, setSelectedConversation] = useState<XMTPConversation | null>(null);
+  const [isNewConversationModalOpen, setIsNewConversationModalOpen] = useState(false);
 
   const { address, isConnected } = useAccount();
   const { data: balance } = useBalance({ address: address });
@@ -53,7 +58,17 @@ function AppContent() {
     })();
   }, []);
   // Use XMTP context
-  const { client: xmtpClient, initializeClient, isInitializing } = useXMTP();
+  const {
+    client: xmtpClient,
+    initializeClient,
+    isInitializing,
+    conversationPreviews,
+    unreadConversations,
+    loadMoreConversations,
+    conversationCursor,
+    isLoading,
+    conversations,
+  } = useXMTP();
 
   // Debug modal state
   useEffect(() => {
@@ -177,6 +192,11 @@ function AppContent() {
     console.log('  - Is Connected:', isConnected);
     console.log('  - Address:', address);
   }, [isConnected, address]);
+
+  const handleSelectConversation = (id: string) => {
+    const convo = conversations.find((c: XMTPConversation) => c.id === id);
+    if (convo) setSelectedConversation(convo);
+  };
 
   // Main return with conditional rendering
   return (
@@ -577,6 +597,21 @@ function AppContent() {
               </div>
             </section>
 
+            {/* Conversations List */}
+            <section className="mb-8 sm:mb-16">
+              <h2 className="text-xl sm:text-2xl font-light mb-6 sm:mb-8">Conversations</h2>
+              <ConversationsList
+                onSelect={handleSelectConversation}
+                onNewConversation={() => setIsNewConversationModalOpen(true)}
+                selectedId={selectedConversation?.id}
+                loadMoreConversations={loadMoreConversations}
+                conversationCursor={conversationCursor}
+                isLoading={isLoading}
+                conversationPreviews={conversationPreviews}
+                unreadConversations={unreadConversations}
+              />
+            </section>
+
             {/* Footer */}
             <footer className="text-center text-xs sm:text-sm text-gray-500 space-y-2">
               <p>Connected to Base</p>
@@ -804,6 +839,7 @@ function AppContent() {
 function App() {
   return (
     <XMTPProvider>
+      <Toaster position="top-center" />
       <AppContent />
     </XMTPProvider>
   );

@@ -6,9 +6,14 @@ interface ConversationsListProps {
   onSelect: (id: string) => void;
   onNewConversation: () => void;
   selectedId?: string;
+  loadMoreConversations: () => void;
+  conversationCursor: string | null;
+  isLoading: boolean;
+  conversationPreviews: { [id: string]: string };
+  unreadConversations: Set<string>;
 }
 
-const ConversationsList: React.FC<ConversationsListProps> = ({ onSelect, onNewConversation, selectedId }) => {
+const ConversationsList: React.FC<ConversationsListProps> = ({ onSelect, onNewConversation, selectedId, loadMoreConversations, conversationCursor, isLoading, conversationPreviews, unreadConversations }) => {
   const { conversations, messages } = useXMTP();
   const [search, setSearch] = useState('');
 
@@ -76,24 +81,29 @@ const ConversationsList: React.FC<ConversationsListProps> = ({ onSelect, onNewCo
                 key={conv.id}
                 onClick={() => onSelect(conv.id)}
                 className={`
-                  w-full text-left p-3 sm:p-4 rounded-lg hover:bg-blue-50 transition-colors
+                  w-full text-left p-3 sm:p-4 rounded-lg hover:bg-blue-50 focus:bg-blue-100 transition-colors
                   flex flex-col space-y-1 min-h-[60px] sm:min-h-[70px]
+                  border
                   ${selectedId === conv.id 
-                    ? 'bg-blue-100 border border-blue-200' 
-                    : 'border border-transparent hover:border-blue-100'
-                  }
+                    ? 'bg-blue-100 border-blue-300' 
+                    : unreadConversations.has(conv.id)
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-transparent hover:border-blue-100'}
                 `}
               >
                 <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 relative">
                     <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
+                    {unreadConversations.has(conv.id) && (
+                      <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full border-2 border-white" />
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm sm:text-base truncate">
+                    <p className="font-semibold text-base sm:text-lg truncate conversation-title">
                       {formatAddress(conv.id)}
                     </p>
-                    <p className="text-xs sm:text-sm text-gray-500 truncate mt-1">
-                      {getLastMessage(conv.id) || 'No messages yet'}
+                    <p className="message-preview text-xs sm:text-sm text-gray-600 truncate mt-1">
+                      {conversationPreviews[conv.id] || 'No messages yet'}
                     </p>
                   </div>
                 </div>
@@ -102,6 +112,17 @@ const ConversationsList: React.FC<ConversationsListProps> = ({ onSelect, onNewCo
           </div>
         )}
       </div>
+
+      {/* Load More Button for Pagination */}
+      {conversationCursor && (
+        <button
+          onClick={loadMoreConversations}
+          className="w-full py-2 text-blue-600 border-t border-gray-200 bg-white hover:bg-blue-50 disabled:opacity-50"
+          disabled={isLoading}
+        >
+          {isLoading ? 'Loading...' : 'Load More'}
+        </button>
+      )}
 
       {/* Mobile Footer Info */}
       <div className="p-3 sm:p-4 border-t bg-white md:hidden">

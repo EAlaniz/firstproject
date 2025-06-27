@@ -1,87 +1,52 @@
-import React, { useState, KeyboardEvent, useRef, useEffect } from 'react';
-import { Send } from 'lucide-react';
-import { useXMTP } from '../contexts/XMTPContext';
+import React, { useState } from 'react';
 
 interface MessageInputProps {
+  onSend: (text: string) => Promise<void>;
   disabled?: boolean;
 }
 
-const MessageInput: React.FC<MessageInputProps> = ({ disabled = false }) => {
-  const { sendMessage, selectedConversation } = useXMTP();
-  const [message, setMessage] = useState('');
+const MessageInput: React.FC<MessageInputProps> = ({ onSend, disabled = false }) => {
+  const [text, setText] = useState('');
   const [isSending, setIsSending] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  // Auto-resize textarea
-  useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
-    }
-  }, [message]);
-
-  const handleSend = async () => {
-    if (!message.trim() || !selectedConversation || isSending) return;
-
+  async function handleSend() {
+    if (!text.trim() || isSending || disabled) return;
+    setIsSending(true);
+    setError(null);
     try {
-      setIsSending(true);
-      await sendMessage(message.trim(), selectedConversation);
-      setMessage('');
-      // Reset textarea height
-      if (textareaRef.current) {
-        textareaRef.current.style.height = 'auto';
-      }
-    } catch (error) {
-      console.error('Failed to send message:', error);
-    } finally {
-      setIsSending(false);
+      await onSend(text.trim());
+      setText('');
+    } catch (err) {
+      setError('Failed to send message. Please try again.');
     }
-  };
-
-  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  };
-
-  const isDisabled = disabled || !selectedConversation || !message.trim() || isSending;
+    setIsSending(false);
+  }
 
   return (
-    <div className="border-t bg-white p-3 sm:p-4">
-      <div className="flex items-end gap-2 sm:gap-3">
-        <div className="flex-1">
-          <textarea
-            ref={textareaRef}
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={selectedConversation ? "Type a message..." : "Select a conversation to start messaging"}
-            disabled={disabled || !selectedConversation}
-            className="w-full resize-none border border-gray-200 rounded-lg px-3 py-2 sm:px-4 sm:py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400 text-sm sm:text-base min-h-[44px] max-h-[120px]"
-            rows={1}
-            maxLength={1000}
-          />
-          <div className="flex items-center justify-between mt-1">
-            <div className="text-xs text-gray-400">
-              {message.length}/1000
-            </div>
-            <div className="text-xs text-gray-400 hidden sm:block">
-              Press Enter to send, Shift+Enter for new line
-            </div>
-          </div>
-        </div>
-        <button
-          onClick={handleSend}
-          disabled={isDisabled}
-          className="px-3 py-2 sm:px-4 sm:py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2 min-h-[44px] flex-shrink-0"
-        >
-          <Send className="w-4 h-4 sm:w-5 sm:h-5" />
-          <span className="hidden sm:inline">
-            {isSending ? 'Sending...' : 'Send'}
-          </span>
-        </button>
-      </div>
+    <div className="message-input-container flex items-center gap-2 p-2 border-t bg-white">
+      <textarea
+        className="flex-1 resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[40px] max-h-32"
+        value={text}
+        onChange={e => setText(e.target.value)}
+        placeholder="Type your message..."
+        disabled={isSending || disabled}
+        rows={1}
+        onKeyDown={e => {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSend();
+          }
+        }}
+      />
+      <button
+        className="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50"
+        onClick={handleSend}
+        disabled={isSending || disabled || !text.trim()}
+      >
+        {isSending ? 'Sending...' : 'Send'}
+      </button>
+      {error && <div className="text-red-500 text-xs ml-2">{error}</div>}
     </div>
   );
 };

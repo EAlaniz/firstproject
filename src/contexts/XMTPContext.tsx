@@ -46,6 +46,20 @@ export interface XMTPContextType {
   // Enhanced features
   forceXMTPResync: () => Promise<void>;
   lastSyncTime: Date | null;
+  
+  // Pagination
+  loadMoreConversations: () => Promise<void>;
+  conversationCursor: string | null;
+  loadMoreMessages: (conversationId: string) => Promise<void>;
+  messageCursors: { [convId: string]: string | null };
+  loadMessages: (conversationId: string, append?: boolean) => Promise<void>;
+  
+  // Message preview and unread state
+  conversationPreviews: { [id: string]: string };
+  unreadConversations: Set<string>;
+  
+  // New states
+  isSyncing: boolean;
 }
 
 const XMTPContext = createContext<XMTPContextType | undefined>(undefined);
@@ -153,39 +167,161 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   const [messages, setMessages] = useState<DecodedMessage<string>[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
+  
+  // Pagination state
+  const [conversationCursor, setConversationCursor] = useState<string | null>(null);
+  const [messageCursors, setMessageCursors] = useState<{ [convId: string]: string | null }>({});
 
   // Message streaming subscriptions
   const conversationStreams = useRef<Map<string, unknown>>(new Map());
 
-  // Define loadConversations before useEffect to avoid TDZ
-  const loadConversations = useCallback(async () => {
-    if (!client) return;
+  // Message preview and unread state
+  const [conversationPreviews, setConversationPreviews] = useState<{ [id: string]: string }>({});
+  const [unreadConversations, setUnreadConversations] = useState<Set<string>>(new Set());
 
+  // New states
+  const [isSyncing, setIsSyncing] = useState(true);
+
+  // Load cached conversations on init
+  useEffect(() => {
+    const cached = localStorage.getItem('xmtp-conversations');
+    if (cached) {
+      setConversations(JSON.parse(cached));
+      setIsSyncing(true);
+    }
+  }, []);
+
+  // Save conversations to cache
+  useEffect(() => {
+    if (!conversations.length) return;
+    localStorage.setItem('xmtp-conversations', JSON.stringify(conversations));
+    setIsSyncing(false);
+  }, [conversations]);
+
+  // Load cached messages for selected conversation
+  useEffect(() => {
+    if (!selectedConversation) return;
+    const cached = localStorage.getItem(`xmtp-messages-${selectedConversation.id}`);
+    if (cached) {
+      setMessages(JSON.parse(cached));
+      setIsSyncing(true);
+    }
+  }, [selectedConversation]);
+
+  // Save messages for selected conversation
+  useEffect(() => {
+    if (!messages.length || !selectedConversation) return;
+    localStorage.setItem(`xmtp-messages-${selectedConversation.id}`, JSON.stringify(messages));
+    setIsSyncing(false);
+  }, [messages, selectedConversation]);
+
+  // Save/restore selectedConversation.id
+  useEffect(() => {
+    if (selectedConversation) {
+      localStorage.setItem('selected-convo', selectedConversation.id);
+    }
+  }, [selectedConversation]);
+  useEffect(() => {
+    const cached = localStorage.getItem('selected-convo');
+    if (cached && conversations.length) {
+      const match = conversations.find(c => c.id === cached);
+      if (match) setSelectedConversation(match);
+    }
+  }, [conversations]);
+
+  // Helper to get preview text for a message
+  function getPreviewText(msg: any): string {
+    if (!msg) return '[No messages yet]';
+    if (msg.contentType?.typeId === 'image') return '[Image]';
+    if (msg.contentType?.typeId === 'attachment') return '[Attachment]';
+    if (typeof msg.content === 'string') return msg.content.slice(0, 70);
+    return '[Unsupported]';
+  }
+
+  // Enhanced paginated conversation loading with previews
+  const loadConversations = useCallback(async (append = false) => {
+    if (!client) return;
+    setIsLoading(true);
+    setStatus('Loading conversations...');
     try {
-      setIsLoading(true);
-      setStatus('Loading conversations...');
-      
-      // Use V3 API to list conversations
-      const convos = await client.conversations.list();
-      setConversations(convos as XMTPConversation[]);
-      
-      console.log(`📋 Loaded ${convos.length} conversations`);
-      setStatus(`Ready (${convos.length} conversations)`);
-      
+      if (typeof (client.conversations as any).list === 'function') {
+        const page = await (client.conversations as any).list({ pageSize: 20, cursor: append ? conversationCursor : null });
+        // Fetch latest message for each conversation for preview
+        const convosWithPreviews = await Promise.all(
+          page.conversations.map(async (conv: any) => {
+            let preview = '[No messages yet]';
+            try {
+              const msgsPage = await conv.messages({ pageSize: 1 });
+              preview = getPreviewText(msgsPage[0]);
+            } catch {}
+            return { ...conv, preview };
+          })
+        );
+        setConversations(prev => append ? [...prev, ...convosWithPreviews] : convosWithPreviews);
+        // Update previews state
+        setConversationPreviews(prev => {
+          const next = { ...prev };
+          for (const c of convosWithPreviews) next[c.id] = c.preview;
+          return next;
+        });
+        setConversationCursor(page.cursor || null);
+        setStatus(`Ready (${append ? (conversations.length + page.conversations.length) : page.conversations.length} conversations)`);
+      } else {
+        // Fallback: load all
+        const convos = await client.conversations.list();
+        setConversations(convos as XMTPConversation[]);
+        setConversationCursor(null);
+        setStatus(`Ready (${convos.length} conversations)`);
+      }
     } catch (err) {
-      console.error('Failed to load conversations:', err);
       setError('Failed to load conversations');
     } finally {
       setIsLoading(false);
     }
-  }, [client]);
+  }, [client, conversationCursor, conversations.length]);
 
-  // Load conversations when client is ready
-  useEffect(() => {
-    if (client && isInitialized) {
+  // Poll conversations every 10 seconds for auto-refresh
+  React.useEffect(() => {
+    if (!client) return;
+    const interval = setInterval(() => {
       loadConversations();
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [client, loadConversations]);
+
+  // Load more conversations (next page)
+  const loadMoreConversations = async () => {
+    await loadConversations(true);
+  };
+
+  // Paginated message loading per conversation
+  async function loadMessages(conversationId: string, append = false) {
+    const conversation = conversations.find(c => c.id === conversationId);
+    if (!conversation) return;
+    setIsLoading(true);
+    try {
+      const cursor = messageCursors[conversationId] || null;
+      if (typeof (conversation as any).messages === 'function') {
+        const page = await (conversation as any).messages({ pageSize: 20, cursor: append ? cursor : null });
+        setMessages(prev => append ? [...page.messages, ...prev] : page.messages);
+        setMessageCursors(cursors => ({ ...cursors, [conversationId]: page.cursor || null }));
+      } else {
+        // Fallback: load all
+        const msgs = await conversation.messages();
+        setMessages(msgs);
+        setMessageCursors(cursors => ({ ...cursors, [conversationId]: null }));
+      }
+    } catch (err) {
+      setError('Failed to load messages');
+    } finally {
+      setIsLoading(false);
     }
-  }, [client, isInitialized, loadConversations]);
+  }
+
+  // Load more messages (older) for a conversation
+  const loadMoreMessages = async (conversationId: string) => {
+    await loadMessages(conversationId, true);
+  };
 
   const initializeClient = async () => {
     if (!walletClient || !address) {
@@ -340,22 +476,31 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     }
   };
 
+  // Mark conversation as read
+  async function markConversationAsRead(conversation: any) {
+    if (typeof conversation.markAsRead === 'function') {
+      try { await conversation.markAsRead(); } catch {}
+    }
+  }
+
+  // Update selectConversation to mark as read and clear unread
   const selectConversation = async (conversation: XMTPConversation) => {
     if (!client) {
       setError('XMTP not initialized');
       return;
     }
-
     try {
       setSelectedConversation(conversation);
       setMessages([]);
       setStatus('Loading messages...');
-
-      // Load messages for the selected conversation
-      const conversationMessages = await conversation.messages();
-      setMessages(conversationMessages as DecodedMessage<string>[]);
-      console.log(`📨 Loaded ${conversationMessages.length} messages for conversation`);
-
+      await loadMessages(conversation.id, false); // Load first page
+      // Mark as read and clear unread badge
+      setUnreadConversations(prev => {
+        const next = new Set(prev);
+        next.delete(conversation.id);
+        return next;
+      });
+      await markConversationAsRead(conversation);
       // Start streaming messages for this conversation
       console.log('📡 Started message streaming for conversation');
       const messageCallback: StreamCallback<DecodedMessage<string>> = (err, message) => {
@@ -365,10 +510,15 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         }
         if (message) {
           setMessages(prev => [...prev, message]);
+          // If not currently selected, mark as unread
+          setUnreadConversations(prev => {
+            if (selectedConversation && conversation.id === selectedConversation.id) return prev;
+            const next = new Set(prev);
+            next.add(conversation.id);
+            return next;
+          });
         }
       };
-
-      // Store the stream reference for cleanup
       if (hasMethod<{ streamMessages: (cb: StreamCallback<DecodedMessage<string>>) => Promise<unknown> }>(conversation, 'streamMessages')) {
         const stream = await conversation.streamMessages(messageCallback);
         conversationStreams.current.set(conversation.id, stream);
@@ -376,7 +526,6 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         const stream = await conversation.stream(messageCallback);
         conversationStreams.current.set(conversation.id, stream);
       }
-
       setStatus('Ready');
     } catch (err) {
       console.error('Failed to select conversation:', err);
@@ -624,6 +773,15 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     forceXMTPResync,
     isLoading: isInitializing,
     lastSyncTime,
+    // Pagination
+    loadMoreConversations,
+    conversationCursor,
+    loadMoreMessages,
+    messageCursors,
+    loadMessages,
+    conversationPreviews,
+    unreadConversations,
+    isSyncing,
   };
 
   return (

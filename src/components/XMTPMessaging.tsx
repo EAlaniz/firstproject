@@ -5,6 +5,7 @@ import ConversationsList from './ConversationsList';
 import MessageThread from './MessageThread';
 import MessageInput from './MessageInput';
 import NewConversationModal from './NewConversationModal';
+import { toast } from 'react-hot-toast';
 
 interface XMTPMessagingProps {
   isOpen: boolean;
@@ -12,9 +13,10 @@ interface XMTPMessagingProps {
 }
 
 const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
-  const { isInitialized, selectedConversation, selectConversation, conversations } = useXMTP();
+  const { isInitialized, selectedConversation, selectConversation, conversations, isLoading, sendMessage, loadMoreConversations, conversationCursor, conversationPreviews, unreadConversations, loadMoreMessages, messageCursors } = useXMTP();
   const [isNewConversationModalOpen, setIsNewConversationModalOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSending, setIsSending] = useState(false);
 
   const handleSelectConversation = (conversationId: string) => {
     const conversation = conversations.find(c => c.id === conversationId);
@@ -31,6 +33,24 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
     setIsSidebarOpen(false);
     onClose();
   };
+
+  // Add handleSend for MessageInput
+  async function handleSend(text: string) {
+    if (!selectedConversation) return;
+    setIsSending(true);
+    try {
+      // Warn if group membership sync may be in progress
+      if ('error' in selectedConversation) {
+        toast('Group membership sync may still be in progress. Messages may be delayed or fail.', { icon: '⚠️' });
+      }
+      await selectedConversation.send(text);
+    } catch (err: any) {
+      console.error('[XMTP] Failed to send message:', err);
+      toast.error(`Send failed: ${err?.message ?? 'Unknown error'}`);
+    } finally {
+      setIsSending(false);
+    }
+  }
 
   if (!isOpen) return null;
 
@@ -96,6 +116,11 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
                   onSelect={handleSelectConversation}
                   onNewConversation={() => setIsNewConversationModalOpen(true)}
                   selectedId={selectedConversation?.id}
+                  loadMoreConversations={loadMoreConversations}
+                  conversationCursor={conversationCursor}
+                  isLoading={isLoading}
+                  conversationPreviews={conversationPreviews}
+                  unreadConversations={unreadConversations}
                 />
               </div>
 
@@ -113,11 +138,19 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
                   <>
                     {/* Message Thread - Responsive */}
                     <div className="flex-1 overflow-hidden">
-                      <MessageThread conversationId={selectedConversation.id} />
+                      <MessageThread 
+                        conversationId={selectedConversation.id}
+                        loadMoreMessages={loadMoreMessages}
+                        messageCursors={messageCursors}
+                        isLoading={isLoading}
+                      />
                     </div>
                     
                     {/* Message Input - Responsive */}
-                    <MessageInput />
+                    <MessageInput 
+                      onSend={handleSend} 
+                      disabled={isLoading || isSending || !selectedConversation}
+                    />
                   </>
                 ) : (
                   /* Empty State - Responsive */

@@ -4,11 +4,15 @@ import { useXMTP } from '../contexts/XMTPContext';
 
 interface MessageThreadProps {
   conversationId: string | null;
+  loadMoreMessages: (conversationId: string) => void;
+  messageCursors: { [convId: string]: string | null };
+  isLoading: boolean;
+  onRetry?: (msg: any) => void;
 }
 
-const MessageThread: React.FC<MessageThreadProps> = ({ conversationId }) => {
+const MessageThread: React.FC<MessageThreadProps> = ({ conversationId, loadMoreMessages, messageCursors, isLoading, onRetry }) => {
   const { address } = useAccount();
-  const { messages, isLoading } = useXMTP();
+  const { messages, conversations, isSyncing, selectedConversation } = useXMTP();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Filter messages for this conversation
@@ -16,10 +20,58 @@ const MessageThread: React.FC<MessageThreadProps> = ({ conversationId }) => {
     ? messages.filter(m => m.conversationId === conversationId)
     : [];
 
+  const msgCursor = conversationId ? messageCursors[conversationId] : null;
+
   // Auto-scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [threadMessages.length]);
+
+  // Group messages by sender for display
+  function groupMessages(messages: any[]) {
+    const groups: { sender: string; messages: any[] }[] = [];
+    let lastSender = null;
+    let currentGroup: any = null;
+    for (const msg of messages) {
+      const msgFrom = (msg as any).from || (msg as any).senderAddress;
+      if (msgFrom !== lastSender) {
+        if (currentGroup) groups.push(currentGroup);
+        currentGroup = { sender: msgFrom, messages: [msg] };
+        lastSender = msgFrom;
+      } else {
+        currentGroup.messages.push(msg);
+      }
+    }
+    if (currentGroup) groups.push(currentGroup);
+    return groups;
+  }
+
+  // Group metadata UI for group chats
+  function renderGroupMeta() {
+    if (!selectedConversation) return null;
+    const isGroup = 'members' in selectedConversation;
+    if (!isGroup) return null;
+    const group = selectedConversation as any;
+    return (
+      <div className="mb-2">
+        <div className="text-sm text-gray-600 dark:text-gray-300 mb-1">
+          👥 Members: {group.members.length}
+        </div>
+        <ul className="text-xs text-gray-500 dark:text-gray-400 flex flex-wrap gap-2">
+          {group.members.map((m: string) => (
+            <li key={m} className="bg-gray-100 dark:bg-gray-800 rounded px-2 py-1">{m.slice(0, 8)}...{m.slice(-4)}</li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
+
+  // Message status UI
+  function renderStatus(msg: any) {
+    if (msg.status === 'pending') return <span className="text-xs text-gray-400 ml-2">⏳ Sending</span>;
+    if (msg.status === 'failed') return <span className="text-xs text-red-500 ml-2 cursor-pointer" onClick={() => onRetry?.(msg)}>❌ Failed — click to retry</span>;
+    return null;
+  }
 
   if (!conversationId) {
     return (
@@ -31,40 +83,57 @@ const MessageThread: React.FC<MessageThreadProps> = ({ conversationId }) => {
     );
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="animate-pulse text-gray-400">Loading messages…</div>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex-1 overflow-y-auto px-4 py-6 bg-white">
-      {threadMessages.length === 0 ? (
+    <div className="flex-1 overflow-y-auto px-4 py-6 bg-white dark:bg-black message-list">
+      {/* Sync badge/status */}
+      <div className="text-sm text-gray-500 dark:text-gray-400 px-2 pb-2">
+        {isSyncing ? '🔄 Syncing with XMTP...' : '✅ Synced'}
+      </div>
+      {/* Group metadata */}
+      {renderGroupMeta()}
+      {/* Load More Button for Pagination */}
+      {msgCursor && (
+        <button
+          onClick={() => conversationId && loadMoreMessages(conversationId)}
+          className="w-full py-2 text-blue-600 border-b border-gray-200 bg-white hover:bg-blue-50 disabled:opacity-50 mb-2"
+          disabled={isLoading}
+        >
+          {isLoading ? 'Loading...' : 'Load More'}
+        </button>
+      )}
+      {isLoading ? (
+        <div className="text-gray-400 text-sm px-4 py-2">Loading messages...</div>
+      ) : threadMessages.length === 0 ? (
         <div className="text-center text-gray-400">No messages yet</div>
       ) : (
-        threadMessages.map((msg, i) => {
-          const isOwn = msg.senderAddress?.toLowerCase() === address?.toLowerCase();
+        groupMessages(threadMessages).map((group, groupIdx) => {
+          const isOwn = group.sender?.toLowerCase() === address?.toLowerCase();
           return (
-            <div
-              key={i}
-              className={`flex ${isOwn ? 'justify-end' : 'justify-start'} mb-2`}
-            >
-              <div
-                className={`max-w-xs sm:max-w-md px-4 py-2 rounded-2xl shadow-sm ${
-                  isOwn
-                    ? 'bg-blue-600 text-white rounded-br-none'
-                    : 'bg-gray-100 text-gray-900 rounded-bl-none'
-                }`}
-              >
-                <div className="text-sm break-words">{msg.content}</div>
-                <div className="text-xs mt-1 opacity-70 text-right">
-                  {msg.sentAtNs
-                    ? new Date(Number(msg.sentAtNs) / 1e6).toLocaleTimeString()
-                    : ''}
+            <div key={groupIdx} className={`mb-4 flex flex-col ${isOwn ? 'items-end' : 'items-start'}`}>
+              {/* Sender label for group (hide for own messages) */}
+              {!isOwn && (
+                <div className="text-xs text-gray-500 mb-1 ml-2">
+                  {group.sender ? `${group.sender.slice(0, 8)}...${group.sender.slice(-4)}` : 'Unknown'}
                 </div>
-              </div>
+              )}
+              {group.messages.map((msg, i) => (
+                <div
+                  key={i}
+                  className={`message-bubble ${isOwn ? 'mine' : 'theirs'} max-w-[70%] px-4 py-2 rounded-2xl mb-1 text-sm break-words shadow-md bg-white dark:bg-black ${
+                    isOwn
+                      ? 'bg-blue-600 text-white rounded-br-none self-end'
+                      : 'bg-gray-100 text-gray-900 rounded-bl-none self-start dark:bg-gray-800 dark:text-gray-100'
+                  }`}
+                >
+                  <div className="text-base">{msg.content}</div>
+                  <div className="timestamp text-xs mt-1 opacity-70 text-right">
+                    {msg.sentAtNs
+                      ? new Date(Number(msg.sentAtNs) / 1e6).toLocaleTimeString()
+                      : ''}
+                    {renderStatus(msg)}
+                  </div>
+                </div>
+              ))}
             </div>
           );
         })
