@@ -3,15 +3,16 @@ import React, { useState } from 'react';
 interface MessageInputProps {
   onSend: (text: string) => Promise<void>;
   disabled?: boolean;
+  canSend?: boolean;
 }
 
-const MessageInput: React.FC<MessageInputProps> = ({ onSend, disabled = false }) => {
+const MessageInput: React.FC<MessageInputProps> = ({ onSend, disabled = false, canSend = true }) => {
   const [text, setText] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleSend() {
-    if (!text.trim() || isSending || disabled) return;
+    if (!text.trim() || isSending || disabled || !canSend) return;
     setIsSending(true);
     setError(null);
     try {
@@ -23,30 +24,35 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSend, disabled = false })
     setIsSending(false);
   }
 
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  }
+
   return (
-    <div className="message-input-container flex items-center gap-2 p-2 border-t bg-white">
+    <div className="message-input-container">
       <textarea
-        className="flex-1 resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[40px] max-h-32"
         value={text}
-        onChange={e => setText(e.target.value)}
+        onChange={(e) => setText(e.target.value)}
         placeholder="Type your message..."
-        disabled={isSending || disabled}
-        rows={1}
-        onKeyDown={e => {
-          if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            handleSend();
-          }
-        }}
+        disabled={isSending || disabled || !canSend}
+        onKeyDown={handleKeyDown}
+        className="w-full p-2 rounded border border-gray-300 focus:outline-none"
+        rows={2}
       />
       <button
-        className="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50"
         onClick={handleSend}
-        disabled={isSending || disabled || !text.trim()}
+        disabled={isSending || disabled || !canSend || !text.trim()}
+        className="ml-2 px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50"
       >
         {isSending ? 'Sending...' : 'Send'}
       </button>
-      {error && <div className="text-red-500 text-xs ml-2">{error}</div>}
+      {error && <div className="text-red-500 text-xs mt-1">{error}</div>}
+      {!canSend && (
+        <div className="text-yellow-500 text-xs mt-1">Group membership is still syncing. Please wait…</div>
+      )}
     </div>
   );
 };

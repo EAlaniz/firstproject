@@ -15,6 +15,12 @@ const MessageThread: React.FC<MessageThreadProps> = ({ conversationId, loadMoreM
   const { messages, conversations, isSyncing, selectedConversation } = useXMTP();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Defensive: use empty array if messages is undefined/null
+  const safeMessages = Array.isArray(messages) ? messages : [];
+
+  // Example filter (replace with your actual filter logic if needed)
+  const filteredMessages = safeMessages.filter(msg => true);
+
   // Filter messages for this conversation
   const threadMessages = conversationId
     ? messages.filter(m => m.conversationId === conversationId)
@@ -117,10 +123,10 @@ const MessageThread: React.FC<MessageThreadProps> = ({ conversationId, loadMoreM
       )}
       {isLoading ? (
         <div className="text-gray-400 text-sm px-4 py-2">Loading messages...</div>
-      ) : threadMessages.length === 0 ? (
+      ) : filteredMessages.length === 0 ? (
         <div className="text-center text-gray-400">No messages yet</div>
       ) : (
-        groupMessages(threadMessages).map((group, groupIdx) => {
+        groupMessages(filteredMessages).map((group, groupIdx) => {
           const isOwn = group.sender?.toLowerCase() === address?.toLowerCase();
           return (
             <div key={groupIdx} className={`mb-4 flex flex-col ${isOwn ? 'items-end' : 'items-start'}`}>

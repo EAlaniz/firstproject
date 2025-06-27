@@ -52,6 +52,27 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
     }
   }
 
+  // Determine if sending is allowed (group must be synced and have 2+ members)
+  let canSend = true;
+  if (selectedConversation) {
+    const isGroup = 'members' in selectedConversation;
+    if (isGroup) {
+      const group = selectedConversation as any;
+      // Group is ready if members is array/object with 2+ unique members and no error
+      let memberCount = 0;
+      if (Array.isArray(group.members)) {
+        memberCount = group.members.length;
+      } else if (group.members && typeof group.members === 'object') {
+        memberCount = Object.keys(group.members).length;
+      }
+      canSend = memberCount > 1 && !('error' in selectedConversation);
+    }
+  }
+  // Debug log
+  React.useEffect(() => {
+    console.log('[XMTP] canSend:', canSend, selectedConversation);
+  }, [canSend, selectedConversation]);
+
   if (!isOpen) return null;
 
   return (
@@ -147,10 +168,9 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
                     </div>
                     
                     {/* Message Input - Responsive */}
-                    <MessageInput 
-                      onSend={handleSend} 
-                      disabled={isLoading || isSending || !selectedConversation}
-                    />
+                    {!isLoading && selectedConversation && (
+                      <MessageInput onSend={handleSend} disabled={isSending || isLoading} canSend={canSend} />
+                    )}
                   </>
                 ) : (
                   /* Empty State - Responsive */
