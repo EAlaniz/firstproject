@@ -52,16 +52,30 @@ const MessageThread: React.FC<MessageThreadProps> = ({ conversationId, loadMoreM
     const isGroup = 'members' in selectedConversation;
     if (!isGroup) return null;
     const group = selectedConversation as any;
+    // Robustly handle group.members as array, object, or undefined
+    let memberCount = '?';
+    let memberList: string[] = [];
+    if (Array.isArray(group.members)) {
+      memberCount = String(group.members.length);
+      memberList = group.members;
+    } else if (group.members && typeof group.members === 'object') {
+      memberCount = String(Object.keys(group.members).length);
+      memberList = Object.keys(group.members);
+    }
     return (
       <div className="mb-2">
         <div className="text-sm text-gray-600 dark:text-gray-300 mb-1">
-          👥 Members: {group.members.length}
+          👥 Members: {memberCount}
         </div>
-        <ul className="text-xs text-gray-500 dark:text-gray-400 flex flex-wrap gap-2">
-          {group.members.map((m: string) => (
-            <li key={m} className="bg-gray-100 dark:bg-gray-800 rounded px-2 py-1">{m.slice(0, 8)}...{m.slice(-4)}</li>
-          ))}
-        </ul>
+        {memberList.length > 0 ? (
+          <ul className="text-xs text-gray-500 dark:text-gray-400 flex flex-wrap gap-2">
+            {memberList.map((m: string) => (
+              <li key={m} className="bg-gray-100 dark:bg-gray-800 rounded px-2 py-1">{m.slice(0, 8)}...{m.slice(-4)}</li>
+            ))}
+          </ul>
+        ) : (
+          <div className="text-xs text-gray-400">(Group member list unavailable)</div>
+        )}
       </div>
     );
   }
