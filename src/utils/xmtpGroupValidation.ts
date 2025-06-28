@@ -1,4 +1,4 @@
-import { Client, Group, GroupMessage } from '@xmtp/browser-sdk';
+import { Client, Group } from '@xmtp/browser-sdk';
 
 /**
  * Enhanced group membership validation with smart retry mechanism
@@ -21,21 +21,19 @@ export async function validateGroupMembershipWithRetry(
   console.log('🔍 Starting enhanced group membership validation...');
   
   try {
-    // First, ensure membership is published
-    const membership = await group.membership();
-    const published = await membership.isPublished();
+    // For XMTP V3, we check if the group has members and no errors
+    const hasMembers = group.members && (
+      Array.isArray(group.members) ? group.members.length > 0 : 
+      typeof group.members === 'object' ? Object.keys(group.members).length > 0 : 
+      false
+    );
     
-    if (!published) {
-      console.log('📢 Publishing group membership...');
-      await membership.publish();
-      console.log('✅ Membership published, waiting for sync...');
-    } else {
-      console.log('✅ Membership already published');
-    }
+    // Check if there are any errors on the group
+    const hasErrors = 'error' in group;
     
-    // Smart retry loop for canSend
-    let canSend = await group.canSend();
-    console.log(`🔍 Initial canSend check: ${canSend}`);
+    // Initial canSend check
+    let canSend = hasMembers && !hasErrors;
+    console.log(`🔍 Initial canSend check: ${canSend} (members: ${hasMembers}, errors: ${hasErrors})`);
     
     while (!canSend && retries < maxRetries) {
       retries++;
@@ -43,11 +41,16 @@ export async function validateGroupMembershipWithRetry(
       
       await new Promise(resolve => setTimeout(resolve, retryDelay));
       
-      // Re-check both canSend and membership status
-      canSend = await group.canSend();
-      const membershipIsPublished = await membership.isPublished();
+      // Re-check group status
+      const currentHasMembers = group.members && (
+        Array.isArray(group.members) ? group.members.length > 0 : 
+        typeof group.members === 'object' ? Object.keys(group.members).length > 0 : 
+        false
+      );
+      const currentHasErrors = 'error' in group;
+      canSend = currentHasMembers && !currentHasErrors;
       
-      console.log(`🔍 Retry ${retries}: canSend=${canSend}, membershipIsPublished=${membershipIsPublished}`);
+      console.log(`🔍 Retry ${retries}: canSend=${canSend} (members: ${currentHasMembers}, errors: ${currentHasErrors})`);
       
       if (canSend) {
         console.log('✅ Group is now ready to send messages!');
@@ -56,11 +59,10 @@ export async function validateGroupMembershipWithRetry(
     }
     
     const totalTime = Date.now() - startTime;
-    const finalMembershipIsPublished = await membership.isPublished();
     
     const result = {
       canSend,
-      membershipIsPublished: finalMembershipIsPublished,
+      membershipIsPublished: canSend, // In XMTP V3, if canSend is true, membership is considered published
       retries,
       totalTime
     };
@@ -119,10 +121,33 @@ export async function getCanSendStatusWithRetry(
     const isGroup = 'members' in conversation;
     
     if (!isGroup) {
-      // For DMs, just check canSend directly
-      const canSend = await conversation.canSend();
+      // For DMs, check if recipient is registered
+      const peerAddress = conversation.peerAddress || conversation.id;
+      if (peerAddress && peerAddress.startsWith('0x')) {
+        try {
+          const canMessage = await Client.canMessage([
+            { identifier: peerAddress, identifierKind: 'Ethereum' }
+          ], 'production');
+          const canSend = Array.isArray(canMessage) ? canMessage[0] : !!canMessage;
+          return {
+            canSend,
+            isGroup: false,
+            retries: 0,
+            totalTime: Date.now() - startTime
+          };
+        } catch (error) {
+          console.error('❌ DM canMessage check failed:', error);
+          return {
+            canSend: false,
+            isGroup: false,
+            retries: 0,
+            totalTime: Date.now() - startTime,
+            error: 'DM check failed'
+          };
+        }
+      }
       return {
-        canSend,
+        canSend: true,
         isGroup: false,
         retries: 0,
         totalTime: Date.now() - startTime
@@ -214,8 +239,11 @@ export async function getCanSendStatus(client: Client, conversation: any) {
     const peerAddress = conversation.peerAddress || conversation.id;
     if (peerAddress && peerAddress.startsWith('0x')) {
       try {
-        const canMessage = await client.canMessage(peerAddress);
-        return { canSend: canMessage, reason: canMessage ? 'DM ready' : 'Recipient not registered' };
+        const canMessage = await Client.canMessage([
+          { identifier: peerAddress, identifierKind: 'Ethereum' }
+        ], 'production');
+        const canSend = Array.isArray(canMessage) ? canMessage[0] : !!canMessage;
+        return { canSend, reason: canSend ? 'DM ready' : 'Recipient not registered' };
       } catch (error) {
         console.error('❌ DM canMessage check failed:', error);
         return { canSend: false, reason: 'DM check failed' };
@@ -232,58 +260,4 @@ export async function getCanSendStatus(client: Client, conversation: any) {
       ? `Group ready (${groupValidation.memberCount} members)`
       : groupValidation.error || 'Group not ready'
   };
-}
-
-export function GroupChat({ client, groupId }: { client: any, groupId: string }) {
-  const { group, messages, canSend, loading, error } = useGroupWithRetry(client, groupId);
-
-  const handleSend = async (text: string) => {
-    if (!group || !canSend) {
-      toast.error('Cannot send message - group not ready');
-      return;
-    }
-    
-    try {
-      await group.send(text);
-    } catch (err) {
-      console.error('Failed to send message:', err);
-      toast.error('Failed to send message');
-    }
-  };
-
-  if (error) {
-    return (
-      <div className="p-4 text-center">
-        <p className="text-red-600">❌ Error loading group: {error}</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto">
-        <MessageList messages={messages} />
-      </div>
-      
-      <div className="border-t p-4">
-        {loading ? (
-          <p className="text-gray-500 italic">Loading group chat…</p>
-        ) : canSend ? (
-          <MessageComposer onSend={handleSend} />
-        ) : (
-          <p className="text-yellow-600 font-medium">
-            ⏳ Group syncing… messaging will be available shortly.
-          </p>
-        )}
-      </div>
-    </div>
-  );
-}
-
-interface UseGroupWithRetryResult {
-  group: Group<string> | null;
-  messages: GroupMessage<string>[];
-  canSend: boolean;
-  loading: boolean;
-  error?: string;
 } 
