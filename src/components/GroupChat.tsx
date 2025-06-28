@@ -12,7 +12,7 @@ interface GroupChatProps {
 
 const GroupChat: React.FC<GroupChatProps> = ({ conversationId, onRetry }) => {
   const { address } = useAccount();
-  const { client, conversations, loadMoreMessages, messageCursors, isLoading } = useXMTP();
+  const { client, conversations, loadMoreMessages, messageCursors, isLoading, sendMessage } = useXMTP();
   
   // Use the enhanced group hook with retry logic
   const {
@@ -39,7 +39,7 @@ const GroupChat: React.FC<GroupChatProps> = ({ conversationId, onRetry }) => {
   // Get the conversation object
   const conversation = conversations.find(c => c.id === conversationId);
 
-  // Handle sending messages
+  // Handle sending messages using the XMTP context sendMessage function
   const handleSend = async (text: string) => {
     if (!conversation || !canSend || isSending) {
       console.warn('Cannot send message:', { 
@@ -52,10 +52,11 @@ const GroupChat: React.FC<GroupChatProps> = ({ conversationId, onRetry }) => {
 
     setIsSending(true);
     try {
-      await conversation.send(text);
-      console.log('✅ Message sent successfully');
+      console.log('[GroupChat] Sending message via XMTP context...');
+      await sendMessage(text, conversation);
+      console.log('✅ Message sent successfully via XMTP context');
     } catch (error) {
-      console.error('❌ Failed to send message:', error);
+      console.error('❌ Failed to send message via XMTP context:', error);
       throw error; // Let MessageInput handle the error display
     } finally {
       setIsSending(false);

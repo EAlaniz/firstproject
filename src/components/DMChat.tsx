@@ -11,7 +11,7 @@ interface DMChatProps {
 
 const DMChat: React.FC<DMChatProps> = ({ conversationId, onRetry }) => {
   const { address } = useAccount();
-  const { conversations, loadMoreMessages, messageCursors, isLoading } = useXMTP();
+  const { conversations, loadMoreMessages, messageCursors, isLoading, sendMessage } = useXMTP();
   const [isSending, setIsSending] = useState(false);
 
   // Get the conversation object
@@ -29,7 +29,7 @@ const DMChat: React.FC<DMChatProps> = ({ conversationId, onRetry }) => {
     );
   }
 
-  // Handle sending messages
+  // Handle sending messages using the XMTP context sendMessage function
   const handleSend = async (text: string) => {
     if (!conversation || isSending) {
       console.warn('Cannot send message:', { 
@@ -41,10 +41,11 @@ const DMChat: React.FC<DMChatProps> = ({ conversationId, onRetry }) => {
 
     setIsSending(true);
     try {
-      await conversation.send(text);
-      console.log('✅ Message sent successfully');
+      console.log('[DMChat] Sending message via XMTP context...');
+      await sendMessage(text, conversation);
+      console.log('✅ Message sent successfully via XMTP context');
     } catch (error) {
-      console.error('❌ Failed to send message:', error);
+      console.error('❌ Failed to send message via XMTP context:', error);
       throw error; // Let MessageInput handle the error display
     } finally {
       setIsSending(false);
