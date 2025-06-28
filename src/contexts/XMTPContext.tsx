@@ -416,23 +416,6 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       console.log('🔍 Creating XMTP-compatible signer for address:', walletClient.account.address);
       console.log('✅ XMTP signer created successfully');
       
-      // Manual signature to wake Coinbase Wallet
-      console.log('⏳ Requesting manual signature to wake Coinbase Wallet...');
-      try {
-        if (window.ethereum) {
-          await window.ethereum.request({
-            method: 'personal_sign',
-            params: [
-              'XMTP : Authenticate to inbox',
-              walletClient.account.address,
-            ],
-          });
-          console.log('✅ Manual signature success, now starting XMTP client...');
-        }
-      } catch (signErr) {
-        console.warn('⚠️ Manual signature failed, continuing anyway:', signErr);
-      }
-      
       // --- Official Inbox App: historySyncUrl, loggingLevel, dbEncryptionKey, dbPath ---
       // TODO: If you want to use a custom dbEncryptionKey/dbPath, add them here and persist across sessions
       const historySyncUrl = 'https://prod.protocol.xmtp.network/history/v2'; // Official default, can be customized

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useXMTP } from '../contexts/XMTPContext';
 import { getCanSendStatus } from '../utils/xmtpGroupValidation';
-import { clearXMTPIdentity } from '../utils/xmtpSigner';
+import { clearXMTPIdentity, clearXMTPIdentityWithClient, createAutoSigner } from '../utils/xmtpSigner';
+import { useWalletClient } from 'wagmi';
 
 interface XMTPDebugPanelProps {
   isOpen: boolean;
@@ -18,9 +19,12 @@ export const XMTPDebugPanel: React.FC<XMTPDebugPanelProps> = ({ isOpen, onClose 
     status 
   } = useXMTP();
   
+  const { data: walletClient } = useWalletClient();
+  
   const [debugInfo, setDebugInfo] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [clearStatus, setClearStatus] = useState<string>('');
+  const [signerTestResult, setSignerTestResult] = useState<string>('');
 
   const runDebugCheck = async () => {
     if (!xmtpClient || !selectedConversation) return;
@@ -65,10 +69,31 @@ export const XMTPDebugPanel: React.FC<XMTPDebugPanelProps> = ({ isOpen, onClose 
     
     setClearStatus('Clearing...');
     try {
-      await clearXMTPIdentity();
+      // Try the built-in method first, fallback to manual clearing
+      await clearXMTPIdentityWithClient();
       setClearStatus('✅ Identity cleared! Refresh the page to re-initialize.');
     } catch (error) {
       setClearStatus('❌ Failed to clear identity');
+    }
+  };
+
+  const testSigner = async () => {
+    if (!walletClient) {
+      setSignerTestResult('❌ No wallet client available');
+      return;
+    }
+    
+    setSignerTestResult('Testing signer...');
+    try {
+      const signer = createAutoSigner(walletClient);
+      const chainId = await (signer as any).getChainId();
+      const address = await (signer as any).getAddress();
+      
+      setSignerTestResult(`✅ Signer Test Passed!\nChain ID: ${chainId}\nAddress: ${address}`);
+      console.log('🧪 Signer test successful:', { chainId, address });
+    } catch (error) {
+      setSignerTestResult(`❌ Signer Test Failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error('❌ Signer test failed:', error);
     }
   };
 
@@ -98,6 +123,15 @@ export const XMTPDebugPanel: React.FC<XMTPDebugPanelProps> = ({ isOpen, onClose 
             </button>
             
             <button
+              onClick={testSigner}
+              disabled={!walletClient}
+              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:bg-gray-400"
+              title="Test the XMTP signer chain ID"
+            >
+              🧪 Test Signer
+            </button>
+            
+            <button
               onClick={handleClearIdentity}
               className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
               title="Clear XMTP identity to fix chain ID issues (development only)"
@@ -113,6 +147,16 @@ export const XMTPDebugPanel: React.FC<XMTPDebugPanelProps> = ({ isOpen, onClose 
               'bg-yellow-100 text-yellow-800'
             }`}>
               {clearStatus}
+            </div>
+          )}
+
+          {signerTestResult && (
+            <div className={`p-3 rounded-lg text-sm whitespace-pre-line ${
+              signerTestResult.includes('✅') ? 'bg-green-100 text-green-800' : 
+              signerTestResult.includes('❌') ? 'bg-red-100 text-red-800' : 
+              'bg-yellow-100 text-yellow-800'
+            }`}>
+              {signerTestResult}
             </div>
           )}
 

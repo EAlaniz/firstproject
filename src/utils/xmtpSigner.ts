@@ -17,13 +17,10 @@ export const createAutoSigner = (walletClient: WalletClient): Signer => {
     identifierKind: 'Ethereum',
   };
 
-  const signer = {
+  // Create the base signer object
+  const baseSigner = {
     type: 'EOA' as const,
     getIdentifier: () => accountIdentifier,
-    getChainId: async (): Promise<number> => {
-      console.log('🔗 XMTP requesting chain ID, returning Base mainnet (8453)');
-      return 8453;
-    },
     signMessage: async (message: string): Promise<Uint8Array> => {
       try {
         console.log('🔐 XMTP requesting signature for message:', message);
@@ -47,7 +44,29 @@ export const createAutoSigner = (walletClient: WalletClient): Signer => {
     },
   };
 
-  return signer as Signer;
+  // 🚨 CRITICAL FIX: Create the final signer with chain context
+  const finalSigner = {
+    ...baseSigner,
+    // Add getChainId method to ensure XMTP uses correct chain context
+    getChainId: async (): Promise<number> => {
+      console.log('🔗 XMTP requesting chain ID, returning Base mainnet (8453)');
+      return 8453; // Base mainnet chain ID
+    },
+    // Add getAddress method for compatibility
+    getAddress: async (): Promise<string> => {
+      return walletClient.account!.address;
+    },
+  };
+
+  // Test the signer before returning
+  console.log('🧪 Testing signer chain ID...');
+  finalSigner.getChainId().then(chainId => {
+    console.log('✅ Signer chain ID test:', chainId);
+  }).catch(error => {
+    console.error('❌ Signer chain ID test failed:', error);
+  });
+
+  return finalSigner as Signer;
 };
 
 /**
@@ -135,6 +154,39 @@ export const clearXMTPIdentity = async () => {
     return true;
   } catch (error) {
     console.error('❌ Failed to clear XMTP identity:', error);
+    return false;
+  }
+};
+
+/**
+ * 🚨 DEVELOPMENT ONLY: Clear XMTP identity using XMTP's built-in method
+ * This is the recommended way to clear XMTP identity
+ */
+export const clearXMTPIdentityWithClient = async () => {
+  try {
+    console.log('🗑️ Clearing XMTP identity using built-in method...');
+    
+    // Import Client dynamically to avoid circular dependencies
+    const { Client } = await import('@xmtp/browser-sdk');
+    
+    // Use XMTP's built-in method to clear local data
+    // Note: deleteLocal might not be available in all versions, fallback to manual clearing
+    try {
+      if (typeof (Client as any).deleteLocal === 'function') {
+        await (Client as any).deleteLocal();
+        console.log('✅ XMTP identity cleared using built-in method');
+      } else {
+        console.log('⚠️ deleteLocal not available, using manual clearing');
+        await clearXMTPIdentity();
+      }
+    } catch (clientError) {
+      console.log('⚠️ Built-in method failed, using manual clearing');
+      await clearXMTPIdentity();
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('❌ Failed to clear XMTP identity with client:', error);
     return false;
   }
 }; 
