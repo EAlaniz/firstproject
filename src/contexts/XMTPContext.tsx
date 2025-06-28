@@ -330,21 +330,40 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   // Paginated message loading per conversation
   async function loadMessages(conversationId: string, append = false) {
     const conversation = conversations?.find(c => c.id === conversationId);
-    if (!conversation) return;
+    if (!conversation) {
+      console.warn('[XMTP] ❌ Conversation not found for loading messages:', conversationId);
+      return;
+    }
+    
+    console.log('[XMTP] 📥 Loading messages for conversation:', {
+      conversationId,
+      append,
+      existingMessagesCount: messages?.length || 0
+    });
+    
     setIsLoading(true);
     try {
       const cursor = messageCursors[conversationId] || null;
       if (typeof (conversation as any).messages === 'function') {
         const page = await (conversation as any).messages({ pageSize: 20, cursor: append ? cursor : null });
+        console.log('[XMTP] 📥 Loaded messages from conversation:', {
+          messageCount: page.messages?.length || 0,
+          hasCursor: !!page.cursor,
+          append
+        });
         safeSetMessages(prev => append ? [...page.messages, ...(prev || [])] : page.messages);
         setMessageCursors(cursors => ({ ...cursors, [conversationId]: page.cursor || null }));
       } else {
         // Fallback: load all
         const msgs = await conversation.messages();
+        console.log('[XMTP] 📥 Loaded all messages from conversation (fallback):', {
+          messageCount: msgs?.length || 0
+        });
         safeSetMessages(msgs);
         setMessageCursors(cursors => ({ ...cursors, [conversationId]: null }));
       }
     } catch (err) {
+      console.error('[XMTP] ❌ Failed to load messages:', err);
       setError('Failed to load messages');
     } finally {
       setIsLoading(false);
@@ -536,10 +555,19 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       return;
     }
     try {
+      console.log('[XMTP] 🔄 Selecting conversation:', {
+        id: conversation.id,
+        type: 'members' in conversation ? 'group' : 'dm',
+        hasMembers: 'members' in conversation
+      });
+      
       setSelectedConversation(conversation);
       safeSetMessages([]);
       setStatus('Loading messages...');
       await loadMessages(conversation.id, false); // Load first page
+      
+      console.log('[XMTP] ✅ Loaded initial messages for conversation:', conversation.id);
+      
       // Mark as read and clear unread badge
       setUnreadConversations(prev => {
         const next = new Set(prev);
@@ -555,7 +583,20 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
           return;
         }
         if (message) {
-          safeSetMessages(prev => [...(prev || []), message]);
+          console.log('[XMTP] 📨 Received new message via stream:', {
+            id: message.id,
+            content: message.content?.substring(0, 50),
+            from: (message as any).from || (message as any).senderAddress,
+            conversationId: selectedConversation?.id
+          });
+          safeSetMessages(prev => {
+            const newMessages = [...(prev || []), message];
+            console.log('[XMTP] 📨 Updated messages array with received message:', {
+              previousCount: prev?.length || 0,
+              newCount: newMessages.length
+            });
+            return newMessages;
+          });
           // If not currently selected, mark as unread
           setUnreadConversations(prev => {
             if (selectedConversation && conversation.id === selectedConversation.id) return prev;
@@ -629,7 +670,18 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
           const sentMsg = await conversation.send(message);
           // Optimistically add the sent message to the UI
           if (sentMsg && typeof sentMsg === 'object' && 'id' in sentMsg && 'content' in sentMsg) {
-            safeSetMessages(prev => [...(prev || []), sentMsg as DecodedMessage<string>]);
+            console.log('[XMTP] Adding sent message to UI:', sentMsg);
+            safeSetMessages(prev => {
+              const newMessages = [...(prev || []), sentMsg as DecodedMessage<string>];
+              console.log('[XMTP] Updated messages array:', { 
+                previousCount: prev?.length || 0, 
+                newCount: newMessages.length,
+                newMessage: sentMsg 
+              });
+              return newMessages;
+            });
+          } else {
+            console.warn('[XMTP] Sent message is not in expected format:', sentMsg);
           }
           setStatus('Message sent');
           console.log('[XMTP] ✅ Message sent successfully');
