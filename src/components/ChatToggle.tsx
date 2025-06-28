@@ -36,8 +36,30 @@ const ChatToggle: React.FC<ChatToggleProps> = ({ conversationId, onRetry }) => {
     );
   }
 
-  // Check if this is a group conversation
-  const isGroup = 'members' in conversation;
+  // Enhanced conversation type detection that works with both fresh XMTP objects and cached plain objects
+  const isGroup = (() => {
+    // Method 1: Check for 'members' property (works with fresh XMTP objects)
+    if ('members' in conversation) {
+      console.log('🔍 Conversation type: Group (detected via members property)');
+      return true;
+    }
+    
+    // Method 2: Check for 'kind' property (if available)
+    if ('kind' in conversation && typeof (conversation as any).kind === 'string') {
+      const isGroupByKind = (conversation as any).kind === 'group';
+      console.log('🔍 Conversation type:', isGroupByKind ? 'Group' : 'DM', '(detected via kind property)');
+      return isGroupByKind;
+    }
+    
+    // Method 3: Check conversation ID pattern (fallback)
+    // Group IDs are typically longer and have a specific pattern
+    // DM IDs are usually shorter and represent the peer address
+    const isGroupById = conversationId.length > 20; // Heuristic: group IDs are longer
+    console.log('🔍 Conversation type:', isGroupById ? 'Group' : 'DM', '(detected via ID length heuristic)');
+    return isGroupById;
+  })();
+
+  console.log('🎯 ChatToggle: Rendering', isGroup ? 'GroupChat' : 'DMChat', 'for conversation:', conversationId);
 
   // Render the appropriate chat component
   if (isGroup) {

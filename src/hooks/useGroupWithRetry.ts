@@ -84,7 +84,27 @@ export function useGroupWithRetry(
     }
 
     // 🚨 CRITICAL FIX: Check if this is actually a group conversation
-    const isGroup = 'members' in conversation;
+    // Enhanced detection that works with both fresh XMTP objects and cached plain objects
+    const isGroup = (() => {
+      // Method 1: Check for 'members' property (works with fresh XMTP objects)
+      if ('members' in conversation) {
+        console.log('🔍 useGroupWithRetry: Group detected via members property');
+        return true;
+      }
+      
+      // Method 2: Check for 'kind' property (if available)
+      if ('kind' in conversation && typeof (conversation as any).kind === 'string') {
+        const isGroupByKind = (conversation as any).kind === 'group';
+        console.log('🔍 useGroupWithRetry:', isGroupByKind ? 'Group' : 'DM', 'detected via kind property');
+        return isGroupByKind;
+      }
+      
+      // Method 3: Check conversation ID pattern (fallback)
+      const isGroupById = conversationId && conversationId.length > 20;
+      console.log('🔍 useGroupWithRetry:', isGroupById ? 'Group' : 'DM', 'detected via ID length heuristic');
+      return isGroupById;
+    })();
+
     if (!isGroup) {
       console.log('✅ This is a DM conversation, skipping group validation');
       return {
