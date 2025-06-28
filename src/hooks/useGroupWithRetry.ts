@@ -83,6 +83,20 @@ export function useGroupWithRetry(
       };
     }
 
+    // 🚨 CRITICAL FIX: Check if this is actually a group conversation
+    const isGroup = 'members' in conversation;
+    if (!isGroup) {
+      console.log('✅ This is a DM conversation, skipping group validation');
+      return {
+        canSend: true, // DMs can always send if conversation exists
+        membershipIsPublished: true,
+        isRetrying: false,
+        retryCount: 0,
+        lastError: null,
+        lastSyncTime: Date.now()
+      };
+    }
+
     try {
       console.log(`🔍 Validating group membership for ${conversationId} (attempt ${state.retryCount + 1})`);
       
@@ -102,13 +116,9 @@ export function useGroupWithRetry(
         error: validation.error
       });
 
-      // For groups, we assume membership is published if canSend is true
-      // This is a simplification - in a more robust implementation you'd check membership status separately
-      const membershipIsPublished = validation.isGroup ? validation.canSend : true;
-
       const newState: GroupState = {
         canSend: validation.canSend,
-        membershipIsPublished,
+        membershipIsPublished: validation.canSend, // If canSend is true, membership is published
         isRetrying: false,
         retryCount: 0, // Reset on success
         lastError: validation.error || null,
@@ -166,7 +176,7 @@ export function useGroupWithRetry(
   // Initial validation when conversation changes
   useEffect(() => {
     if (conversationId && client && address) {
-      console.log(`🔄 Initial group validation for ${conversationId}`);
+      console.log(`🔄 Initial validation for ${conversationId}`);
       validateAndSync();
     }
   }, [conversationId, client, address, validateAndSync]);
