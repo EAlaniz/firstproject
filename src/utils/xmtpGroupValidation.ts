@@ -1,8 +1,9 @@
 import { Client, Group } from '@xmtp/browser-sdk';
 
 /**
- * Enhanced group membership validation with smart retry mechanism
- * Handles the lag between membership publishing and canSend availability
+ * AGGRESSIVE group membership validation with forced publishing
+ * This approach forcibly publishes membership regardless of isPublished() status,
+ * then retries canSend() up to 10 times with delays to handle eventual consistency
  */
 export async function validateGroupMembershipWithRetry(
   client: Client, 
@@ -18,43 +19,59 @@ export async function validateGroupMembershipWithRetry(
   const startTime = Date.now();
   let retries = 0;
   
-  console.log('🔍 Starting enhanced group membership validation...');
+  console.log('🚀 Starting AGGRESSIVE group membership validation...');
   
   try {
-    // For XMTP V3, we check if the group has members and no errors
-    const hasMembers = group.members && (
-      Array.isArray(group.members) ? group.members.length > 0 : 
-      typeof group.members === 'object' ? Object.keys(group.members).length > 0 : 
-      false
-    );
+    // STEP 1: Force publish membership regardless of current status
+    console.log('📤 Force publishing group membership...');
+    try {
+      // Try to publish membership even if it's already published
+      // This ensures eventual consistency across the network
+      const groupAny = group as any;
+      if (typeof groupAny.publishMembership === 'function') {
+        await groupAny.publishMembership();
+        console.log('✅ Membership publish attempt completed');
+      } else {
+        console.log('⚠️ publishMembership method not available, continuing...');
+      }
+    } catch (publishError) {
+      console.log('⚠️ Membership publish failed (non-critical):', publishError);
+      // Continue anyway - the membership might already be published
+    }
     
-    // Check if there are any errors on the group
-    const hasErrors = 'error' in group;
+    // STEP 2: Wait a moment for backend propagation
+    console.log('⏳ Waiting for backend propagation...');
+    await new Promise(resolve => setTimeout(resolve, 1000));
     
-    // Initial canSend check
-    let canSend = hasMembers && !hasErrors;
-    console.log(`🔍 Initial canSend check: ${canSend} (members: ${hasMembers}, errors: ${hasErrors})`);
+    // STEP 3: Check initial canSend status
+    let canSend = false;
+    try {
+      const groupAny = group as any;
+      canSend = await groupAny.canSend();
+      console.log(`🔍 Initial canSend check: ${canSend}`);
+    } catch (error) {
+      console.log('⚠️ Initial canSend check failed:', error);
+    }
     
+    // STEP 4: Retry canSend with delays to handle eventual consistency
     while (!canSend && retries < maxRetries) {
       retries++;
       console.log(`⏳ Group not ready (attempt ${retries}/${maxRetries}), retrying in ${retryDelay}ms...`);
       
       await new Promise(resolve => setTimeout(resolve, retryDelay));
       
-      // Re-check group status
-      const currentHasMembers = group.members && (
-        Array.isArray(group.members) ? group.members.length > 0 : 
-        typeof group.members === 'object' ? Object.keys(group.members).length > 0 : 
-        false
-      );
-      const currentHasErrors = 'error' in group;
-      canSend = currentHasMembers && !currentHasErrors;
-      
-      console.log(`🔍 Retry ${retries}: canSend=${canSend} (members: ${currentHasMembers}, errors: ${currentHasErrors})`);
-      
-      if (canSend) {
-        console.log('✅ Group is now ready to send messages!');
-        break;
+      // Re-check canSend status
+      try {
+        const groupAny = group as any;
+        canSend = await groupAny.canSend();
+        console.log(`🔍 Retry ${retries}: canSend=${canSend}`);
+        
+        if (canSend) {
+          console.log('✅ Group is now ready to send messages!');
+          break;
+        }
+      } catch (error) {
+        console.log(`⚠️ canSend check failed on retry ${retries}:`, error);
       }
     }
     
@@ -62,22 +79,22 @@ export async function validateGroupMembershipWithRetry(
     
     const result = {
       canSend,
-      membershipIsPublished: canSend, // In XMTP V3, if canSend is true, membership is considered published
+      membershipIsPublished: canSend, // If canSend is true, membership is considered published
       retries,
       totalTime
     };
     
     if (canSend) {
-      console.log(`✅ Group validation successful after ${retries} retries (${totalTime}ms)`);
+      console.log(`✅ AGGRESSIVE group validation successful after ${retries} retries (${totalTime}ms)`);
     } else {
-      console.warn(`⚠️ Group validation failed after ${retries} retries (${totalTime}ms)`);
+      console.warn(`⚠️ AGGRESSIVE group validation failed after ${retries} retries (${totalTime}ms)`);
     }
     
     return result;
     
   } catch (error) {
     const totalTime = Date.now() - startTime;
-    console.error('❌ Group validation error:', error);
+    console.error('❌ AGGRESSIVE group validation error:', error);
     
     return {
       canSend: false,
