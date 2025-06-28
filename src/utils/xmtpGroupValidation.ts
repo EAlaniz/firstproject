@@ -1,4 +1,4 @@
-import { Client, Group } from '@xmtp/browser-sdk';
+import { Client, Group, GroupMessage } from '@xmtp/browser-sdk';
 
 /**
  * Enhanced group membership validation with smart retry mechanism
@@ -232,4 +232,58 @@ export async function getCanSendStatus(client: Client, conversation: any) {
       ? `Group ready (${groupValidation.memberCount} members)`
       : groupValidation.error || 'Group not ready'
   };
+}
+
+export function GroupChat({ client, groupId }: { client: any, groupId: string }) {
+  const { group, messages, canSend, loading, error } = useGroupWithRetry(client, groupId);
+
+  const handleSend = async (text: string) => {
+    if (!group || !canSend) {
+      toast.error('Cannot send message - group not ready');
+      return;
+    }
+    
+    try {
+      await group.send(text);
+    } catch (err) {
+      console.error('Failed to send message:', err);
+      toast.error('Failed to send message');
+    }
+  };
+
+  if (error) {
+    return (
+      <div className="p-4 text-center">
+        <p className="text-red-600">❌ Error loading group: {error}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="flex-1 overflow-y-auto">
+        <MessageList messages={messages} />
+      </div>
+      
+      <div className="border-t p-4">
+        {loading ? (
+          <p className="text-gray-500 italic">Loading group chat…</p>
+        ) : canSend ? (
+          <MessageComposer onSend={handleSend} />
+        ) : (
+          <p className="text-yellow-600 font-medium">
+            ⏳ Group syncing… messaging will be available shortly.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+interface UseGroupWithRetryResult {
+  group: Group<string> | null;
+  messages: GroupMessage<string>[];
+  canSend: boolean;
+  loading: boolean;
+  error?: string;
 } 

@@ -1,12 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { X, Menu } from 'lucide-react';
 import { useXMTP } from '../contexts/XMTPContext';
 import ConversationsList from './ConversationsList';
-import MessageThread from './MessageThread';
-import MessageInput from './MessageInput';
+import ChatToggle from './ChatToggle';
 import NewConversationModal from './NewConversationModal';
-import { getCanSendStatusWithRetry } from '../utils/xmtpGroupValidation';
-import { toast } from 'react-hot-toast';
 
 interface XMTPMessagingProps {
   isOpen: boolean;
@@ -14,24 +11,20 @@ interface XMTPMessagingProps {
 }
 
 const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
-  const { client: xmtpClient, isInitialized, selectedConversation, selectConversation, conversations, isLoading, sendMessage, loadMoreConversations, conversationCursor, conversationPreviews, unreadConversations, loadMoreMessages, messageCursors } = useXMTP();
+  const { 
+    isInitialized, 
+    selectedConversation, 
+    selectConversation, 
+    conversations, 
+    isLoading, 
+    loadMoreConversations, 
+    conversationCursor, 
+    conversationPreviews, 
+    unreadConversations 
+  } = useXMTP();
+  
   const [isNewConversationModalOpen, setIsNewConversationModalOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isSending, setIsSending] = useState(false);
-  
-  // NEW: Enhanced canSend status with retry mechanism
-  const [canSendStatus, setCanSendStatus] = useState<{
-    canSend: boolean;
-    isGroup: boolean;
-    retries: number;
-    totalTime: number;
-    error?: string;
-  }>({ 
-    canSend: true, 
-    isGroup: false,
-    retries: 0,
-    totalTime: 0
-  });
 
   const handleSelectConversation = (conversationId: string) => {
     const conversation = conversations.find(c => c.id === conversationId);
@@ -49,76 +42,12 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
     onClose();
   };
 
-  // NEW: Enhanced canSend validation with retry mechanism
-  useEffect(() => {
-    if (!isInitialized || !selectedConversation || !xmtpClient) {
-      setCanSendStatus({ 
-        canSend: true, 
-        isGroup: false,
-        retries: 0,
-        totalTime: 0
-      });
-      return;
-    }
-
-    const validateCanSend = async () => {
-      try {
-        console.log('[XMTP] Starting canSend validation with retry...');
-        const status = await getCanSendStatusWithRetry(xmtpClient, selectedConversation);
-        setCanSendStatus(status);
-        console.log('[XMTP] canSend status with retry:', status);
-        
-        // Show toast for group sync status
-        if (status.isGroup && !status.canSend && status.retries > 0) {
-          toast(`Group syncing... (${status.retries} retries, ${status.totalTime}ms)`, { 
-            icon: '⏳',
-            duration: 3000
-          });
-        }
-      } catch (error) {
-        console.error('[XMTP] canSend validation failed:', error);
-        setCanSendStatus({ 
-          canSend: false, 
-          isGroup: 'members' in selectedConversation,
-          retries: 0,
-          totalTime: 0,
-          error: error instanceof Error ? error.message : 'Unknown error'
-        });
-      }
-    };
-
-    validateCanSend();
-  }, [isInitialized, selectedConversation, xmtpClient]);
-
-  // Add handleSend for MessageInput
-  async function handleSend(text: string) {
-    if (!selectedConversation) return;
-    setIsSending(true);
-    try {
-      // Warn if group membership sync may be in progress
-      if ('error' in selectedConversation) {
-        toast('Group membership sync may still be in progress. Messages may be delayed or fail.', { icon: '⚠️' });
-      }
-      await selectedConversation.send(text);
-    } catch (err: any) {
-      console.error('[XMTP] Failed to send message:', err);
-      toast.error(`Send failed: ${err?.message ?? 'Unknown error'}`);
-    } finally {
-      setIsSending(false);
-    }
-  }
-
-  // UPDATED: Use the enhanced canSend status
-  const canSend = canSendStatus.canSend;
-
-  // Debug log
-  React.useEffect(() => {
-    console.log('[XMTP] canSend:', canSend, selectedConversation);
-    if (selectedConversation && 'members' in selectedConversation) {
-      const group = selectedConversation as any;
-      console.log('[XMTP] group.membershipIsPublished:', group.membershipIsPublished);
-    }
-  }, [canSend, selectedConversation]);
+  // Handle message retry (for failed messages)
+  const handleRetry = (msg: any) => {
+    console.log('Retrying message:', msg);
+    // This could be implemented to retry failed messages
+    // For now, just log the attempt
+  };
 
   if (!isOpen) return null;
 
@@ -202,53 +131,11 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
 
               {/* Main Content - Responsive */}
               <div className="flex-1 flex flex-col bg-white min-w-0">
-                {selectedConversation ? (
-                  <>
-                    {/* Message Thread - Responsive */}
-                    <div className="flex-1 overflow-hidden">
-                      <MessageThread 
-                        conversationId={selectedConversation.id}
-                        loadMoreMessages={loadMoreMessages}
-                        messageCursors={messageCursors}
-                        isLoading={isLoading}
-                      />
-                    </div>
-                    
-                    {/* Message Input - Responsive */}
-                    {!isLoading && selectedConversation && (
-                      <>
-                        <MessageInput onSend={handleSend} disabled={isSending || isLoading} canSend={canSend} />
-                        {/* UPDATED: Enhanced status messages with retry info */}
-                        {!canSend && selectedConversation && (
-                          <div className="text-yellow-500 text-xs mt-2 px-4">
-                            {canSendStatus.isGroup ? (
-                              <>
-                                Group syncing... 
-                                {canSendStatus.retries > 0 && ` (${canSendStatus.retries} retries, ${canSendStatus.totalTime}ms)`}
-                                {canSendStatus.error && ` - ${canSendStatus.error}`}
-                              </>
-                            ) : (
-                              canSendStatus.error || 'Cannot send messages'
-                            )}
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </>
-                ) : (
-                  /* Empty State - Responsive */
-                  <div className="flex-1 flex items-center justify-center p-4">
-                    <div className="text-center max-w-sm">
-                      <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg className="w-8 h-8 sm:w-10 sm:h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                        </svg>
-                      </div>
-                      <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">No conversation selected</h3>
-                      <p className="text-gray-600 text-sm sm:text-base">Choose a conversation from the sidebar to start messaging</p>
-                    </div>
-                  </div>
-                )}
+                {/* NEW: Use ChatToggle for modular chat rendering */}
+                <ChatToggle 
+                  conversationId={selectedConversation?.id || null}
+                  onRetry={handleRetry}
+                />
               </div>
             </>
           )}
