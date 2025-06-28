@@ -86,17 +86,39 @@ export function useGroupWithRetry(
     // 🚨 CRITICAL FIX: Check if this is actually a group conversation
     // Enhanced detection that works with both fresh XMTP objects and cached plain objects
     const isGroup = (() => {
-      // Method 1: Check for 'members' property (works with fresh XMTP objects)
-      if ('members' in conversation) {
-        console.log('🔍 useGroupWithRetry: Group detected via members property');
-        return true;
-      }
-      
-      // Method 2: Check for 'kind' property (if available)
+      console.log('🔍 useGroupWithRetry: Analyzing conversation object:', {
+        id: conversation.id,
+        hasMembers: 'members' in conversation,
+        membersType: 'members' in conversation ? typeof conversation.members : 'N/A',
+        membersValue: 'members' in conversation ? conversation.members : 'N/A',
+        hasKind: 'kind' in conversation,
+        kindValue: 'kind' in conversation ? (conversation as any).kind : 'N/A',
+        idLength: conversation.id.length,
+        isLongId: conversation.id.length > 20
+      });
+
+      // Method 1: Check for 'kind' property (most reliable)
       if ('kind' in conversation && typeof (conversation as any).kind === 'string') {
         const isGroupByKind = (conversation as any).kind === 'group';
         console.log('🔍 useGroupWithRetry:', isGroupByKind ? 'Group' : 'DM', 'detected via kind property');
         return isGroupByKind;
+      }
+      
+      // Method 2: Check for 'members' property (but be more careful)
+      if ('members' in conversation) {
+        // If members is an array with multiple items, it's likely a group
+        if (Array.isArray(conversation.members) && conversation.members.length > 1) {
+          console.log('🔍 useGroupWithRetry: Group detected via members array with multiple items');
+          return true;
+        }
+        // If members is an array with 1 item, it might be a DM with cached data
+        if (Array.isArray(conversation.members) && conversation.members.length === 1) {
+          console.log('🔍 useGroupWithRetry: DM detected via members array with single item - likely cached DM');
+          return false;
+        }
+        // If members is not an array, it might be a DM with cached data
+        console.log('🔍 useGroupWithRetry: DM detected via non-array members - likely cached DM');
+        return false;
       }
       
       // Method 3: Check conversation ID pattern (fallback)
