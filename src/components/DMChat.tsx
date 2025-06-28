@@ -17,6 +17,18 @@ const DMChat: React.FC<DMChatProps> = ({ conversationId, onRetry }) => {
   // Get the conversation object
   const conversation = conversations.find(c => c.id === conversationId);
 
+  if (!conversation) {
+    console.warn('[DMChat] Conversation not found for ID:', conversationId, 'Available:', conversations.map(c => c.id));
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
+          <p className="text-gray-500">Loading conversation...<br/>If this persists, try refreshing or starting a new DM.</p>
+        </div>
+      </div>
+    );
+  }
+
   // Handle sending messages
   const handleSend = async (text: string) => {
     if (!conversation || isSending) {
@@ -38,18 +50,6 @@ const DMChat: React.FC<DMChatProps> = ({ conversationId, onRetry }) => {
       setIsSending(false);
     }
   };
-
-  // Render loading state
-  if (!conversation) {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
-          <p className="text-gray-500">Loading conversation...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex flex-col h-full">
