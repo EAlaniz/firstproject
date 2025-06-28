@@ -1,37 +1,13 @@
 import { Client, Group } from '@xmtp/browser-sdk';
 
 /**
- * Helper function to get a real XMTP Group instance with methods
- * This ensures we're working with a proper Group object, not a plain object from state
- */
-async function getGroupWithMethods(client: Client, groupId: string): Promise<Group<string> | null> {
-  try {
-    // Try to fetch the group from XMTP client
-    const groupAny = client as any;
-    if (typeof groupAny.groups?.find === 'function') {
-      const group = await groupAny.groups.find(groupId);
-      if (group && typeof group.canSend === 'function') {
-        console.log('✅ Found valid XMTP Group instance with methods');
-        return group;
-      }
-    }
-    
-    console.warn('⚠️ Could not fetch valid XMTP Group instance for:', groupId);
-    return null;
-  } catch (error) {
-    console.error('❌ Error fetching XMTP Group:', error);
-    return null;
-  }
-}
-
-/**
  * AGGRESSIVE group membership validation with forced publishing
  * This approach forcibly publishes membership regardless of isPublished() status,
  * then retries canSend() up to 10 times with delays to handle eventual consistency
  */
 export async function validateGroupMembershipWithRetry(
   client: Client, 
-  groupId: string, // Changed from Group<string> to string
+  group: Group<string>,
   maxRetries: number = 10,
   retryDelay: number = 2000
 ): Promise<{
@@ -43,22 +19,10 @@ export async function validateGroupMembershipWithRetry(
   const startTime = Date.now();
   let retries = 0;
   
-  console.log('🚀 Starting AGGRESSIVE group membership validation for:', groupId);
+  console.log('🚀 Starting AGGRESSIVE group membership validation...');
   
   try {
-    // STEP 1: Get a real XMTP Group instance
-    const group = await getGroupWithMethods(client, groupId);
-    if (!group) {
-      console.error('❌ Could not get valid XMTP Group instance');
-      return {
-        canSend: false,
-        membershipIsPublished: false,
-        retries: 0,
-        totalTime: Date.now() - startTime
-      };
-    }
-    
-    // STEP 2: Force publish membership regardless of current status
+    // STEP 1: Force publish membership regardless of current status
     console.log('📤 Force publishing group membership...');
     try {
       // Try to publish membership even if it's already published
@@ -67,32 +31,29 @@ export async function validateGroupMembershipWithRetry(
       if (typeof groupAny.publishMembership === 'function') {
         await groupAny.publishMembership();
         console.log('✅ Membership publish attempt completed');
-      } else if (groupAny.membership?.publish) {
-        // Alternative membership publishing method
-        await groupAny.membership.publish();
-        console.log('✅ Membership publish attempt completed (via membership.publish)');
       } else {
-        console.log('⚠️ No membership publish method available, continuing...');
+        console.log('⚠️ publishMembership method not available, continuing...');
       }
     } catch (publishError) {
       console.log('⚠️ Membership publish failed (non-critical):', publishError);
       // Continue anyway - the membership might already be published
     }
     
-    // STEP 3: Wait a moment for backend propagation
+    // STEP 2: Wait a moment for backend propagation
     console.log('⏳ Waiting for backend propagation...');
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    // STEP 4: Check initial canSend status
+    // STEP 3: Check initial canSend status
     let canSend = false;
     try {
-      canSend = await group.canSend();
+      const groupAny = group as any;
+      canSend = await groupAny.canSend();
       console.log(`🔍 Initial canSend check: ${canSend}`);
     } catch (error) {
       console.log('⚠️ Initial canSend check failed:', error);
     }
     
-    // STEP 5: Retry canSend with delays to handle eventual consistency
+    // STEP 4: Retry canSend with delays to handle eventual consistency
     while (!canSend && retries < maxRetries) {
       retries++;
       console.log(`⏳ Group not ready (attempt ${retries}/${maxRetries}), retrying in ${retryDelay}ms...`);
@@ -101,7 +62,8 @@ export async function validateGroupMembershipWithRetry(
       
       // Re-check canSend status
       try {
-        canSend = await group.canSend();
+        const groupAny = group as any;
+        canSend = await groupAny.canSend();
         console.log(`🔍 Retry ${retries}: canSend=${canSend}`);
         
         if (canSend) {
@@ -209,21 +171,10 @@ export async function getCanSendStatusWithRetry(
       };
     }
     
-    // For groups, extract the group ID and use the enhanced validation with retry
-    const groupId = conversation.id || conversation.groupId;
-    if (!groupId) {
-      return {
-        canSend: false,
-        isGroup: true,
-        retries: 0,
-        totalTime: Date.now() - startTime,
-        error: 'No group ID found'
-      };
-    }
-    
+    // For groups, use the enhanced validation with retry
     const validation = await validateGroupMembershipWithRetry(
       client, 
-      groupId,
+      conversation as Group<string>,
       maxRetries,
       retryDelay
     );
@@ -326,4 +277,4 @@ export async function getCanSendStatus(client: Client, conversation: any) {
       ? `Group ready (${groupValidation.memberCount} members)`
       : groupValidation.error || 'Group not ready'
   };
-}
+} 
