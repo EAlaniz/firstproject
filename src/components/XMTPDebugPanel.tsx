@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useXMTP } from '../contexts/XMTPContext';
 import { getCanSendStatus } from '../utils/xmtpGroupValidation';
+import { clearXMTPIdentity } from '../utils/xmtpSigner';
 
 interface XMTPDebugPanelProps {
   isOpen: boolean;
@@ -19,6 +20,7 @@ export const XMTPDebugPanel: React.FC<XMTPDebugPanelProps> = ({ isOpen, onClose 
   
   const [debugInfo, setDebugInfo] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [clearStatus, setClearStatus] = useState<string>('');
 
   const runDebugCheck = async () => {
     if (!xmtpClient || !selectedConversation) return;
@@ -56,6 +58,20 @@ export const XMTPDebugPanel: React.FC<XMTPDebugPanelProps> = ({ isOpen, onClose 
     }
   };
 
+  const handleClearIdentity = async () => {
+    if (!confirm('⚠️ This will delete all XMTP data and require re-initialization. Continue?')) {
+      return;
+    }
+    
+    setClearStatus('Clearing...');
+    try {
+      await clearXMTPIdentity();
+      setClearStatus('✅ Identity cleared! Refresh the page to re-initialize.');
+    } catch (error) {
+      setClearStatus('❌ Failed to clear identity');
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -72,7 +88,7 @@ export const XMTPDebugPanel: React.FC<XMTPDebugPanelProps> = ({ isOpen, onClose 
         </div>
         
         <div className="p-4 space-y-4">
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <button
               onClick={runDebugCheck}
               disabled={isLoading || !xmtpClient}
@@ -80,7 +96,25 @@ export const XMTPDebugPanel: React.FC<XMTPDebugPanelProps> = ({ isOpen, onClose 
             >
               {isLoading ? 'Running...' : 'Run Debug Check'}
             </button>
+            
+            <button
+              onClick={handleClearIdentity}
+              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
+              title="Clear XMTP identity to fix chain ID issues (development only)"
+            >
+              🗑️ Clear Identity
+            </button>
           </div>
+
+          {clearStatus && (
+            <div className={`p-3 rounded-lg text-sm ${
+              clearStatus.includes('✅') ? 'bg-green-100 text-green-800' : 
+              clearStatus.includes('❌') ? 'bg-red-100 text-red-800' : 
+              'bg-yellow-100 text-yellow-800'
+            }`}>
+              {clearStatus}
+            </div>
+          )}
 
           {debugInfo && (
             <div className="bg-gray-50 p-4 rounded-lg">

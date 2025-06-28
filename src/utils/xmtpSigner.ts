@@ -17,9 +17,13 @@ export const createAutoSigner = (walletClient: WalletClient): Signer => {
     identifierKind: 'Ethereum',
   };
 
-  const signer: Signer = {
-    type: 'EOA',
+  const signer = {
+    type: 'EOA' as const,
     getIdentifier: () => accountIdentifier,
+    getChainId: async (): Promise<number> => {
+      console.log('🔗 XMTP requesting chain ID, returning Base mainnet (8453)');
+      return 8453;
+    },
     signMessage: async (message: string): Promise<Uint8Array> => {
       try {
         console.log('🔐 XMTP requesting signature for message:', message);
@@ -43,7 +47,7 @@ export const createAutoSigner = (walletClient: WalletClient): Signer => {
     },
   };
 
-  return signer;
+  return signer as Signer;
 };
 
 /**
@@ -98,5 +102,39 @@ export const getSignerInfo = async (signer: Signer) => {
   } catch (error) {
     console.error('Failed to get signer info:', error);
     return null;
+  }
+};
+
+/**
+ * 🚨 DEVELOPMENT ONLY: Clear XMTP identity to fix chain ID issues
+ * WARNING: This will delete all local XMTP data and require re-initialization
+ * Only use this if you're getting chain ID mismatch errors
+ */
+export const clearXMTPIdentity = async () => {
+  try {
+    console.log('🗑️ Clearing XMTP identity (development only)...');
+    
+    // Clear IndexedDB
+    await indexedDB.deleteDatabase('xmtp-encrypted-store');
+    console.log('✅ IndexedDB cleared');
+    
+    // Clear localStorage
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('xmtp-')) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach(key => localStorage.removeItem(key));
+    console.log('✅ localStorage cleared');
+    
+    console.log('✅ XMTP identity cleared successfully');
+    console.log('⚠️ You will need to re-initialize XMTP on the next page load');
+    
+    return true;
+  } catch (error) {
+    console.error('❌ Failed to clear XMTP identity:', error);
+    return false;
   }
 }; 
