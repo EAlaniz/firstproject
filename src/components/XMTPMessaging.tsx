@@ -5,7 +5,7 @@ import ConversationsList from './ConversationsList';
 import MessageThread from './MessageThread';
 import MessageInput from './MessageInput';
 import NewConversationModal from './NewConversationModal';
-import { getCanSendStatus } from '../utils/xmtpGroupValidation';
+import { getCanSendStatusWithRetry } from '../utils/xmtpGroupValidation';
 import { toast } from 'react-hot-toast';
 
 interface XMTPMessagingProps {
@@ -19,10 +19,18 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSending, setIsSending] = useState(false);
   
-  // NEW: Enhanced canSend status with proper validation
-  const [canSendStatus, setCanSendStatus] = useState<{ canSend: boolean; reason: string }>({ 
+  // NEW: Enhanced canSend status with retry mechanism
+  const [canSendStatus, setCanSendStatus] = useState<{
+    canSend: boolean;
+    isGroup: boolean;
+    retries: number;
+    totalTime: number;
+    error?: string;
+  }>({ 
     canSend: true, 
-    reason: 'Checking...' 
+    isGroup: false,
+    retries: 0,
+    totalTime: 0
   });
 
   const handleSelectConversation = (conversationId: string) => {
@@ -41,21 +49,41 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
     onClose();
   };
 
-  // NEW: Enhanced canSend validation using the utility
+  // NEW: Enhanced canSend validation with retry mechanism
   useEffect(() => {
     if (!isInitialized || !selectedConversation || !xmtpClient) {
-      setCanSendStatus({ canSend: true, reason: 'No conversation selected' });
+      setCanSendStatus({ 
+        canSend: true, 
+        isGroup: false,
+        retries: 0,
+        totalTime: 0
+      });
       return;
     }
 
     const validateCanSend = async () => {
       try {
-        const status = await getCanSendStatus(xmtpClient, selectedConversation);
+        console.log('[XMTP] Starting canSend validation with retry...');
+        const status = await getCanSendStatusWithRetry(xmtpClient, selectedConversation);
         setCanSendStatus(status);
-        console.log('[XMTP] canSend status:', status);
+        console.log('[XMTP] canSend status with retry:', status);
+        
+        // Show toast for group sync status
+        if (status.isGroup && !status.canSend && status.retries > 0) {
+          toast(`Group syncing... (${status.retries} retries, ${status.totalTime}ms)`, { 
+            icon: '⏳',
+            duration: 3000
+          });
+        }
       } catch (error) {
         console.error('[XMTP] canSend validation failed:', error);
-        setCanSendStatus({ canSend: false, reason: 'Validation failed' });
+        setCanSendStatus({ 
+          canSend: false, 
+          isGroup: 'members' in selectedConversation,
+          retries: 0,
+          totalTime: 0,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
       }
     };
 
@@ -190,10 +218,18 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
                     {!isLoading && selectedConversation && (
                       <>
                         <MessageInput onSend={handleSend} disabled={isSending || isLoading} canSend={canSend} />
-                        {/* UPDATED: Use enhanced error message */}
+                        {/* UPDATED: Enhanced status messages with retry info */}
                         {!canSend && selectedConversation && (
                           <div className="text-yellow-500 text-xs mt-2 px-4">
-                            {canSendStatus.reason}
+                            {canSendStatus.isGroup ? (
+                              <>
+                                Group syncing... 
+                                {canSendStatus.retries > 0 && ` (${canSendStatus.retries} retries, ${canSendStatus.totalTime}ms)`}
+                                {canSendStatus.error && ` - ${canSendStatus.error}`}
+                              </>
+                            ) : (
+                              canSendStatus.error || 'Cannot send messages'
+                            )}
                           </div>
                         )}
                       </>
@@ -203,19 +239,13 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
                   /* Empty State - Responsive */
                   <div className="flex-1 flex items-center justify-center p-4">
                     <div className="text-center max-w-sm">
-                      <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg className="w-8 h-8 sm:w-10 sm:h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                         </svg>
                       </div>
-                      <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">No conversation selected</h3>
-                      <p className="text-sm sm:text-base text-gray-500 mb-4">Choose a conversation from the sidebar or start a new one</p>
-                      <button
-                        onClick={() => setIsNewConversationModalOpen(true)}
-                        className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base"
-                      >
-                        Start New Conversation
-                      </button>
+                      <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">No conversation selected</h3>
+                      <p className="text-gray-600 text-sm sm:text-base">Choose a conversation from the sidebar to start messaging</p>
                     </div>
                   </div>
                 )}
@@ -225,7 +255,7 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
         </div>
 
         {/* New Conversation Modal */}
-        <NewConversationModal
+        <NewConversationModal 
           isOpen={isNewConversationModalOpen}
           onClose={() => setIsNewConversationModalOpen(false)}
         />
