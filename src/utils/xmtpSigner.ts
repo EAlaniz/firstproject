@@ -131,22 +131,39 @@ export const getSignerInfo = async (signer: Signer) => {
  */
 export const clearXMTPIdentity = async () => {
   try {
-    console.log('🗑️ Clearing XMTP identity (development only)...');
+    console.log('🧹 Clearing XMTP identity to force fresh signature...');
     
     // Clear IndexedDB
-    await indexedDB.deleteDatabase('xmtp-encrypted-store');
-    console.log('✅ IndexedDB cleared');
+    if (typeof indexedDB !== 'undefined') {
+      await indexedDB.deleteDatabase('xmtp-encrypted-store');
+      console.log('✅ IndexedDB cleared');
+    }
     
     // Clear localStorage
-    const keysToRemove = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith('xmtp-')) {
-        keysToRemove.push(key);
+    if (typeof localStorage !== 'undefined') {
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.startsWith('xmtp-') || key.includes('xmtp'))) {
+          keysToRemove.push(key);
+        }
       }
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+      console.log('✅ localStorage cleared');
     }
-    keysToRemove.forEach(key => localStorage.removeItem(key));
-    console.log('✅ localStorage cleared');
+    
+    // Clear sessionStorage
+    if (typeof sessionStorage !== 'undefined') {
+      const keysToRemove = [];
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const key = sessionStorage.key(i);
+        if (key && (key.startsWith('xmtp-') || key.includes('xmtp'))) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(key => sessionStorage.removeItem(key));
+      console.log('✅ sessionStorage cleared');
+    }
     
     console.log('✅ XMTP identity cleared successfully');
     console.log('⚠️ You will need to re-initialize XMTP on the next page load');

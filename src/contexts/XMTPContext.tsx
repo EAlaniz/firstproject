@@ -379,6 +379,18 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         console.log('[DEV] XMTP IndexedDB cleared via query param');
       }
 
+      // NEW: Check for force refresh parameter
+      if (import.meta.env.DEV && window.location.search.includes('forceSignature')) {
+        console.log('[DEV] Force signature mode detected - clearing XMTP identity...');
+        try {
+          const { clearXMTPIdentity } = await import('../utils/xmtpSigner');
+          await clearXMTPIdentity();
+          console.log('[DEV] XMTP identity cleared for fresh signature');
+        } catch (error) {
+          console.warn('[DEV] Failed to clear XMTP identity:', error);
+        }
+      }
+
       console.log('🚀 Starting XMTP V3 initialization...');
       
       // Log wallet client details for debugging
