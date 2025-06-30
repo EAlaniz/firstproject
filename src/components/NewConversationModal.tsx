@@ -8,7 +8,7 @@ interface NewConversationModalProps {
 }
 
 const NewConversationModal: React.FC<NewConversationModalProps> = ({ isOpen, onClose }) => {
-  const { createConversation, selectConversation, status } = useXMTP();
+  const { createConversation, selectConversation, status, isLoading } = useXMTP();
   const [address, setAddress] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState('');
@@ -29,18 +29,28 @@ const NewConversationModal: React.FC<NewConversationModalProps> = ({ isOpen, onC
       const conversation = await createConversation(trimmedAddress);
       if (conversation) {
         await selectConversation(conversation);
-        setAddress('');
-        onClose();
+        if (!isLoading) {
+          setAddress('');
+          onClose();
+        }
       } else {
         setError('Failed to create conversation. The recipient may not be registered on XMTP yet.');
+        setIsCreating(false);
       }
     } catch (err: any) {
       console.error('Error creating conversation:', err);
       setError(err?.message || 'Failed to create conversation. Please try again.');
-    } finally {
       setIsCreating(false);
     }
   };
+
+  React.useEffect(() => {
+    if (!isLoading && isCreating) {
+      setIsCreating(false);
+      setAddress('');
+      onClose();
+    }
+  }, [isLoading, isCreating, onClose]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && isValidEthAddress(address) && !isCreating) {
@@ -135,7 +145,7 @@ const NewConversationModal: React.FC<NewConversationModalProps> = ({ isOpen, onC
               className="flex-1 bg-blue-600 text-white py-3 sm:py-4 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm sm:text-base font-medium min-h-[44px] flex items-center justify-center gap-2"
             >
               {isCreating && <Loader className="w-4 h-4 animate-spin" />}
-              {isCreating ? 'Creating...' : 'Create Conversation'}
+              {isCreating ? status || 'Creating...' : 'Create Conversation'}
             </button>
             <button
               onClick={onClose}

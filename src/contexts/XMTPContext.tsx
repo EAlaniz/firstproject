@@ -630,6 +630,12 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       });
       
       setSelectedConversation(conversation);
+      setIsLoading(true);
+      setStatus('Loading messages...');
+
+      // Load initial messages first
+      await loadMessages(conversation.id, false);
+      
       // Close previous stream if exists
       if (conversationStreams.current.size > 0) {
         conversationStreams.current.forEach((stream, id) => {
@@ -637,6 +643,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         });
         conversationStreams.current.clear();
       }
+
       // Start new stream for selected conversation
       const messageCallback: StreamCallback<DecodedMessage<string>> = (err, message) => {
         if (err) {
@@ -645,11 +652,11 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         }
         if (message) {
           safeSetMessages(conversation.id, (prev: DecodedMessage<string>[]) => {
-            // Deduplicate by message ID
-            if (prev.some((m: DecodedMessage<string>) => m.id === message.id)) return prev;
-            // Only return DecodedMessage<string> objects
-            const result = [...prev, message];
-            return result.filter((m: DecodedMessage<string>): m is DecodedMessage<string> => typeof m === 'object' && m !== null);
+            // Deduplicate by message ID and ensure we only have DecodedMessage<string> objects
+            const newMessages = prev.filter((m): m is DecodedMessage<string> => 
+              typeof m === 'object' && m !== null && m.id !== message.id
+            );
+            return [...newMessages, message];
           });
           setUnreadConversations(prev => {
             if (selectedConversation && conversation.id === selectedConversation.id) return prev;
@@ -659,6 +666,8 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
           });
         }
       };
+
+      // Set up message streaming
       if (hasMethod<{ streamMessages: (cb: StreamCallback<DecodedMessage<string>>) => Promise<unknown> }>(conversation, 'streamMessages')) {
         const stream = await conversation.streamMessages(messageCallback);
         conversationStreams.current.set(conversation.id, stream);
@@ -666,10 +675,13 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         const stream = await conversation.stream(messageCallback);
         conversationStreams.current.set(conversation.id, stream);
       }
+
       setStatus('Ready');
+      setIsLoading(false);
     } catch (err) {
       console.error('Failed to select conversation:', err);
       setError('Failed to load conversation');
+      setIsLoading(false);
     }
   };
 
