@@ -174,6 +174,11 @@ function strip0x(address: string): string {
   return address.startsWith('0x') ? address.slice(2) : address;
 }
 
+// Utility: JSON replacer to serialize BigInt as string
+function jsonBigIntReplacer(key: string, value: any) {
+  return typeof value === 'bigint' ? value.toString() : value;
+}
+
 export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   const { address } = useAccount();
   const { data: walletClient } = useWalletClient();
@@ -280,7 +285,8 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     Object.entries(messages).forEach(([convId, msgs]) => {
       if (Array.isArray(msgs) && msgs.length > 0) {
         try {
-          localStorage.setItem(`xmtp-messages-${convId}`, JSON.stringify(msgs));
+          // Use custom replacer to handle BigInt serialization
+          localStorage.setItem(`xmtp-messages-${convId}`, JSON.stringify(msgs, jsonBigIntReplacer));
           console.log(`[XMTP] Persisted ${msgs.length} messages for conversation ${convId}`);
         } catch (error) {
           console.error(`[XMTP] Failed to persist messages for conversation ${convId}:`, error);
@@ -393,14 +399,16 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
           hasCursor: !!page.cursor,
           append
         });
-        safeSetMessages(conversationId, prev => {
-          const pageMsgs: DecodedMessage<string>[] = Array.isArray(page.messages)
+        safeSetMessages(conversationId, (prev: DecodedMessage<string>[]) => {
+          const pageMsgs = Array.isArray(page.messages)
             ? page.messages.filter((m: any): m is DecodedMessage<string> => typeof m === 'object' && m !== null)
             : [];
-          const prevMsgs: DecodedMessage<string>[] = Array.isArray(prev)
+          const prevMsgs = Array.isArray(prev)
             ? prev.filter((m: any): m is DecodedMessage<string> => typeof m === 'object' && m !== null)
             : [];
-          return append ? [...pageMsgs, ...prevMsgs] : pageMsgs;
+          // Concatenate and filter again to guarantee only DecodedMessage<string>[]
+          const result = append ? [...pageMsgs, ...prevMsgs] : pageMsgs;
+          return result.filter((m): m is DecodedMessage<string> => typeof m === 'object' && m !== null);
         });
         setMessageCursors(cursors => ({ ...cursors, [conversationId]: page.cursor || null }));
       } else {
