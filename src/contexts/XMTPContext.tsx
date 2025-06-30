@@ -64,6 +64,7 @@ export interface XMTPContextType {
   
   // Delete a conversation by ID
   deleteConversation: (conversationId: string) => void;
+  deleteConversations: (conversationIds: string[]) => void;
 }
 
 const XMTPContext = createContext<XMTPContextType | undefined>(undefined);
@@ -215,6 +216,9 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   // New states
   const [isSyncing, setIsSyncing] = useState(true);
 
+  // Maintain a set of permanently deleted conversation IDs
+  const [deletedConversationIds, setDeletedConversationIds] = useState<Set<string>>(new Set());
+
   // Safety wrapper for setConversations to prevent undefined
   const safeSetConversations = useCallback((updater: XMTPConversation[] | ((prev: XMTPConversation[]) => XMTPConversation[])) => {
     setConversations(prev => {
@@ -313,6 +317,28 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     }
   }, [conversations]);
 
+  // Load deleted conversation IDs from localStorage on mount
+  useEffect(() => {
+    const deleted = localStorage.getItem('xmtp-deleted-conversations');
+    if (deleted) {
+      setDeletedConversationIds(new Set(JSON.parse(deleted)));
+    }
+  }, []);
+
+  // Save deleted conversation IDs to localStorage whenever they change
+  useEffect(() => {
+    if (deletedConversationIds.size > 0) {
+      localStorage.setItem('xmtp-deleted-conversations', JSON.stringify([...deletedConversationIds]));
+    }
+  }, [deletedConversationIds]);
+
+  // Filter out deleted conversations during sync
+  useEffect(() => {
+    if (client && conversations.length > 0) {
+      safeSetConversations(prev => prev.filter(c => !deletedConversationIds.has(c.id)));
+    }
+  }, [client, conversations, deletedConversationIds]);
+
   // Helper to get preview text for a message
   function getPreviewText(msg: any): string {
     if (!msg) return '[No messages yet]';
@@ -385,14 +411,14 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         });
         safeSetMessages(conversationId, (prev: DecodedMessage<string>[]) => {
           const pageMsgs = Array.isArray(page.messages)
-            ? page.messages.filter((m: any): m is DecodedMessage<string> => typeof m === 'object' && m !== null)
+            ? page.messages.filter((m: DecodedMessage<string>): m is DecodedMessage<string> => typeof m === 'object' && m !== null)
             : [];
           const prevMsgs = Array.isArray(prev)
-            ? prev.filter((m: any): m is DecodedMessage<string> => typeof m === 'object' && m !== null)
+            ? prev.filter((m: DecodedMessage<string>): m is DecodedMessage<string> => typeof m === 'object' && m !== null)
             : [];
           // Concatenate and filter again to guarantee only DecodedMessage<string>[]
           const result = append ? [...pageMsgs, ...prevMsgs] : pageMsgs;
-          return result.filter((m): m is DecodedMessage<string> => typeof m === 'object' && m !== null);
+          return result.filter((m: DecodedMessage<string>): m is DecodedMessage<string> => typeof m === 'object' && m !== null);
         });
         setMessageCursors(cursors => ({ ...cursors, [conversationId]: page.cursor || null }));
       } else {
@@ -623,7 +649,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
             if (prev.some((m: DecodedMessage<string>) => m.id === message.id)) return prev;
             // Only return DecodedMessage<string> objects
             const result = [...prev, message];
-            return result.filter((m): m is DecodedMessage<string> => typeof m === 'object' && m !== null);
+            return result.filter((m: DecodedMessage<string>): m is DecodedMessage<string> => typeof m === 'object' && m !== null);
           });
           setUnreadConversations(prev => {
             if (selectedConversation && conversation.id === selectedConversation.id) return prev;
@@ -657,16 +683,15 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       setError('No conversation selected');
       return;
     }
-    // Create optimistic message
-    const optimisticMsg: DecodedMessage<string> = {
+    // Create optimistic message as a plain object (not DecodedMessage instance)
+    const optimisticMsg = {
       id: `pending-${Date.now()}`,
       content: message,
       sentAtNs: BigInt(Date.now() * 1e6),
       contentType: { authorityId: '', typeId: '', versionMajor: 1, versionMinor: 0, sameAs: () => false },
       conversationId: conversation.id,
-      // @ts-ignore: custom status for optimistic UI
       status: 'pending',
-    };
+    } as any;
     safeSetMessages(conversation.id, prev => [...prev, optimisticMsg]);
     try {
       setStatus('Preparing to send...');
@@ -676,8 +701,11 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       setStatus('Message sent');
       if (onSuccess) onSuccess();
     } catch (err) {
-      // On failure, set status: 'failed' on the optimistic message
-      safeSetMessages(conversation.id, prev => prev.map(m => m.id === optimisticMsg.id ? ({ ...(m as DecodedMessage<string>), status: 'failed' } as unknown as DecodedMessage<string>) : m));
+      // On failure, remove the optimistic message and add a failed one as a plain object
+      safeSetMessages(conversation.id, prev => [
+        ...prev.filter(m => typeof m === 'object' && m !== null && m.id !== optimisticMsg.id),
+        { ...optimisticMsg, status: 'failed' } as DecodedMessage<string>
+      ]);
       setError('Failed to send message. Please try again.');
     }
   };
@@ -805,7 +833,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
               if (prev.some((m: DecodedMessage<string>) => m.id === message.id)) return prev;
               // Only return DecodedMessage<string> objects
               const result = [...prev, message];
-              return result.filter((m): m is DecodedMessage<string> => typeof m === 'object' && m !== null);
+              return result.filter((m: DecodedMessage<string>): m is DecodedMessage<string> => typeof m === 'object' && m !== null);
             });
           }
         };
@@ -867,40 +895,63 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     }
   }, [address, safeSetConversations]);
 
-  // Delete a conversation by ID
+  // Enhanced delete single conversation
   const deleteConversation = useCallback((conversationId: string) => {
+    // Remove from UI state
     safeSetConversations(prev => prev.filter(c => c.id !== conversationId));
+    
+    // Clear messages - ensure we maintain DecodedMessage<string>[] type
     setMessages(prev => {
-      const newMsgs = { ...prev };
+      const newMsgs: { [convId: string]: DecodedMessage<string>[] } = { ...prev };
       delete newMsgs[conversationId];
       return newMsgs;
     });
+
+    // Clear from localStorage
     localStorage.removeItem(`xmtp-messages-${conversationId}`);
-    // If the deleted conversation is selected, clear selection
-    setSelectedConversation(prev => (prev && prev.id === conversationId ? null : prev));
-    // Remove preview and unread state
+    
+    // Add to deleted set to prevent reappearing
+    setDeletedConversationIds(prev => new Set([...prev, conversationId]));
+    
+    // Clear selected conversation if it was deleted
+    setSelectedConversation(prev => prev?.id === conversationId ? null : prev);
+    
+    // Clear conversation previews
     setConversationPreviews(prev => {
-      const next = { ...prev };
-      delete next[conversationId];
-      return next;
+      const newPreviews = { ...prev };
+      delete newPreviews[conversationId];
+      return newPreviews;
     });
-    setUnreadConversations(prev => {
-      const next = new Set(prev);
-      next.delete(conversationId);
-      return next;
+  }, []);
+
+  // Enhanced delete multiple conversations
+  const deleteConversations = useCallback((conversationIds: string[]) => {
+    // Remove from UI state
+    safeSetConversations(prev => prev.filter(c => !conversationIds.includes(c.id)));
+    
+    // Clear messages - ensure we maintain DecodedMessage<string>[] type
+    setMessages(prev => {
+      const newMsgs: { [convId: string]: DecodedMessage<string>[] } = { ...prev };
+      conversationIds.forEach(id => { delete newMsgs[id]; });
+      return newMsgs;
     });
-    // Remove from cache
-    const cached = localStorage.getItem('xmtp-conversations');
-    if (cached) {
-      try {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed)) {
-          const filtered = parsed.filter((c: any) => c.id !== conversationId);
-          localStorage.setItem('xmtp-conversations', JSON.stringify(filtered));
-        }
-      } catch {}
-    }
-  }, [safeSetConversations]);
+    
+    // Clear from localStorage
+    conversationIds.forEach(id => localStorage.removeItem(`xmtp-messages-${id}`));
+    
+    // Add all to deleted set
+    setDeletedConversationIds(prev => new Set([...prev, ...conversationIds]));
+    
+    // Clear selected conversation if it was in deleted set
+    setSelectedConversation(prev => (prev && conversationIds.includes(prev.id) ? null : prev));
+    
+    // Clear conversation previews
+    setConversationPreviews(prev => {
+      const newPreviews = { ...prev };
+      conversationIds.forEach(id => { delete newPreviews[id]; });
+      return newPreviews;
+    });
+  }, []);
 
   const contextValue: XMTPContextType = {
     client: clientRef.current,
@@ -928,6 +979,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     unreadConversations,
     isSyncing,
     deleteConversation,
+    deleteConversations,
   };
 
   return (
