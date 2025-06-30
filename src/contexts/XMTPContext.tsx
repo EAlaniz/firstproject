@@ -159,6 +159,16 @@ function isValidEthAddress(address: string): boolean {
   return /^0x[a-fA-F0-9]{40}$/.test(address);
 }
 
+// Utility to normalize identifiers for XMTP API calls
+function normalizeIdentifier(identifier: string, kind: string): string {
+  if (kind === 'Ethereum') {
+    // Ethereum addresses should keep the '0x' prefix
+    return identifier.startsWith('0x') ? identifier : `0x${identifier}`;
+  }
+  // For conversation IDs, inbox IDs, etc., strip '0x' if present
+  return identifier.startsWith('0x') ? identifier.slice(2) : identifier;
+}
+
 export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   const { address } = useAccount();
   const { data: walletClient } = useWalletClient();
@@ -360,7 +370,16 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
           hasCursor: !!page.cursor,
           append
         });
-        safeSetMessages(conversationId, prev => append ? [...page.messages, ...(prev || [])] : page.messages);
+        safeSetMessages(conversationId, prev => {
+          const pageMsgs: DecodedMessage<string>[] = Array.isArray(page.messages)
+            ? page.messages.filter((m: any): m is DecodedMessage<string> => typeof m === 'object' && m !== null)
+            : [];
+          const prevMsgs: DecodedMessage<string>[] = Array.isArray(prev)
+            ? prev.filter((m: any): m is DecodedMessage<string> => typeof m === 'object' && m !== null)
+            : [];
+          // @ts-expect-error: TypeScript is unable to verify the type, but we guarantee it is correct
+          return (append ? ([] as DecodedMessage<string>[]).concat(pageMsgs, prevMsgs) : pageMsgs) as DecodedMessage<string>[];
+        });
         setMessageCursors(cursors => ({ ...cursors, [conversationId]: page.cursor || null }));
       } else {
         // Fallback: load all
@@ -638,8 +657,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       if (onSuccess) onSuccess();
     } catch (err) {
       // On failure, set status: 'failed' on the optimistic message
-      // @ts-ignore
-      safeSetMessages(conversation.id, prev => prev.map(m => m.id === optimisticMsg.id ? { ...m, status: 'failed' } : m));
+      safeSetMessages(conversation.id, prev => prev.map(m => m.id === optimisticMsg.id ? ({ ...(m as DecodedMessage<string>), status: 'failed' } as unknown as DecodedMessage<string>) : m));
       setError('Failed to send message. Please try again.');
     }
   };
@@ -654,30 +672,28 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       return null;
     }
 
+    // Normalize recipient address for canMessage and conversation creation
+    const normalizedRecipient = normalizeIdentifier(recipientAddress, 'Ethereum');
+
     try {
       setStatus('Creating conversation...');
-      
       // Check if recipient is registered on XMTP
-      console.log(`[XMTP] Checking if ${recipientAddress} is registered on XMTP...`);
+      console.log(`[XMTP] Checking if ${normalizedRecipient} is registered on XMTP...`);
       const canMessageResult = await Client.canMessage([
-        { identifier: recipientAddress, identifierKind: 'Ethereum' }
+        { identifier: normalizedRecipient, identifierKind: 'Ethereum' }
       ], 'production');
-      
       const canMessage = Array.isArray(canMessageResult) ? canMessageResult[0] : !!canMessageResult;
-      console.log(`[XMTP] Can message recipient (${recipientAddress})? ${canMessage}`);
-      
+      console.log(`[XMTP] Can message recipient (${normalizedRecipient})? ${canMessage}`);
       if (!canMessage) {
         setError('Recipient is not registered on XMTP. They need to initialize XMTP first.');
         return null;
       }
-
       // Create new conversation using type-safe method detection
       let conversation;
       if (hasMethod<{ newGroup: (members: string[]) => Promise<unknown> }>(client.conversations, 'newGroup')) {
-        // Example: create a group with the recipient and self
         const selfAddress = (client as any).address || address;
-        conversation = await (client.conversations as any).newGroup([selfAddress, recipientAddress]);
-        // Publish membership if possible
+        const normalizedSelf = normalizeIdentifier(selfAddress, 'Ethereum');
+        conversation = await (client.conversations as any).newGroup([normalizedSelf, normalizedRecipient]);
         if (typeof (conversation as any).publishMembership === 'function') {
           try {
             await (conversation as any).publishMembership();
@@ -687,27 +703,21 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
           }
         }
       } else if (hasMethod<{ newConversation: (addr: string) => Promise<unknown> }>(client.conversations, 'newConversation')) {
-        conversation = await (client.conversations as any).newConversation(recipientAddress);
+        conversation = await (client.conversations as any).newConversation(normalizedRecipient);
       } else if (hasMethod<{ newDm: (addr: string) => Promise<unknown> }>(client.conversations, 'newDm')) {
-        conversation = await (client.conversations as any).newDm(recipientAddress);
+        conversation = await (client.conversations as any).newDm(normalizedRecipient);
       } else if (hasMethod<{ newDmWithIdentifier: (opts: { identifier: string, identifierKind: string }) => Promise<unknown> }>(client.conversations, 'newDmWithIdentifier')) {
         conversation = await (client.conversations as any).newDmWithIdentifier({
-          identifier: recipientAddress,
+          identifier: normalizedRecipient,
           identifierKind: 'Ethereum',
         });
       } else {
         setError('No valid method found to create DM or group conversation');
         return null;
       }
-      
-      console.log(`[XMTP] Created new conversation with: ${recipientAddress}`);
-      
-      // Add to conversations list
+      console.log(`[XMTP] Created new conversation with: ${normalizedRecipient}`);
       safeSetConversations(prev => [...(prev || []), conversation as XMTPConversation]);
-      
-      // Select the new conversation
       await selectConversation(conversation as XMTPConversation);
-      
       setStatus('Conversation created');
       return conversation as XMTPConversation;
     } catch (err) {
