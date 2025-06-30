@@ -169,6 +169,11 @@ function normalizeIdentifier(identifier: string, kind: string): string {
   return identifier.startsWith('0x') ? identifier.slice(2) : identifier;
 }
 
+// Utility to strip '0x' prefix for group member addresses
+function strip0x(address: string): string {
+  return address.startsWith('0x') ? address.slice(2) : address;
+}
+
 export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   const { address } = useAccount();
   const { data: walletClient } = useWalletClient();
@@ -692,8 +697,11 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       let conversation;
       if (hasMethod<{ newGroup: (members: string[]) => Promise<unknown> }>(client.conversations, 'newGroup')) {
         const selfAddress = (client as any).address || address;
-        const normalizedSelf = normalizeIdentifier(selfAddress, 'Ethereum');
-        conversation = await (client.conversations as any).newGroup([normalizedSelf, normalizedRecipient]);
+        // For group creation, strip '0x' prefix from all member addresses
+        conversation = await (client.conversations as any).newGroup([
+          strip0x(selfAddress),
+          strip0x(normalizedRecipient)
+        ]);
         if (typeof (conversation as any).publishMembership === 'function') {
           try {
             await (conversation as any).publishMembership();
