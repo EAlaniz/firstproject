@@ -2,7 +2,6 @@
 export { default as XMTPMessaging } from './XMTPMessaging';
 export { default as ChatToggle } from './ChatToggle';
 export { default as DMChat } from './DMChat';
-export { default as GroupChat } from './GroupChat';
 
 // Supporting components
 export { default as ConversationsList } from './ConversationsList';

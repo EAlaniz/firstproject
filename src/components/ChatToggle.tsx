@@ -1,7 +1,6 @@
 import React from 'react';
 import { useXMTP } from '../contexts/XMTPContext';
 import DMChat from './DMChat';
-import GroupChat from './GroupChat';
 
 interface ChatToggleProps {
   conversationId: string | null;
@@ -36,31 +35,8 @@ const ChatToggle: React.FC<ChatToggleProps> = ({ conversationId, onRetry }) => {
     );
   }
 
-  // Enhanced conversation type detection that works with both fresh XMTP objects and cached plain objects
-  const isGroup = (() => {
-    if ('kind' in conversation && conversation.kind === 'group') return true;
-    if ('members' in conversation) {
-      if (typeof conversation.members === 'function') {
-        try {
-          const members = conversation.members();
-          if (Array.isArray(members) && members.length > 1) return true;
-        } catch {}
-      } else if (Array.isArray(conversation.members) && conversation.members.length > 1) {
-        return true;
-      }
-    }
-    // Fallback: group IDs are typically longer
-    return conversationId.length > 20;
-  })();
-
-  console.log('🎯 ChatToggle: Rendering', isGroup ? 'GroupChat' : 'DMChat', 'for conversation:', conversationId);
-
-  // Render the appropriate chat component
-  if (isGroup) {
-    return <GroupChat conversationId={conversationId} onRetry={onRetry} />;
-  } else {
-    return <DMChat conversationId={conversationId} onRetry={onRetry} />;
-  }
+  // Always render DMChat only
+  return <DMChat conversationId={conversationId} onRetry={onRetry} />;
 };
 
 export default ChatToggle; 

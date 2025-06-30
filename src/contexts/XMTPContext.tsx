@@ -667,7 +667,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     }
   };
 
-  const createConversation = async (recipientAddress: string): Promise<XMTPConversation | null> => {
+  const createConversation = async (recipientAddress: string, retrying = false): Promise<XMTPConversation | null> => {
     if (!client) {
       setError('XMTP not initialized');
       return null;
@@ -693,24 +693,9 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         setError('Recipient is not registered on XMTP. They need to initialize XMTP first.');
         return null;
       }
-      // Create new conversation using type-safe method detection
+      // DM creation only
       let conversation;
-      if (hasMethod<{ newGroup: (members: string[]) => Promise<unknown> }>(client.conversations, 'newGroup')) {
-        const selfAddress = (client as any).address || address;
-        // For group creation, strip '0x' prefix from all member addresses
-        conversation = await (client.conversations as any).newGroup([
-          strip0x(selfAddress),
-          strip0x(normalizedRecipient)
-        ]);
-        if (typeof (conversation as any).publishMembership === 'function') {
-          try {
-            await (conversation as any).publishMembership();
-            console.log('[XMTP] Group membership published');
-          } catch (err) {
-            console.warn('[XMTP] Failed to publish group membership:', err);
-          }
-        }
-      } else if (hasMethod<{ newConversation: (addr: string) => Promise<unknown> }>(client.conversations, 'newConversation')) {
+      if (hasMethod<{ newConversation: (addr: string) => Promise<unknown> }>(client.conversations, 'newConversation')) {
         conversation = await (client.conversations as any).newConversation(normalizedRecipient);
       } else if (hasMethod<{ newDm: (addr: string) => Promise<unknown> }>(client.conversations, 'newDm')) {
         conversation = await (client.conversations as any).newDm(normalizedRecipient);
@@ -720,17 +705,17 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
           identifierKind: 'Ethereum',
         });
       } else {
-        setError('No valid method found to create DM or group conversation');
+        setError('No valid method found to create DM conversation');
         return null;
       }
-      console.log(`[XMTP] Created new conversation with: ${normalizedRecipient}`);
+      console.log(`[XMTP] Created new DM conversation with: ${normalizedRecipient}`);
       safeSetConversations(prev => [...(prev || []), conversation as XMTPConversation]);
       await selectConversation(conversation as XMTPConversation);
       setStatus('Conversation created');
       return conversation as XMTPConversation;
-    } catch (err) {
+    } catch (err: any) {
       console.error('[XMTP] Error creating conversation:', err);
-      setError('Failed to create conversation');
+      setError('Failed to create conversation. Please check the address and try again.');
       return null;
     }
   };
