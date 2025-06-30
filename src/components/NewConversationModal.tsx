@@ -13,16 +13,20 @@ const NewConversationModal: React.FC<NewConversationModalProps> = ({ isOpen, onC
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState('');
 
-  const isValidAddress = /^0x[a-fA-F0-9]{40}$/.test(address);
+  const isValidEthAddress = (address: string) => /^0x[a-fA-F0-9]{40}$/.test(address);
 
   const handleCreate = async () => {
-    if (!isValidAddress || isCreating) return;
+    const trimmedAddress = address.trim();
+    if (!isValidEthAddress(trimmedAddress) || isCreating) {
+      setError('Please enter a valid Ethereum address');
+      return;
+    }
 
     try {
       setIsCreating(true);
       setError('');
       
-      const conversation = await createConversation(address);
+      const conversation = await createConversation(trimmedAddress);
       if (conversation) {
         selectConversation(conversation);
         setAddress('');
@@ -39,14 +43,14 @@ const NewConversationModal: React.FC<NewConversationModalProps> = ({ isOpen, onC
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && isValidAddress && !isCreating) {
+    if (e.key === 'Enter' && isValidEthAddress(address) && !isCreating) {
       handleCreate();
     }
   };
 
   const handlePaste = async () => {
     try {
-      const text = await navigator.clipboard.readText();
+      const text = (await navigator.clipboard.readText()).trim();
       setAddress(text);
       setError('');
     } catch (err) {
@@ -83,7 +87,7 @@ const NewConversationModal: React.FC<NewConversationModalProps> = ({ isOpen, onC
                 type="text"
                 value={address}
                 onChange={(e) => {
-                  setAddress(e.target.value);
+                  setAddress(e.target.value.trim());
                   setError('');
                 }}
                 onKeyDown={handleKeyDown}
@@ -99,7 +103,7 @@ const NewConversationModal: React.FC<NewConversationModalProps> = ({ isOpen, onC
                 <Copy className="w-4 h-4 text-gray-400" />
               </button>
             </div>
-            {!isValidAddress && address && (
+            {!isValidEthAddress(address) && address && (
               <p className="text-sm text-red-500 mt-2">
                 Please enter a valid Ethereum address
               </p>
@@ -118,7 +122,7 @@ const NewConversationModal: React.FC<NewConversationModalProps> = ({ isOpen, onC
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
             <button
               onClick={handleCreate}
-              disabled={!isValidAddress || isCreating}
+              disabled={!isValidEthAddress(address) || isCreating}
               className="flex-1 bg-blue-600 text-white py-3 sm:py-4 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm sm:text-base font-medium min-h-[44px]"
             >
               {isCreating ? 'Creating...' : 'Create Conversation'}

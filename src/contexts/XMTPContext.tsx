@@ -155,6 +155,10 @@ function isAsyncIterator(obj: any): obj is AsyncIterableIterator<any> {
   return obj && typeof obj[Symbol.asyncIterator] === 'function' && typeof obj.return === 'function';
 }
 
+function isValidEthAddress(address: string): boolean {
+  return /^0x[a-fA-F0-9]{40}$/.test(address);
+}
+
 export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   const { address } = useAccount();
   const { data: walletClient } = useWalletClient();
@@ -643,6 +647,10 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   const createConversation = async (recipientAddress: string): Promise<XMTPConversation | null> => {
     if (!client) {
       setError('XMTP not initialized');
+      return null;
+    }
+    if (!isValidEthAddress(recipientAddress)) {
+      setError('Invalid Ethereum address. Please enter a valid 0x... address.');
       return null;
     }
 
