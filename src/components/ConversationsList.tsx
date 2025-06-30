@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { UserPlus, Search, MessageCircle } from 'lucide-react';
+import { UserPlus, Search, MessageCircle, Trash2 } from 'lucide-react';
 import { useXMTP } from '../contexts/XMTPContext';
 
 interface ConversationsListProps {
@@ -14,8 +14,9 @@ interface ConversationsListProps {
 }
 
 const ConversationsList: React.FC<ConversationsListProps> = ({ onSelect, onNewConversation, selectedId, loadMoreConversations, conversationCursor, isLoading, conversationPreviews, unreadConversations }) => {
-  const { conversations, messages } = useXMTP();
+  const { conversations, messages, deleteConversation } = useXMTP();
   const [search, setSearch] = useState('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   // Ensure conversations is always an array
   const safeConversations = conversations || [];
@@ -84,37 +85,72 @@ const ConversationsList: React.FC<ConversationsListProps> = ({ onSelect, onNewCo
         ) : (
           <div className="space-y-1 p-2">
             {filtered.map(conv => (
-              <button
-                key={conv.id}
-                onClick={() => onSelect(conv.id)}
-                className={`
-                  w-full text-left p-3 sm:p-4 rounded-lg hover:bg-blue-50 focus:bg-blue-100 transition-colors
-                  flex flex-col space-y-1 min-h-[60px] sm:min-h-[70px]
-                  border
-                  ${selectedId === conv.id 
-                    ? 'bg-blue-100 border-blue-300' 
-                    : unreadConversations.has(conv.id)
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-transparent hover:border-blue-100'}
-                `}
-              >
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 relative">
-                    <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
-                    {unreadConversations.has(conv.id) && (
-                      <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full border-2 border-white" />
-                    )}
+              <div key={conv.id} className="relative group">
+                <button
+                  onClick={() => onSelect(conv.id)}
+                  className={`
+                    w-full text-left p-3 sm:p-4 rounded-lg hover:bg-blue-50 focus:bg-blue-100 transition-colors
+                    flex flex-col space-y-1 min-h-[60px] sm:min-h-[70px]
+                    border
+                    ${selectedId === conv.id 
+                      ? 'bg-blue-100 border-blue-300' 
+                      : unreadConversations.has(conv.id)
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-transparent hover:border-blue-100'}
+                  `}
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 relative">
+                      <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
+                      {unreadConversations.has(conv.id) && (
+                        <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full border-2 border-white" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-base sm:text-lg truncate conversation-title">
+                        {formatAddress(conv.id)}
+                      </p>
+                      <p className="message-preview text-xs sm:text-sm text-gray-600 truncate mt-1">
+                        {conversationPreviews[conv.id] || 'No messages yet'}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-base sm:text-lg truncate conversation-title">
-                      {formatAddress(conv.id)}
-                    </p>
-                    <p className="message-preview text-xs sm:text-sm text-gray-600 truncate mt-1">
-                      {conversationPreviews[conv.id] || 'No messages yet'}
-                    </p>
+                </button>
+                {/* Delete button, only visible on hover */}
+                <button
+                  className="absolute top-2 right-2 p-1 rounded hover:bg-red-100 text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                  title="Delete conversation"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setConfirmDeleteId(conv.id);
+                  }}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+                {/* Confirm delete dialog */}
+                {confirmDeleteId === conv.id && (
+                  <div className="absolute z-50 top-10 right-2 bg-white border border-gray-200 rounded shadow-lg p-3 flex flex-col items-center">
+                    <p className="text-sm mb-2">Delete this conversation?</p>
+                    <div className="flex gap-2">
+                      <button
+                        className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-xs"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteConversation(conv.id);
+                          setConfirmDeleteId(null);
+                        }}
+                      >Delete</button>
+                      <button
+                        className="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-xs"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setConfirmDeleteId(null);
+                        }}
+                      >Cancel</button>
+                    </div>
                   </div>
-                </div>
-              </button>
+                )}
+              </div>
             ))}
           </div>
         )}

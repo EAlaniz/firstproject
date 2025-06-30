@@ -61,6 +61,9 @@ export interface XMTPContextType {
   
   // New states
   isSyncing: boolean;
+  
+  // Delete a conversation by ID
+  deleteConversation: (conversationId: string) => void;
 }
 
 const XMTPContext = createContext<XMTPContextType | undefined>(undefined);
@@ -864,6 +867,41 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     }
   }, [address, safeSetConversations]);
 
+  // Delete a conversation by ID
+  const deleteConversation = useCallback((conversationId: string) => {
+    safeSetConversations(prev => prev.filter(c => c.id !== conversationId));
+    setMessages(prev => {
+      const newMsgs = { ...prev };
+      delete newMsgs[conversationId];
+      return newMsgs;
+    });
+    localStorage.removeItem(`xmtp-messages-${conversationId}`);
+    // If the deleted conversation is selected, clear selection
+    setSelectedConversation(prev => (prev && prev.id === conversationId ? null : prev));
+    // Remove preview and unread state
+    setConversationPreviews(prev => {
+      const next = { ...prev };
+      delete next[conversationId];
+      return next;
+    });
+    setUnreadConversations(prev => {
+      const next = new Set(prev);
+      next.delete(conversationId);
+      return next;
+    });
+    // Remove from cache
+    const cached = localStorage.getItem('xmtp-conversations');
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed)) {
+          const filtered = parsed.filter((c: any) => c.id !== conversationId);
+          localStorage.setItem('xmtp-conversations', JSON.stringify(filtered));
+        }
+      } catch {}
+    }
+  }, [safeSetConversations]);
+
   const contextValue: XMTPContextType = {
     client: clientRef.current,
     isInitialized,
@@ -889,6 +927,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     conversationPreviews,
     unreadConversations,
     isSyncing,
+    deleteConversation,
   };
 
   return (
