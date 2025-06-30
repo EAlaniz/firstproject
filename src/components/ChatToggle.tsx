@@ -38,47 +38,19 @@ const ChatToggle: React.FC<ChatToggleProps> = ({ conversationId, onRetry }) => {
 
   // Enhanced conversation type detection that works with both fresh XMTP objects and cached plain objects
   const isGroup = (() => {
-    console.log('🔍 ChatToggle: Analyzing conversation object:', {
-      id: conversation.id,
-      hasMembers: 'members' in conversation,
-      membersType: 'members' in conversation ? typeof conversation.members : 'N/A',
-      membersValue: 'members' in conversation ? conversation.members : 'N/A',
-      hasKind: 'kind' in conversation,
-      kindValue: 'kind' in conversation ? (conversation as any).kind : 'N/A',
-      idLength: conversation.id.length,
-      isLongId: conversation.id.length > 20
-    });
-
-    // Method 1: Check for 'kind' property (most reliable)
-    if ('kind' in conversation && typeof (conversation as any).kind === 'string') {
-      const isGroupByKind = (conversation as any).kind === 'group';
-      console.log('🔍 Conversation type:', isGroupByKind ? 'Group' : 'DM', '(detected via kind property)');
-      return isGroupByKind;
-    }
-    
-    // Method 2: Check for 'members' property (but be more careful)
+    if ('kind' in conversation && conversation.kind === 'group') return true;
     if ('members' in conversation) {
-      // If members is an array with multiple items, it's likely a group
-      if (Array.isArray(conversation.members) && conversation.members.length > 1) {
-        console.log('🔍 Conversation type: Group (detected via members array with multiple items)');
+      if (typeof conversation.members === 'function') {
+        try {
+          const members = conversation.members();
+          if (Array.isArray(members) && members.length > 1) return true;
+        } catch {}
+      } else if (Array.isArray(conversation.members) && conversation.members.length > 1) {
         return true;
       }
-      // If members is an array with 1 item, it might be a DM with cached data
-      if (Array.isArray(conversation.members) && conversation.members.length === 1) {
-        console.log('🔍 Conversation type: DM (detected via members array with single item - likely cached DM)');
-        return false;
-      }
-      // If members is not an array, it might be a DM with cached data
-      console.log('🔍 Conversation type: DM (detected via non-array members - likely cached DM)');
-      return false;
     }
-    
-    // Method 3: Check conversation ID pattern (fallback)
-    // Group IDs are typically longer and have a specific pattern
-    // DM IDs are usually shorter and represent the peer address
-    const isGroupById = conversationId.length > 20; // Heuristic: group IDs are longer
-    console.log('🔍 Conversation type:', isGroupById ? 'Group' : 'DM', '(detected via ID length heuristic)');
-    return isGroupById;
+    // Fallback: group IDs are typically longer
+    return conversationId.length > 20;
   })();
 
   console.log('🎯 ChatToggle: Rendering', isGroup ? 'GroupChat' : 'DMChat', 'for conversation:', conversationId);

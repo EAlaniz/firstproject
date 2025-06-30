@@ -665,17 +665,30 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
 
       // Create new conversation using type-safe method detection
       let conversation;
-      if (hasMethod<{ newConversation: (addr: string) => Promise<unknown> }>(client.conversations, 'newConversation')) {
-        conversation = await client.conversations.newConversation(recipientAddress);
+      if (hasMethod<{ newGroup: (members: string[]) => Promise<unknown> }>(client.conversations, 'newGroup')) {
+        // Example: create a group with the recipient and self
+        const selfAddress = (client as any).address || address;
+        conversation = await (client.conversations as any).newGroup([selfAddress, recipientAddress]);
+        // Publish membership if possible
+        if (typeof (conversation as any).publishMembership === 'function') {
+          try {
+            await (conversation as any).publishMembership();
+            console.log('[XMTP] Group membership published');
+          } catch (err) {
+            console.warn('[XMTP] Failed to publish group membership:', err);
+          }
+        }
+      } else if (hasMethod<{ newConversation: (addr: string) => Promise<unknown> }>(client.conversations, 'newConversation')) {
+        conversation = await (client.conversations as any).newConversation(recipientAddress);
       } else if (hasMethod<{ newDm: (addr: string) => Promise<unknown> }>(client.conversations, 'newDm')) {
-        conversation = await client.conversations.newDm(recipientAddress);
+        conversation = await (client.conversations as any).newDm(recipientAddress);
       } else if (hasMethod<{ newDmWithIdentifier: (opts: { identifier: string, identifierKind: string }) => Promise<unknown> }>(client.conversations, 'newDmWithIdentifier')) {
         conversation = await (client.conversations as any).newDmWithIdentifier({
           identifier: recipientAddress,
           identifierKind: 'Ethereum',
         });
       } else {
-        setError('No valid method found to create DM conversation');
+        setError('No valid method found to create DM or group conversation');
         return null;
       }
       
