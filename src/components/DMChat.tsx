@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import { useXMTP } from '../contexts/XMTPContext';
 import MessageInput from './MessageInput';
@@ -13,9 +13,42 @@ const DMChat: React.FC<DMChatProps> = ({ conversationId, onRetry }) => {
   const { address } = useAccount();
   const { conversations, loadMoreMessages, messageCursors, isLoading, sendMessage } = useXMTP();
   const [isSending, setIsSending] = useState(false);
+  const [isSynced, setIsSynced] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<string>('');
 
   // Get the conversation object
   const conversation = conversations.find(c => c.id === conversationId);
+
+  // Per-conversation sync effect
+  useEffect(() => {
+    let cancelled = false;
+    async function syncConversation() {
+      setIsSynced(false);
+      setSyncStatus('Syncing messages...');
+      if (conversation && typeof (conversation as any).sync === 'function') {
+        try {
+          await (conversation as any).sync();
+          if (!cancelled) {
+            setIsSynced(true);
+            setSyncStatus('Synced');
+          }
+        } catch (err) {
+          if (!cancelled) {
+            setSyncStatus('Failed to sync');
+            setIsSynced(false);
+          }
+        }
+      } else {
+        // If no sync method, assume ready
+        setIsSynced(true);
+        setSyncStatus('');
+      }
+    }
+    if (conversation) {
+      syncConversation();
+    }
+    return () => { cancelled = true; };
+  }, [conversation]);
 
   if (!conversation) {
     console.warn('[DMChat] Conversation not found for ID:', conversationId, 'Available:', conversations.map(c => c.id));
@@ -70,8 +103,11 @@ const DMChat: React.FC<DMChatProps> = ({ conversationId, onRetry }) => {
         <MessageInput
           onSend={handleSend}
           disabled={isSending}
-          canSend={true} // DMs can always send if conversation exists
+          canSend={isSynced}
         />
+        {!isSynced && (
+          <div className="text-yellow-500 text-xs mt-1">{syncStatus || 'Syncing messages, please wait...'}</div>
+        )}
       </div>
     </div>
   );

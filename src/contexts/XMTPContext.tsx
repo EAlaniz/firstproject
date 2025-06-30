@@ -248,29 +248,47 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     setIsSyncing(false);
   }, [conversations]);
 
-  // Load cached messages for selected conversation
+  // Load cached messages for all conversations on init
   useEffect(() => {
-    if (!selectedConversation) return;
-    const cached = localStorage.getItem(`xmtp-messages-${selectedConversation.id}`);
-    if (cached) {
-      try {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed)) {
-          safeSetMessages(selectedConversation.id, parsed);
-          setIsSyncing(true);
+    if (!conversations || !conversations.length) return;
+    let loadedAny = false;
+    const allMessages: { [convId: string]: DecodedMessage<string>[] } = {};
+    conversations.forEach((conv) => {
+      const cached = localStorage.getItem(`xmtp-messages-${conv.id}`);
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed)) {
+            allMessages[conv.id] = parsed;
+            loadedAny = true;
+            console.log(`[XMTP] Loaded cached messages for conversation ${conv.id}:`, parsed.length);
+          }
+        } catch (error) {
+          console.error(`[XMTP] Failed to parse cached messages for conversation ${conv.id}:`, error);
         }
-      } catch (error) {
-        console.error('Failed to parse cached messages:', error);
       }
+    });
+    if (loadedAny) {
+      setMessages((prev) => ({ ...allMessages, ...prev }));
+      setIsSyncing(true);
     }
-  }, [selectedConversation, safeSetMessages]);
+  }, [conversations]);
 
-  // Save messages for selected conversation
+  // Persist messages for all conversations whenever messages state changes
   useEffect(() => {
-    if (!messages || !messages.length || !selectedConversation) return;
-    localStorage.setItem(`xmtp-messages-${selectedConversation.id}`, JSON.stringify(messages[selectedConversation.id]));
+    if (!messages) return;
+    Object.entries(messages).forEach(([convId, msgs]) => {
+      if (Array.isArray(msgs) && msgs.length > 0) {
+        try {
+          localStorage.setItem(`xmtp-messages-${convId}`, JSON.stringify(msgs));
+          console.log(`[XMTP] Persisted ${msgs.length} messages for conversation ${convId}`);
+        } catch (error) {
+          console.error(`[XMTP] Failed to persist messages for conversation ${convId}:`, error);
+        }
+      }
+    });
     setIsSyncing(false);
-  }, [messages, selectedConversation]);
+  }, [messages]);
 
   // Save/restore selectedConversation.id
   useEffect(() => {
@@ -382,8 +400,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
           const prevMsgs: DecodedMessage<string>[] = Array.isArray(prev)
             ? prev.filter((m: any): m is DecodedMessage<string> => typeof m === 'object' && m !== null)
             : [];
-          // @ts-expect-error: TypeScript is unable to verify the type, but we guarantee it is correct
-          return (append ? ([] as DecodedMessage<string>[]).concat(pageMsgs, prevMsgs) : pageMsgs) as DecodedMessage<string>[];
+          return append ? [...pageMsgs, ...prevMsgs] : pageMsgs;
         });
         setMessageCursors(cursors => ({ ...cursors, [conversationId]: page.cursor || null }));
       } else {
