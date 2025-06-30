@@ -634,7 +634,13 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
           return;
         }
         if (message) {
-          safeSetMessages(conversation.id, prev => [...prev, message]);
+          safeSetMessages(conversation.id, (prev: DecodedMessage<string>[]) => {
+            // Deduplicate by message ID
+            if (prev.some((m: DecodedMessage<string>) => m.id === message.id)) return prev;
+            // Only return DecodedMessage<string> objects
+            const result = [...prev, message];
+            return result.filter((m): m is DecodedMessage<string> => typeof m === 'object' && m !== null);
+          });
           setUnreadConversations(prev => {
             if (selectedConversation && conversation.id === selectedConversation.id) return prev;
             const next = new Set(prev);
@@ -794,17 +800,67 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     }
   };
 
-  // Cleanup streams on unmount
+  // Always stream messages for all conversations in the list
   useEffect(() => {
-    return () => {
-      conversationStreams.current.forEach((stream) => {
+    if (!client || !conversations || !conversations.length) return;
+    // Track active streams by conversation ID
+    const activeStreams = new Map<string, any>();
+    let cancelled = false;
+
+    conversations.forEach(async (conv) => {
+      if (conversationStreams.current.has(conv.id)) return; // Already streaming
+      try {
+        const messageCallback: StreamCallback<DecodedMessage<string>> = (err, message) => {
+          if (err) {
+            console.error('Error in message stream:', err);
+            return;
+          }
+          if (message) {
+            safeSetMessages(conv.id, (prev: DecodedMessage<string>[]) => {
+              // Deduplicate by message ID
+              if (prev.some((m: DecodedMessage<string>) => m.id === message.id)) return prev;
+              // Only return DecodedMessage<string> objects
+              const result = [...prev, message];
+              return result.filter((m): m is DecodedMessage<string> => typeof m === 'object' && m !== null);
+            });
+          }
+        };
+        if (hasMethod<{ streamMessages: (cb: StreamCallback<DecodedMessage<string>>) => Promise<unknown> }>(conv, 'streamMessages')) {
+          const stream = await conv.streamMessages(messageCallback);
+          conversationStreams.current.set(conv.id, stream);
+          activeStreams.set(conv.id, stream);
+        } else if (hasMethod<{ stream: (cb: StreamCallback<DecodedMessage<string>>) => Promise<unknown> }>(conv, 'stream')) {
+          const stream = await conv.stream(messageCallback);
+          conversationStreams.current.set(conv.id, stream);
+          activeStreams.set(conv.id, stream);
+        }
+      } catch (err) {
+        console.error('Failed to start message stream for conversation', conv.id, err);
+      }
+    });
+
+    // Cleanup streams for conversations that are no longer present
+    conversationStreams.current.forEach((stream, id) => {
+      if (!conversations.find(c => c.id === id)) {
         if (stream && isAsyncIterator(stream) && typeof stream.return === 'function') {
           (stream as AsyncIterableIterator<unknown>).return?.();
         }
+        conversationStreams.current.delete(id);
+      }
+    });
+
+    // Cleanup all on unmount
+    return () => {
+      if (cancelled) return;
+      cancelled = true;
+      activeStreams.forEach((stream, id) => {
+        if (stream && isAsyncIterator(stream) && typeof stream.return === 'function') {
+          (stream as AsyncIterableIterator<unknown>).return?.();
+        }
+        conversationStreams.current.delete(id);
       });
-      conversationStreams.current.clear();
     };
-  }, []);
+  }, [client, conversations, safeSetMessages]);
 
   // Reset state when address changes
   useEffect(() => {
