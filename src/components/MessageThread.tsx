@@ -16,7 +16,7 @@ const MessageThread: React.FC<MessageThreadProps> = ({ conversationId, loadMoreM
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Defensive: use empty array if messages is undefined/null
-  const safeMessages = Array.isArray(messages) ? messages : [];
+  const safeMessages = conversationId && messages && messages[conversationId] ? messages[conversationId] : [];
 
   // For XMTP, messages are already filtered by the selected conversation
   // The messages array contains only messages for the currently selected conversation

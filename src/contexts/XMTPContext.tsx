@@ -32,7 +32,7 @@ export interface XMTPContextType {
   // Conversations
   conversations: XMTPConversation[];
   selectedConversation: XMTPConversation | null;
-  messages: DecodedMessage<string>[];
+  messages: { [convId: string]: DecodedMessage<string>[] };
   
   // Actions
   initializeClient: () => Promise<void>;
@@ -150,6 +150,11 @@ export async function logMLSConversationDebug(convo: Dm<string> | Group<string>)
   return null;
 }
 
+// Type guard for async iterator
+function isAsyncIterator(obj: any): obj is AsyncIterableIterator<any> {
+  return obj && typeof obj[Symbol.asyncIterator] === 'function' && typeof obj.return === 'function';
+}
+
 export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   const { address } = useAccount();
   const { data: walletClient } = useWalletClient();
@@ -165,7 +170,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   // Conversations and messages
   const [conversations, setConversations] = useState<XMTPConversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<XMTPConversation | null>(null);
-  const [messages, setMessages] = useState<DecodedMessage<string>[]>([]);
+  const [messages, setMessages] = useState<{ [convId: string]: DecodedMessage<string>[] }>({});
   const [isLoading, setIsLoading] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   
@@ -193,11 +198,11 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   }, []);
 
   // Safety wrapper for setMessages to prevent undefined
-  const safeSetMessages = useCallback((updater: DecodedMessage<string>[] | ((prev: DecodedMessage<string>[]) => DecodedMessage<string>[])) => {
+  const safeSetMessages = useCallback((convId: string, updater: DecodedMessage<string>[] | ((prev: DecodedMessage<string>[]) => DecodedMessage<string>[])) => {
     setMessages(prev => {
-      const newValue = typeof updater === 'function' ? updater(prev || []) : updater;
-      console.log('🔄 Setting messages:', { count: newValue?.length || 0, isArray: Array.isArray(newValue) });
-      return newValue || [];
+      const prevMsgs = prev[convId] || [];
+      const newValue = typeof updater === 'function' ? updater(prevMsgs) : updater;
+      return { ...prev, [convId]: newValue || [] };
     });
   }, []);
 
@@ -232,7 +237,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       try {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed)) {
-          safeSetMessages(parsed);
+          safeSetMessages(selectedConversation.id, parsed);
           setIsSyncing(true);
         }
       } catch (error) {
@@ -244,7 +249,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   // Save messages for selected conversation
   useEffect(() => {
     if (!messages || !messages.length || !selectedConversation) return;
-    localStorage.setItem(`xmtp-messages-${selectedConversation.id}`, JSON.stringify(messages));
+    localStorage.setItem(`xmtp-messages-${selectedConversation.id}`, JSON.stringify(messages[selectedConversation.id]));
     setIsSyncing(false);
   }, [messages, selectedConversation]);
 
@@ -338,7 +343,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     console.log('[XMTP] 📥 Loading messages for conversation:', {
       conversationId,
       append,
-      existingMessagesCount: messages?.length || 0
+      existingMessagesCount: messages[conversationId]?.length || 0
     });
     
     setIsLoading(true);
@@ -351,7 +356,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
           hasCursor: !!page.cursor,
           append
         });
-        safeSetMessages(prev => append ? [...page.messages, ...(prev || [])] : page.messages);
+        safeSetMessages(conversationId, prev => append ? [...page.messages, ...(prev || [])] : page.messages);
         setMessageCursors(cursors => ({ ...cursors, [conversationId]: page.cursor || null }));
       } else {
         // Fallback: load all
@@ -359,7 +364,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         console.log('[XMTP] 📥 Loaded all messages from conversation (fallback):', {
           messageCount: msgs?.length || 0
         });
-        safeSetMessages(msgs);
+        safeSetMessages(conversationId, msgs);
         setMessageCursors(cursors => ({ ...cursors, [conversationId]: null }));
       }
     } catch (err) {
@@ -562,42 +567,21 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       });
       
       setSelectedConversation(conversation);
-      safeSetMessages([]);
-      setStatus('Loading messages...');
-      await loadMessages(conversation.id, false); // Load first page
-      
-      console.log('[XMTP] ✅ Loaded initial messages for conversation:', conversation.id);
-      
-      // Mark as read and clear unread badge
-      setUnreadConversations(prev => {
-        const next = new Set(prev);
-        next.delete(conversation.id);
-        return next;
-      });
-      await markConversationAsRead(conversation);
-      // Start streaming messages for this conversation
-      console.log('📡 Started message streaming for conversation');
+      // Close previous stream if exists
+      if (conversationStreams.current.size > 0) {
+        conversationStreams.current.forEach((stream, id) => {
+          if (isAsyncIterator(stream) && typeof stream.return === 'function') stream.return?.();
+        });
+        conversationStreams.current.clear();
+      }
+      // Start new stream for selected conversation
       const messageCallback: StreamCallback<DecodedMessage<string>> = (err, message) => {
         if (err) {
           console.error('Error in message stream:', err);
           return;
         }
         if (message) {
-          console.log('[XMTP] 📨 Received new message via stream:', {
-            id: message.id,
-            content: message.content?.substring(0, 50),
-            from: (message as any).from || (message as any).senderAddress,
-            conversationId: selectedConversation?.id
-          });
-          safeSetMessages(prev => {
-            const newMessages = [...(prev || []), message];
-            console.log('[XMTP] 📨 Updated messages array with received message:', {
-              previousCount: prev?.length || 0,
-              newCount: newMessages.length
-            });
-            return newMessages;
-          });
-          // If not currently selected, mark as unread
+          safeSetMessages(conversation.id, prev => [...prev, message]);
           setUnreadConversations(prev => {
             if (selectedConversation && conversation.id === selectedConversation.id) return prev;
             const next = new Set(prev);
@@ -625,94 +609,33 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       setError('XMTP not initialized');
       return;
     }
-    
     const conversation = targetConversation || selectedConversation;
     if (!conversation) {
       setError('No conversation selected');
       return;
     }
-    
+    // Create optimistic message
+    const optimisticMsg: DecodedMessage<string> = {
+      id: `pending-${Date.now()}`,
+      content: message,
+      sentAtNs: BigInt(Date.now() * 1e6),
+      contentType: { authorityId: '', typeId: '', versionMajor: 1, versionMinor: 0, sameAs: () => false },
+      conversationId: conversation.id,
+      // @ts-ignore: custom status for optimistic UI
+      status: 'pending',
+    };
+    safeSetMessages(conversation.id, prev => [...prev, optimisticMsg]);
     try {
       setStatus('Preparing to send...');
-      // 1. Ensure local state is hydrated (await messages)
-      await conversation.messages();
-      // 2. Check for forked state (getDebugInformation)
-      if (typeof (conversation as any).getDebugInformation === 'function') {
-        const debug = await (conversation as any).getDebugInformation();
-        console.log('🧠 Conversation debug info:', debug);
-        if (debug?.maybeForked) {
-          setError('This conversation is out of sync (forked). Please try resyncing or rebuilding the conversation.');
-          setStatus('Conversation forked, send blocked.');
-          return;
-        }
-      }
-      setStatus('Sending message...');
-      // Check recipient registration for DMs only
-      let canMessage = false;
-      let peerAddress = (conversation as any).peerAddress || (conversation as any).id;
-      if (peerAddress && peerAddress.startsWith('0x') && peerAddress.length === 42) {
-        try {
-          const canMessageResult = await Client.canMessage([
-            { identifier: peerAddress, identifierKind: 'Ethereum' }
-          ], 'production');
-          canMessage = Array.isArray(canMessageResult) ? canMessageResult[0] : !!canMessageResult;
-          console.log(`[XMTP] Can message recipient (${peerAddress})? ${canMessage}`);
-        } catch (checkErr) {
-          console.warn('[XMTP] Error checking recipient registration before send:', checkErr);
-        }
-      } else {
-        console.log(`[XMTP] Skipping canMessage check for non-Ethereum address or group: ${peerAddress}`);
-      }
-      let retries = 0;
-      const maxRetries = 3;
-      while (retries < maxRetries) {
-        try {
-          const sentMsg = await conversation.send(message);
-          // Optimistically add the sent message to the UI
-          if (sentMsg && typeof sentMsg === 'object' && 'id' in sentMsg && 'content' in sentMsg) {
-            console.log('[XMTP] Adding sent message to UI:', sentMsg);
-            safeSetMessages(prev => {
-              const newMessages = [...(prev || []), sentMsg as DecodedMessage<string>];
-              console.log('[XMTP] Updated messages array:', { 
-                previousCount: prev?.length || 0, 
-                newCount: newMessages.length,
-                newMessage: sentMsg 
-              });
-              return newMessages;
-            });
-          } else {
-            console.warn('[XMTP] Sent message is not in expected format:', sentMsg);
-          }
-          setStatus('Message sent');
-          console.log('[XMTP] ✅ Message sent successfully');
-          // Call success callback if provided
-          if (onSuccess) {
-            onSuccess();
-          }
-          return;
-        } catch (sendError) {
-          retries++;
-          const errorMessage = sendError instanceof Error ? sendError.message : String(sendError);
-          console.error(`[XMTP] Message send attempt ${retries} failed:`, sendError);
-          // Smart retry logic with resync for InboxValidationFailed
-          if (errorMessage.includes('InboxValidationFailed') && retries === maxRetries) {
-            console.log('[XMTP] InboxValidationFailed detected, forcing resync and retrying...');
-            await forceXMTPResync();
-            retries = 0;
-            continue;
-          }
-          if (retries >= maxRetries) {
-            setError('Failed to send message after retries.');
-            throw sendError;
-          }
-          // Exponential backoff
-          const delay = 1000 * Math.pow(2, retries - 1);
-          console.log(`[XMTP] Retrying in ${delay}ms...`);
-          await new Promise(resolve => setTimeout(resolve, delay));
-        }
-      }
+      const sentMsg = await conversation.send(message);
+      // On successful send, replace optimistic message with sentMsg
+      safeSetMessages(conversation.id, prev => prev.map(m => m.id === optimisticMsg.id ? sentMsg : m));
+      setStatus('Message sent');
+      if (onSuccess) onSuccess();
     } catch (err) {
-      console.error('[XMTP] Final send error:', err);
+      // On failure, set status: 'failed' on the optimistic message
+      // @ts-ignore
+      safeSetMessages(conversation.id, prev => prev.map(m => m.id === optimisticMsg.id ? { ...m, status: 'failed' } : m));
       setError('Failed to send message. Please try again.');
     }
   };
@@ -826,8 +749,8 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   useEffect(() => {
     return () => {
       conversationStreams.current.forEach((stream) => {
-        if (stream && typeof (stream as any).return === 'function') {
-          (stream as any).return();
+        if (stream && isAsyncIterator(stream) && typeof stream.return === 'function') {
+          (stream as AsyncIterableIterator<unknown>).return?.();
         }
       });
       conversationStreams.current.clear();
@@ -841,19 +764,19 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       setIsInitialized(false);
       safeSetConversations([]);
       setSelectedConversation(null);
-      safeSetMessages([]);
+      setMessages({});
       setError(null);
       setLastSyncTime(null);
       // Cleanup streams
       conversationStreams.current.forEach((stream) => {
-        if (stream && typeof (stream as any).return === 'function') {
-          (stream as any).return();
+        if (stream && isAsyncIterator(stream) && typeof stream.return === 'function') {
+          (stream as AsyncIterableIterator<unknown>).return?.();
         }
       });
       conversationStreams.current.clear();
       clientRef.current = null;
     }
-  }, [address, safeSetConversations, safeSetMessages]);
+  }, [address, safeSetConversations]);
 
   const contextValue: XMTPContextType = {
     client: clientRef.current,
@@ -863,7 +786,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     status,
     conversations: conversations || [],
     selectedConversation,
-    messages: messages || [],
+    messages: messages || {},
     sendMessage,
     createConversation,
     selectConversation,
