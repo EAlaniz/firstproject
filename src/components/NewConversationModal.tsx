@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, UserPlus, Copy } from 'lucide-react';
+import { X, UserPlus, Copy, Loader } from 'lucide-react';
 import { useXMTP } from '../contexts/XMTPContext';
 
 interface NewConversationModalProps {
@@ -8,7 +8,7 @@ interface NewConversationModalProps {
 }
 
 const NewConversationModal: React.FC<NewConversationModalProps> = ({ isOpen, onClose }) => {
-  const { createConversation, selectConversation } = useXMTP();
+  const { createConversation, selectConversation, status } = useXMTP();
   const [address, setAddress] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState('');
@@ -28,15 +28,15 @@ const NewConversationModal: React.FC<NewConversationModalProps> = ({ isOpen, onC
       
       const conversation = await createConversation(trimmedAddress);
       if (conversation) {
-        selectConversation(conversation);
+        await selectConversation(conversation);
         setAddress('');
         onClose();
       } else {
-        setError('Failed to create conversation. Please check the address and try again.');
+        setError('Failed to create conversation. The recipient may not be registered on XMTP yet.');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error creating conversation:', err);
-      setError('Failed to create conversation. Please try again.');
+      setError(err?.message || 'Failed to create conversation. Please try again.');
     } finally {
       setIsCreating(false);
     }
@@ -72,6 +72,7 @@ const NewConversationModal: React.FC<NewConversationModalProps> = ({ isOpen, onC
           <button
             onClick={onClose}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+            disabled={isCreating}
           >
             <X className="w-5 h-5" />
           </button>
@@ -99,6 +100,7 @@ const NewConversationModal: React.FC<NewConversationModalProps> = ({ isOpen, onC
                 onClick={handlePaste}
                 className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 hover:bg-gray-100 rounded transition-colors"
                 title="Paste from clipboard"
+                disabled={isCreating}
               >
                 <Copy className="w-4 h-4 text-gray-400" />
               </button>
@@ -119,17 +121,26 @@ const NewConversationModal: React.FC<NewConversationModalProps> = ({ isOpen, onC
             </div>
           )}
 
+          {isCreating && (
+            <div className="text-sm text-blue-600 bg-blue-50 p-3 sm:p-4 rounded-lg border border-blue-200 flex items-center gap-2">
+              <Loader className="w-4 h-4 animate-spin" />
+              <span>{status || 'Creating conversation...'}</span>
+            </div>
+          )}
+
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
             <button
               onClick={handleCreate}
               disabled={!isValidEthAddress(address) || isCreating}
-              className="flex-1 bg-blue-600 text-white py-3 sm:py-4 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm sm:text-base font-medium min-h-[44px]"
+              className="flex-1 bg-blue-600 text-white py-3 sm:py-4 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm sm:text-base font-medium min-h-[44px] flex items-center justify-center gap-2"
             >
+              {isCreating && <Loader className="w-4 h-4 animate-spin" />}
               {isCreating ? 'Creating...' : 'Create Conversation'}
             </button>
             <button
               onClick={onClose}
               className="px-4 py-3 sm:py-4 text-gray-600 hover:text-gray-800 transition-colors text-sm sm:text-base font-medium min-h-[44px]"
+              disabled={isCreating}
             >
               Cancel
             </button>
