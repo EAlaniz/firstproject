@@ -320,46 +320,27 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   }
 
   // Enhanced paginated conversation loading with previews
-  const loadConversations = useCallback(async (append = false) => {
+  const loadConversations = useCallback(async () => {
     if (!client) return;
     setIsLoading(true);
     setStatus('Loading conversations...');
     try {
-      if (typeof (client.conversations as any).list === 'function') {
-        const page = await (client.conversations as any).list({ pageSize: 20, cursor: append ? conversationCursor : null });
-        // Fetch latest message for each conversation for preview
-        const convosWithPreviews = await Promise.all(
-          page.conversations.map(async (conv: any) => {
-            let preview = '[No messages yet]';
-            try {
-              const msgsPage = await conv.messages({ pageSize: 1 });
-              preview = getPreviewText(msgsPage[0]);
-            } catch {}
-            return { ...conv, preview };
-          })
-        );
-        safeSetConversations(prev => append ? [...(prev || []), ...convosWithPreviews] : convosWithPreviews);
-        // Update previews state
-        setConversationPreviews(prev => {
-          const next = { ...prev };
-          for (const c of convosWithPreviews) next[c.id] = c.preview;
-          return next;
-        });
-        setConversationCursor(page.cursor || null);
-        setStatus(`Ready (${append ? ((conversations?.length || 0) + page.conversations.length) : page.conversations.length} conversations)`);
-      } else {
-        // Fallback: load all
-        const convos = await client.conversations.list();
-        safeSetConversations(convos as XMTPConversation[]);
-        setConversationCursor(null);
-        setStatus(`Ready (${convos.length} conversations)`);
-      }
+      const convos = await client.conversations.list();
+      safeSetConversations(convos as XMTPConversation[]);
+      setConversationCursor(null);
+      setStatus(`Ready (${convos.length} conversations)`);
+      console.log('[DEBUG] Loaded conversations from network:', convos);
     } catch (err) {
       setError('Failed to load conversations');
     } finally {
       setIsLoading(false);
     }
-  }, [client, conversationCursor, conversations?.length, safeSetConversations]);
+  }, [client, safeSetConversations]);
+
+  // Add debug log after setting conversations
+  useEffect(() => {
+    console.log('[DEBUG] Conversations in state after update:', conversations);
+  }, [conversations]);
 
   // Poll conversations every 10 seconds for auto-refresh
   React.useEffect(() => {
@@ -372,7 +353,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
 
   // Load more conversations (next page)
   const loadMoreConversations = async () => {
-    await loadConversations(true);
+    await loadConversations();
   };
 
   // Paginated message loading per conversation
