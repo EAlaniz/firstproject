@@ -1,18 +1,19 @@
 import React, { useEffect, useRef } from 'react';
 import { useAccount } from 'wagmi';
 import { useXMTP } from '../contexts/XMTPContext';
+import type { DecodedMessage } from '@xmtp/browser-sdk';
 
 interface MessageThreadProps {
   conversationId: string | null;
   loadMoreMessages: (conversationId: string) => void;
   messageCursors: { [convId: string]: string | null };
   isLoading: boolean;
-  onRetry?: (msg: any) => void;
+  onRetry?: (msg: DecodedMessage<string>) => void;
 }
 
 const MessageThread: React.FC<MessageThreadProps> = ({ conversationId, loadMoreMessages, messageCursors, isLoading, onRetry }) => {
   const { address } = useAccount();
-  const { messages, conversations, isSyncing, selectedConversation } = useXMTP();
+  const { messages, isSyncing, selectedConversation } = useXMTP();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Defensive: use empty array if messages is undefined/null
@@ -39,18 +40,19 @@ const MessageThread: React.FC<MessageThreadProps> = ({ conversationId, loadMoreM
   }, [threadMessages.length]);
 
   // Group messages by sender for display
-  function groupMessages(messages: any[]) {
-    const groups: { sender: string; messages: any[] }[] = [];
+  function groupMessages(messages: DecodedMessage<string>[]) {
+    const groups: { sender: string; messages: DecodedMessage<string>[] }[] = [];
     let lastSender = null;
-    let currentGroup: any = null;
+    let currentGroup: { sender: string; messages: DecodedMessage<string>[] } | null = null;
     for (const msg of messages) {
-      const msgFrom = (msg as any).from || (msg as any).senderAddress;
+      const msgFrom = (msg as DecodedMessage<string> & { from?: string; senderAddress?: string }).from || 
+                     (msg as DecodedMessage<string> & { from?: string; senderAddress?: string }).senderAddress || 'Unknown';
       if (msgFrom !== lastSender) {
         if (currentGroup) groups.push(currentGroup);
         currentGroup = { sender: msgFrom, messages: [msg] };
         lastSender = msgFrom;
       } else {
-        currentGroup.messages.push(msg);
+        currentGroup?.messages.push(msg);
       }
     }
     if (currentGroup) groups.push(currentGroup);
@@ -58,7 +60,7 @@ const MessageThread: React.FC<MessageThreadProps> = ({ conversationId, loadMoreM
   }
 
   // Message status UI
-  function renderStatus(msg: any) {
+  function renderStatus(msg: DecodedMessage<string> & { status?: string }) {
     if (msg.status === 'pending') return <span className="text-xs text-gray-400 ml-2">⏳ Sending</span>;
     if (msg.status === 'failed') return <span className="text-xs text-red-500 ml-2 cursor-pointer" onClick={() => onRetry?.(msg)}>❌ Failed — click to retry</span>;
     return null;

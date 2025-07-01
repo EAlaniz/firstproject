@@ -14,14 +14,14 @@ interface ConversationsListProps {
 }
 
 const ConversationsList: React.FC<ConversationsListProps> = ({ onSelect, onNewConversation, selectedId, loadMoreConversations, conversationCursor, isLoading, conversationPreviews, unreadConversations }) => {
-  const { conversations, messages, deleteConversation, deleteConversations, isSyncing } = useXMTP();
+  const { conversations, deleteConversation, deleteConversations, isSyncing } = useXMTP();
   const [search, setSearch] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [selectedForDeletion, setSelectedForDeletion] = useState<Set<string>>(new Set());
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
 
   // Ensure conversations is always an array
-  const safeConversations = conversations || [];
+  const safeConversations = useMemo(() => conversations || [], [conversations]);
 
   // Debug: log conversations passed to UI
   console.log('[DEBUG] Conversations passed to ConversationsList UI:', safeConversations);
@@ -31,12 +31,6 @@ const ConversationsList: React.FC<ConversationsListProps> = ({ onSelect, onNewCo
     if (!search.trim()) return safeConversations;
     return safeConversations.filter(c => c.id.toLowerCase().includes(search.toLowerCase()));
   }, [safeConversations, search]);
-
-  // Get last message for preview
-  function getLastMessage(conversationId: string) {
-    const safeMessages = messages[conversationId] || [];
-    return safeMessages.length > 0 ? safeMessages[safeMessages.length - 1].content : '';
-  }
 
   // Format address for display
   function formatAddress(address: string) {

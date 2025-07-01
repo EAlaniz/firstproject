@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useXMTP } from '../contexts/XMTPContext';
 import { getCanSendStatus } from '../utils/xmtpGroupValidation';
-import { clearXMTPIdentity, clearXMTPIdentityWithClient, createAutoSigner } from '../utils/xmtpSigner';
+import { clearXMTPIdentityWithClient, createAutoSigner } from '../utils/xmtpSigner';
 import { useWalletClient } from 'wagmi';
 
 interface XMTPDebugPanelProps {
@@ -21,7 +21,7 @@ export const XMTPDebugPanel: React.FC<XMTPDebugPanelProps> = ({ isOpen, onClose 
   
   const { data: walletClient } = useWalletClient();
   
-  const [debugInfo, setDebugInfo] = useState<any>(null);
+  const [debugInfo, setDebugInfo] = useState<Record<string, unknown> | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [clearStatus, setClearStatus] = useState<string>('');
   const [signerTestResult, setSignerTestResult] = useState<string>('');
@@ -40,11 +40,8 @@ export const XMTPDebugPanel: React.FC<XMTPDebugPanelProps> = ({ isOpen, onClose 
           id: selectedConversation.id,
           type: 'members' in selectedConversation ? 'group' : 'dm',
           hasError: 'error' in selectedConversation,
-          membershipIsPublished: 'members' in selectedConversation ? (selectedConversation as any).membershipIsPublished : 'N/A',
-          memberCount: 'members' in selectedConversation ? 
-            (Array.isArray((selectedConversation as any).members) ? 
-              (selectedConversation as any).members.length : 
-              Object.keys((selectedConversation as any).members || {}).length) : 'N/A'
+          membershipIsPublished: 'members' in selectedConversation ? (selectedConversation as unknown as { membershipIsPublished?: boolean }).membershipIsPublished ?? 'Unknown' : 'N/A',
+          memberCount: 'members' in selectedConversation ? 'Group conversation' : 'DM conversation'
         },
         canSendStatus,
         totalConversations: conversations.length,
@@ -72,7 +69,7 @@ export const XMTPDebugPanel: React.FC<XMTPDebugPanelProps> = ({ isOpen, onClose 
       // Try the built-in method first, fallback to manual clearing
       await clearXMTPIdentityWithClient();
       setClearStatus('✅ Identity cleared! Refresh the page to re-initialize.');
-    } catch (error) {
+    } catch {
       setClearStatus('❌ Failed to clear identity');
     }
   };
@@ -86,11 +83,11 @@ export const XMTPDebugPanel: React.FC<XMTPDebugPanelProps> = ({ isOpen, onClose 
     setSignerTestResult('Testing signer...');
     try {
       const signer = createAutoSigner(walletClient);
-      const chainId = await (signer as any).getChainId();
-      const address = await (signer as any).getAddress();
+      const chainId = Number((signer as unknown as { getChainId: () => bigint | Promise<bigint> }).getChainId());
+      const identifier = await (signer as unknown as { getIdentifier: () => Promise<string> }).getIdentifier();
       
-      setSignerTestResult(`✅ Signer Test Passed!\nChain ID: ${chainId}\nAddress: ${address}`);
-      console.log('🧪 Signer test successful:', { chainId, address });
+      setSignerTestResult(`✅ Signer Test Passed!\nChain ID: ${chainId}\nIdentifier: ${identifier}`);
+      console.log('🧪 Signer test successful:', { chainId, identifier });
     } catch (error) {
       setSignerTestResult(`❌ Signer Test Failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
       console.error('❌ Signer test failed:', error);

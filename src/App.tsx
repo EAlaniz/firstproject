@@ -8,10 +8,10 @@ import { XMTPDebugPanel } from './components/XMTPDebugPanel';
 import { useXMTP, XMTPProvider } from './contexts/XMTPContext';
 import type { XMTPConversation } from './contexts/XMTPContext';
 import { Activity, Trophy, Circle, MessageCircle, Menu, X, User, ExternalLink, Settings, Lock, LogOut } from 'lucide-react';
-import { isFarcasterMiniApp } from './utils/farcasterCompatibility';
 // Import the Farcaster Frame SDK for mini app splash screen control
 import { sdk } from '@farcaster/frame-sdk';
 import ConversationsList from './components/ConversationsList';
+import NewConversationModal from './components/NewConversationModal';
 import { Toaster } from 'react-hot-toast';
 
 // Add this type declaration at the top of the file
@@ -830,6 +830,14 @@ function AppContent() {
         <XMTPDebugPanel
           isOpen={showXMTPDebugPanel}
           onClose={() => setShowXMTPDebugPanel(false)}
+        />
+      )}
+
+      {/* New Conversation Modal */}
+      {isNewConversationModalOpen && (
+        <NewConversationModal
+          isOpen={isNewConversationModalOpen}
+          onClose={() => setIsNewConversationModalOpen(false)}
         />
       )}
 

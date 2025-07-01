@@ -4,20 +4,10 @@ import { Client, DecodedMessage, Dm, Group, StreamCallback } from '@xmtp/browser
 import { createAutoSigner } from '../utils/xmtpSigner';
 import { validateGroupMembership } from '../utils/xmtpGroupValidation';
 
-// Utility: Convert hex string to Uint8Array (browser-safe, no Buffer)
-function hexToBytes(hex: string): Uint8Array {
-  if (hex.startsWith('0x')) hex = hex.slice(2);
-  if (hex.length % 2 !== 0) throw new Error('Invalid hex string');
-  const bytes = new Uint8Array(hex.length / 2);
-  for (let i = 0; i < hex.length; i += 2) {
-    bytes[i / 2] = parseInt(hex.slice(i, i + 2), 16);
-  }
-  return bytes;
-}
 
 // Type guard for optional SDK methods
 function hasMethod<T>(obj: unknown, method: string): obj is T {
-  return typeof obj === 'object' && obj !== null && method in obj && typeof (obj as any)[method] === 'function';
+  return typeof obj === 'object' && obj !== null && method in obj && typeof (obj as Record<string, unknown>)[method] === 'function';
 }
 
 export type XMTPConversation = Dm<string> | Group<string>;
@@ -28,6 +18,10 @@ export interface XMTPContextType {
   isInitialized: boolean;
   isInitializing: boolean;
   error: string | null;
+  
+  // Connection state
+  isOnline: boolean;
+  reconnect: () => Promise<void>;
   
   // Conversations
   conversations: XMTPConversation[];
@@ -65,6 +59,10 @@ export interface XMTPContextType {
   // Delete a conversation by ID
   deleteConversation: (conversationId: string) => void;
   deleteConversations: (conversationIds: string[]) => void;
+  
+  // Conversation helper methods (XMTP V3 spec)
+  getConversationById: (conversationId: string) => XMTPConversation | null;
+  getConversationByPeerAddress: (peerAddress: string) => XMTPConversation | null;
 }
 
 const XMTPContext = createContext<XMTPContextType | undefined>(undefined);
@@ -131,11 +129,11 @@ export function checkClockSkew() {
 }
 
 // Activate persistent logging for deep diagnostics (works in all environments)
-if (typeof window !== 'undefined' && typeof (Client as any).activatePersistentLibXMTPLogWriter === 'function') {
+if (typeof window !== 'undefined' && typeof (Client as unknown as Record<string, unknown>).activatePersistentLibXMTPLogWriter === 'function') {
   try {
-    (Client as any).activatePersistentLibXMTPLogWriter();
+    (Client as unknown as Record<string, unknown>).activatePersistentLibXMTPLogWriter?.();
     // You can also pass a custom log writer or options if needed
-  } catch (e) {
+  } catch {
     // Ignore if not supported
   }
 }
@@ -173,14 +171,37 @@ function normalizeIdentifier(identifier: string, kind: string): string {
   return identifier.startsWith('0x') ? identifier.slice(2) : identifier;
 }
 
-// Utility to strip '0x' prefix for group member addresses
-function strip0x(address: string): string {
-  return address.startsWith('0x') ? address.slice(2) : address;
-}
 
 // Utility: JSON replacer to serialize BigInt as string
-function jsonBigIntReplacer(key: string, value: any) {
+function jsonBigIntReplacer(_key: string, value: any) {
   return typeof value === 'bigint' ? value.toString() : value;
+}
+
+// Debounced localStorage save to reduce write operations
+function useDebouncedSave(key: string, value: any, delay: number = 1000) {
+  const timeoutRef = useRef<NodeJS.Timeout>();
+  
+  useEffect(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    
+    timeoutRef.current = setTimeout(() => {
+      if (value !== null && value !== undefined) {
+        try {
+          localStorage.setItem(key, JSON.stringify(value, jsonBigIntReplacer));
+        } catch (error) {
+          console.error(`Failed to save ${key} to localStorage:`, error);
+        }
+      }
+    }, delay);
+    
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [key, value, delay]);
 }
 
 export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
@@ -215,31 +236,58 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
 
   // New states
   const [isSyncing, setIsSyncing] = useState(true);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   // Maintain a set of permanently deleted conversation IDs
   const [deletedConversationIds, setDeletedConversationIds] = useState<Set<string>>(new Set());
+  
+  // Memory management - limit stored messages per conversation
+  const MAX_MESSAGES_PER_CONVERSATION = 100;
+  const MAX_CONVERSATIONS = 50;
+  
+  // Online/offline detection
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      if (client && !isInitializing) {
+        loadConversations();
+      }
+    };
+    const handleOffline = () => setIsOnline(false);
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [client, isInitializing, loadConversations]);
 
-  // Safety wrapper for setConversations to prevent undefined
+  // Safety wrapper for setConversations to prevent undefined with memory management
   const safeSetConversations = useCallback((updater: XMTPConversation[] | ((prev: XMTPConversation[]) => XMTPConversation[])) => {
     setConversations(prev => {
       const newValue = typeof updater === 'function' ? updater(prev || []) : updater;
-      console.log('🔄 Setting conversations:', { count: newValue?.length || 0, isArray: Array.isArray(newValue) });
-      return newValue || [];
+      const limitedConversations = (newValue || []).slice(0, MAX_CONVERSATIONS); // Keep only first N conversations
+      console.log('🔄 Setting conversations:', { count: limitedConversations?.length || 0, isArray: Array.isArray(limitedConversations) });
+      return limitedConversations || [];
     });
-  }, []);
+  }, [MAX_CONVERSATIONS]);
 
-  // Safety wrapper for setMessages to prevent undefined
+  // Safety wrapper for setMessages to prevent undefined with memory management
   const safeSetMessages = useCallback((convId: string, updater: DecodedMessage<string>[] | ((prev: DecodedMessage<string>[]) => DecodedMessage<string>[])) => {
     setMessages(prev => {
       const prevMsgs = prev[convId] || [];
       const newValue = typeof updater === 'function' ? updater(prevMsgs) : updater;
-      return { ...prev, [convId]: newValue || [] };
+      const limitedMessages = (newValue || []).slice(-MAX_MESSAGES_PER_CONVERSATION); // Keep only last N messages
+      return { ...prev, [convId]: limitedMessages };
     });
-  }, []);
+  }, [MAX_MESSAGES_PER_CONVERSATION]);
 
-  // Load cached conversations on init
+  // Load cached conversations on init (wallet-specific)
   useEffect(() => {
-    const cached = localStorage.getItem('xmtp-conversations');
+    if (!address) return;
+    const cached = localStorage.getItem(`xmtp-conversations-${address}`);
     if (cached) {
       try {
         const parsed = JSON.parse(cached);
@@ -251,22 +299,22 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         console.error('Failed to parse cached conversations:', error);
       }
     }
-  }, [safeSetConversations]);
+  }, [safeSetConversations, address]);
 
-  // Save conversations to cache
-  useEffect(() => {
-    if (!conversations || !conversations.length) return;
-    localStorage.setItem('xmtp-conversations', JSON.stringify(conversations));
-    setIsSyncing(false);
-  }, [conversations]);
+  // Debounced save for conversations
+  useDebouncedSave(
+    address ? `xmtp-conversations-${address}` : '', 
+    conversations?.length ? conversations : null, 
+    500
+  );
 
-  // Load cached messages for all conversations on init
+  // Load cached messages for all conversations on init (wallet-specific)
   useEffect(() => {
-    if (!conversations || !conversations.length) return;
+    if (!conversations || !conversations.length || !address) return;
     let loadedAny = false;
     const allMessages: { [convId: string]: DecodedMessage<string>[] } = {};
     conversations.forEach((conv) => {
-      const cached = localStorage.getItem(`xmtp-messages-${conv.id}`);
+      const cached = localStorage.getItem(`xmtp-messages-${address}-${conv.id}`);
       if (cached) {
         try {
           const parsed = JSON.parse(cached);
@@ -284,53 +332,57 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       setMessages((prev) => ({ ...allMessages, ...prev }));
       setIsSyncing(true);
     }
-  }, [conversations]);
+  }, [conversations, address]);
 
-  // Persist messages for all conversations whenever messages state changes
+  // Debounced save for messages (only save when messages are updated)
   useEffect(() => {
-    if (!messages) return;
-    Object.entries(messages).forEach(([convId, msgs]) => {
-      if (Array.isArray(msgs) && msgs.length > 0) {
-        try {
-          // Use custom replacer to handle BigInt serialization
-          localStorage.setItem(`xmtp-messages-${convId}`, JSON.stringify(msgs, jsonBigIntReplacer));
-          console.log(`[XMTP] Persisted ${msgs.length} messages for conversation ${convId}`);
-        } catch (error) {
-          console.error(`[XMTP] Failed to persist messages for conversation ${convId}:`, error);
+    if (!messages || !address) return;
+    const saveMessages = () => {
+      Object.entries(messages).forEach(([convId, msgs]) => {
+        if (Array.isArray(msgs) && msgs.length > 0) {
+          try {
+            localStorage.setItem(`xmtp-messages-${address}-${convId}`, JSON.stringify(msgs, jsonBigIntReplacer));
+          } catch (error) {
+            console.error(`[XMTP] Failed to persist messages for conversation ${convId}:`, error);
+          }
         }
-      }
-    });
-    setIsSyncing(false);
-  }, [messages]);
+      });
+      setIsSyncing(false);
+    };
+    const timeoutId = setTimeout(saveMessages, 1000);
+    return () => clearTimeout(timeoutId);
+  }, [messages, address]);
 
-  // Save/restore selectedConversation.id
+  // Save/restore selectedConversation.id (wallet-specific)
   useEffect(() => {
-    if (selectedConversation) {
-      localStorage.setItem('selected-convo', selectedConversation.id);
+    if (selectedConversation && address) {
+      localStorage.setItem(`selected-convo-${address}`, selectedConversation.id);
     }
-  }, [selectedConversation]);
+  }, [selectedConversation, address]);
   useEffect(() => {
-    const cached = localStorage.getItem('selected-convo');
+    if (!address) return;
+    const cached = localStorage.getItem(`selected-convo-${address}`);
     if (cached && conversations && conversations.length) {
       const match = conversations.find(c => c.id === cached);
       if (match) setSelectedConversation(match);
     }
-  }, [conversations]);
+  }, [conversations, address]);
 
-  // Load deleted conversation IDs from localStorage on mount
+  // Load deleted conversation IDs from localStorage on mount (wallet-specific)
   useEffect(() => {
-    const deleted = localStorage.getItem('xmtp-deleted-conversations');
+    if (!address) return;
+    const deleted = localStorage.getItem(`xmtp-deleted-conversations-${address}`);
     if (deleted) {
       setDeletedConversationIds(new Set(JSON.parse(deleted)));
     }
-  }, []);
+  }, [address]);
 
-  // Save deleted conversation IDs to localStorage whenever they change
-  useEffect(() => {
-    if (deletedConversationIds.size > 0) {
-      localStorage.setItem('xmtp-deleted-conversations', JSON.stringify([...deletedConversationIds]));
-    }
-  }, [deletedConversationIds]);
+  // Debounced save for deleted conversation IDs
+  useDebouncedSave(
+    address ? `xmtp-deleted-conversations-${address}` : '',
+    deletedConversationIds.size > 0 ? [...deletedConversationIds] : null,
+    500
+  );
 
   // Filter out deleted conversations during sync
   useEffect(() => {
@@ -339,14 +391,6 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     }
   }, [client, conversations, deletedConversationIds]);
 
-  // Helper to get preview text for a message
-  function getPreviewText(msg: any): string {
-    if (!msg) return '[No messages yet]';
-    if (msg.contentType?.typeId === 'image') return '[Image]';
-    if (msg.contentType?.typeId === 'attachment') return '[Attachment]';
-    if (typeof msg.content === 'string') return msg.content.slice(0, 70);
-    return '[Unsupported]';
-  }
 
   // Enhanced paginated conversation loading with previews
   const loadConversations = useCallback(async () => {
@@ -354,31 +398,43 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     setIsLoading(true);
     setStatus('Loading conversations...');
     try {
-      const convos = await client.conversations.list();
-      safeSetConversations(convos as XMTPConversation[]);
+      // Load conversations (try with consent filter, fallback to all)
+      let convos;
+      try {
+        convos = await client.conversations.list({ consentState: 'allowed' });
+      } catch {
+        // Fallback for older API
+        convos = await client.conversations.list();
+      }
+      // Filter out deleted conversations
+      const filteredConvos = convos.filter(c => !deletedConversationIds.has(c.id));
+      safeSetConversations(filteredConvos as XMTPConversation[]);
       setConversationCursor(null);
-      setStatus(`Ready (${convos.length} conversations)`);
-      console.log('[DEBUG] Loaded conversations from network:', convos);
-    } catch (err) {
+      setStatus(`Ready (${filteredConvos.length} conversations)`);
+      console.log('[DEBUG] Loaded conversations from network:', filteredConvos);
+    } catch {
       setError('Failed to load conversations');
     } finally {
       setIsLoading(false);
     }
-  }, [client, safeSetConversations]);
+  }, [client, safeSetConversations, deletedConversationIds]);
 
   // Add debug log after setting conversations
   useEffect(() => {
     console.log('[DEBUG] Conversations in state after update:', conversations);
   }, [conversations]);
 
-  // Poll conversations every 10 seconds for auto-refresh
+  // Reduced polling frequency for better performance
   React.useEffect(() => {
     if (!client) return;
     const interval = setInterval(() => {
-      loadConversations();
-    }, 10000);
+      // Only poll if not currently loading to prevent overlapping requests
+      if (!isLoading) {
+        loadConversations();
+      }
+    }, 30000); // Reduced from 10s to 30s
     return () => clearInterval(interval);
-  }, [client, loadConversations]);
+  }, [client, loadConversations, isLoading]);
 
   // Load more conversations (next page)
   const loadMoreConversations = async () => {
@@ -462,7 +518,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
 
       // Dev-friendly state clearing via query param
       if (import.meta.env.DEV && window.location.search.includes('clearXMTP')) {
-        await indexedDB.deleteDatabase('xmtp-encrypted-store');
+        indexedDB.deleteDatabase('xmtp-encrypted-store');
         console.log('[DEV] XMTP IndexedDB cleared via query param');
       }
 
@@ -515,16 +571,16 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       console.log('🔍 Creating XMTP-compatible signer for address:', walletClient.account.address);
       console.log('✅ XMTP signer created successfully');
       
-      // --- Official Inbox App: historySyncUrl, loggingLevel, dbEncryptionKey, dbPath ---
-      // TODO: If you want to use a custom dbEncryptionKey/dbPath, add them here and persist across sessions
-      const historySyncUrl = 'https://prod.protocol.xmtp.network/history/v2'; // Official default, can be customized
+      // Enhanced client configuration for production
       const createPromise = Client.create(signer, {
         env: 'production',
         codecs: [],
-        historySyncUrl,
-        loggingLevel: 'debug',
-        // dbEncryptionKey: '...', // Uncomment and persist if you want encrypted DB
-        // dbPath: '...', // Uncomment and persist if you want custom DB path
+        // Note: dbEncryptionKey is not used for encryption in browser environments
+        loggingLevel: import.meta.env.DEV ? 'debug' : 'warn',
+        performanceLogging: import.meta.env.DEV,
+        structuredLogging: true,
+        // historySyncUrl can be overridden if needed
+        // historySyncUrl: 'https://prod.protocol.xmtp.network/history/v2',
       });
       
       console.log('✅ Client.create() promise created, waiting for signature...');
@@ -543,42 +599,48 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         env: 'production'
       });
       
-      // --- Official Inbox App: Always await conversations.list() before ready ---
-      setStatus('Syncing conversations...');
-      await xmtpClient.conversations.list();
-      setStatus('Conversations synced.');
-      
       clientRef.current = xmtpClient;
       setClient(xmtpClient);
       setIsInitialized(true);
       setStatus('XMTP ready');
-
-      // Comprehensive sync strategy
-      console.log('[XMTP] Starting comprehensive sync...');
-      const syncStartTime = Date.now();
       
-      console.log('⏳ Waiting for device sync to complete...');
-      if (hasMethod<{ waitForDeviceSync: () => Promise<void> }>(xmtpClient, 'waitForDeviceSync')) {
-        await xmtpClient.waitForDeviceSync();
-        console.log('✅ Device sync completed');
-      }
-      
-      if (hasMethod<{ conversations: { sync: () => Promise<void> } }>(xmtpClient, 'conversations') &&
-          hasMethod<{ sync: () => Promise<void> }>(xmtpClient.conversations, 'sync')) {
-        await xmtpClient.conversations.sync();
-        console.log('[XMTP] ✅ Conversation sync completed');
-      }
-      
-      if (hasMethod<{ messages: { sync: () => Promise<void> } }>(xmtpClient, 'messages') &&
-          hasMethod<{ sync: () => Promise<void> }>(xmtpClient.messages, 'sync')) {
-        await xmtpClient.messages.sync();
-        console.log('[XMTP] ✅ Message sync completed');
-      }
-      
-      const syncDuration = Date.now() - syncStartTime;
+      // Lightweight initialization - defer sync to background
       setLastSyncTime(new Date());
-      console.log(`[XMTP] ✅ Comprehensive sync completed in ${syncDuration}ms`);
       console.log('✅ XMTP context initialized successfully');
+      
+      // Perform sync in background without blocking
+      setTimeout(async () => {
+        try {
+          console.log('[XMTP] Starting background sync...');
+          const syncStartTime = Date.now();
+          
+          if (hasMethod<{ waitForDeviceSync: () => Promise<void> }>(xmtpClient, 'waitForDeviceSync')) {
+            await xmtpClient.waitForDeviceSync();
+            console.log('✅ Device sync completed');
+          }
+          
+          // Use syncAll for comprehensive sync (conversations, messages, preferences)
+          if (hasMethod<{ conversations: { syncAll: (options?: { consentState?: string }) => Promise<void> } }>(xmtpClient, 'conversations') &&
+              hasMethod<{ syncAll: (options?: { consentState?: string }) => Promise<void> }>(xmtpClient.conversations, 'syncAll')) {
+            try {
+              await xmtpClient.conversations.syncAll({ consentState: 'allowed' });
+            } catch {
+              await xmtpClient.conversations.syncAll();
+            }
+            console.log('[XMTP] ✅ Comprehensive sync (conversations, messages, preferences) completed');
+          } else if (hasMethod<{ conversations: { sync: () => Promise<void> } }>(xmtpClient, 'conversations') &&
+              hasMethod<{ sync: () => Promise<void> }>(xmtpClient.conversations, 'sync')) {
+            await xmtpClient.conversations.sync();
+            console.log('[XMTP] ✅ Conversation sync completed');
+          }
+          
+          const syncDuration = Date.now() - syncStartTime;
+          setLastSyncTime(new Date());
+          console.log(`[XMTP] ✅ Background sync completed in ${syncDuration}ms`);
+        } catch (error) {
+          console.warn('[XMTP] Background sync failed (non-critical):', error);
+        }
+      }, 100);
       
       // NEW: Validate group membership for the current user
       try {
@@ -609,12 +671,6 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     }
   };
 
-  // Mark conversation as read
-  async function markConversationAsRead(conversation: any) {
-    if (typeof conversation.markAsRead === 'function') {
-      try { await conversation.markAsRead(); } catch {}
-    }
-  }
 
   // Update selectConversation to mark as read and clear unread
   const selectConversation = async (conversation: XMTPConversation) => {
@@ -638,7 +694,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       
       // Close previous stream if exists
       if (conversationStreams.current.size > 0) {
-        conversationStreams.current.forEach((stream, id) => {
+        conversationStreams.current.forEach((stream) => {
           if (isAsyncIterator(stream) && typeof stream.return === 'function') stream.return?.();
         });
         conversationStreams.current.clear();
@@ -709,20 +765,20 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       setStatus('Preparing to send...');
       const sentMsg = await conversation.send(message);
       // On successful send, replace optimistic message with sentMsg
-      safeSetMessages(conversation.id, prev => prev.map(m => m.id === optimisticMsg.id ? sentMsg : m));
+      safeSetMessages(conversation.id, prev => prev.map(m => m.id === optimisticMsg.id ? sentMsg : m) as DecodedMessage<string>[]);
       setStatus('Message sent');
       if (onSuccess) onSuccess();
-    } catch (err) {
+    } catch {
       // On failure, remove the optimistic message and add a failed one as a plain object
       safeSetMessages(conversation.id, prev => [
-        ...prev.filter(m => typeof m === 'object' && m !== null && m.id !== optimisticMsg.id),
+        ...prev.filter((m): m is DecodedMessage<string> => typeof m === 'object' && m !== null && m.id !== optimisticMsg.id),
         { ...optimisticMsg, status: 'failed' } as DecodedMessage<string>
       ]);
       setError('Failed to send message. Please try again.');
     }
   };
 
-  const createConversation = async (recipientAddress: string, retrying = false): Promise<XMTPConversation | null> => {
+  const createConversation = async (recipientAddress: string): Promise<XMTPConversation | null> => {
     if (!client) {
       setError('XMTP not initialized');
       return null;
@@ -748,22 +804,60 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         setError('Recipient is not registered on XMTP. They need to initialize XMTP first.');
         return null;
       }
-      // DM creation only
+      
+      // Try to get the inboxId for the recipient first (V3 pattern)
       let conversation;
-      if (hasMethod<{ newConversation: (addr: string) => Promise<unknown> }>(client.conversations, 'newConversation')) {
-        conversation = await (client.conversations as any).newConversation(normalizedRecipient);
-      } else if (hasMethod<{ newDm: (addr: string) => Promise<unknown> }>(client.conversations, 'newDm')) {
-        conversation = await (client.conversations as any).newDm(normalizedRecipient);
-      } else if (hasMethod<{ newDmWithIdentifier: (opts: { identifier: string, identifierKind: string }) => Promise<unknown> }>(client.conversations, 'newDmWithIdentifier')) {
-        conversation = await (client.conversations as any).newDmWithIdentifier({
-          identifier: normalizedRecipient,
-          identifierKind: 'Ethereum',
+      try {
+        // First try to find existing conversation by address
+        let existingConversations;
+        try {
+          existingConversations = await client.conversations.list({ consentState: 'allowed' });
+        } catch {
+          existingConversations = await client.conversations.list();
+        }
+        const existing = existingConversations.find(conv => {
+          // Check if this conversation involves the recipient
+          // Handle both DM and Group types
+          if ('peerAddress' in conv) {
+            return conv.peerAddress?.toLowerCase() === normalizedRecipient.toLowerCase();
+          }
+          return false;
         });
-      } else {
-        setError('No valid method found to create DM conversation');
+        
+        if (existing) {
+          console.log(`[XMTP] Found existing conversation with: ${normalizedRecipient}`);
+          await selectConversation(existing as XMTPConversation);
+          setStatus('Conversation selected');
+          return existing as XMTPConversation;
+        }
+        
+        // Create new conversation using V3 pattern
+        if (hasMethod<{ findOrCreateDm: (recipientInboxIdOrAddress: string) => Promise<unknown> }>(client.conversations, 'findOrCreateDm')) {
+          // V3 preferred method - try with address (XMTP will resolve to inboxId)
+          conversation = await (client.conversations as any).findOrCreateDm(normalizedRecipient);
+          console.log(`[XMTP] Created new DM conversation using findOrCreateDm with: ${normalizedRecipient}`);
+        } else if (hasMethod<{ newDmWithIdentifier: (opts: { identifier: string, identifierKind: string }) => Promise<unknown> }>(client.conversations, 'newDmWithIdentifier')) {
+          conversation = await (client.conversations as any).newDmWithIdentifier({
+            identifier: normalizedRecipient,
+            identifierKind: 'Ethereum',
+          });
+          console.log(`[XMTP] Created new DM conversation using newDmWithIdentifier with: ${normalizedRecipient}`);
+        } else if (hasMethod<{ newDm: (addr: string) => Promise<unknown> }>(client.conversations, 'newDm')) {
+          conversation = await (client.conversations as any).newDm(normalizedRecipient);
+          console.log(`[XMTP] Created new DM conversation using newDm with: ${normalizedRecipient}`);
+        } else if (hasMethod<{ newConversation: (addr: string) => Promise<unknown> }>(client.conversations, 'newConversation')) {
+          conversation = await (client.conversations as any).newConversation(normalizedRecipient);
+          console.log(`[XMTP] Created new DM conversation using newConversation with: ${normalizedRecipient}`);
+        } else {
+          setError('No valid method found to create DM conversation');
+          return null;
+        }
+      } catch (creationError) {
+        console.error('[XMTP] Failed to create conversation:', creationError);
+        setError('Failed to create conversation. The recipient may not be reachable on XMTP V3.');
         return null;
       }
-      console.log(`[XMTP] Created new DM conversation with: ${normalizedRecipient}`);
+      
       safeSetConversations(prev => [...(prev || []), conversation as XMTPConversation]);
       await selectConversation(conversation as XMTPConversation);
       setStatus('Conversation created');
@@ -824,23 +918,91 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     }
   };
 
-  // Always stream messages for all conversations in the list
+  // Global message streaming for all conversations (production pattern)
   useEffect(() => {
-    if (!client || !conversations || !conversations.length) return;
-    // Track active streams by conversation ID
-    const activeStreams = new Map<string, any>();
+    if (!client) return;
+    
     let cancelled = false;
+    let globalMessageStream: any = null;
 
-    conversations.forEach(async (conv) => {
-      if (conversationStreams.current.has(conv.id)) return; // Already streaming
+    const setupGlobalStreaming = async () => {
+      try {
+        // Stream all messages from all conversations
+        try {
+          globalMessageStream = await client.conversations.streamAllMessages({ consentState: 'allowed' });
+        } catch {
+          // Fallback for older API
+          globalMessageStream = await client.conversations.streamAllMessages();
+        }
+        
+        // Process messages in async iterator pattern
+        (async () => {
+          try {
+            for await (const message of globalMessageStream) {
+              if (cancelled) break;
+              
+              if (message && message.conversationId) {
+                safeSetMessages(message.conversationId, (prev: DecodedMessage<string>[]) => {
+                  // Deduplicate by message ID
+                  if (prev.some((m: DecodedMessage<string>) => m.id === message.id)) return prev;
+                  const result = [...prev, message];
+                  return result.filter((m: DecodedMessage<string>): m is DecodedMessage<string> => 
+                    typeof m === 'object' && m !== null
+                  );
+                });
+                
+                // Update unread conversations if not currently selected
+                if (!selectedConversation || message.conversationId !== selectedConversation.id) {
+                  setUnreadConversations(prev => {
+                    const next = new Set(prev);
+                    next.add(message.conversationId);
+                    return next;
+                  });
+                }
+              }
+            }
+          } catch (streamError) {
+            if (!cancelled) {
+              console.error('[XMTP] Global message stream error:', streamError);
+            }
+          }
+        })();
+        
+        console.log('[XMTP] ✅ Global message streaming started');
+      } catch (error) {
+        console.error('[XMTP] Failed to start global message stream:', error);
+      }
+    };
+
+    setupGlobalStreaming();
+
+    return () => {
+      cancelled = true;
+      if (globalMessageStream && typeof globalMessageStream.return === 'function') {
+        globalMessageStream.return?.();
+      }
+    };
+  }, [client, safeSetMessages, selectedConversation]);
+
+  // Individual conversation streaming for selected conversation  
+  useEffect(() => {
+    if (!client || !selectedConversation) return;
+    
+    let cancelled = false;
+    let activeStream: any = null;
+
+    const setupStream = async () => {
+      if (conversationStreams.current.has(selectedConversation.id)) return; // Already streaming
+      
       try {
         const messageCallback: StreamCallback<DecodedMessage<string>> = (err, message) => {
+          if (cancelled) return;
           if (err) {
             console.error('Error in message stream:', err);
             return;
           }
           if (message) {
-            safeSetMessages(conv.id, (prev: DecodedMessage<string>[]) => {
+            safeSetMessages(selectedConversation.id, (prev: DecodedMessage<string>[]) => {
               // Deduplicate by message ID
               if (prev.some((m: DecodedMessage<string>) => m.id === message.id)) return prev;
               // Only return DecodedMessage<string> objects
@@ -849,42 +1011,32 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
             });
           }
         };
-        if (hasMethod<{ streamMessages: (cb: StreamCallback<DecodedMessage<string>>) => Promise<unknown> }>(conv, 'streamMessages')) {
-          const stream = await conv.streamMessages(messageCallback);
-          conversationStreams.current.set(conv.id, stream);
-          activeStreams.set(conv.id, stream);
-        } else if (hasMethod<{ stream: (cb: StreamCallback<DecodedMessage<string>>) => Promise<unknown> }>(conv, 'stream')) {
-          const stream = await conv.stream(messageCallback);
-          conversationStreams.current.set(conv.id, stream);
-          activeStreams.set(conv.id, stream);
+        
+        if (hasMethod<{ streamMessages: (cb: StreamCallback<DecodedMessage<string>>) => Promise<unknown> }>(selectedConversation, 'streamMessages')) {
+          activeStream = await selectedConversation.streamMessages(messageCallback);
+          conversationStreams.current.set(selectedConversation.id, activeStream);
+        } else if (hasMethod<{ stream: (cb: StreamCallback<DecodedMessage<string>>) => Promise<unknown> }>(selectedConversation, 'stream')) {
+          activeStream = await selectedConversation.stream(messageCallback);
+          conversationStreams.current.set(selectedConversation.id, activeStream);
         }
       } catch (err) {
-        console.error('Failed to start message stream for conversation', conv.id, err);
+        console.error('Failed to start message stream for conversation', selectedConversation.id, err);
       }
-    });
-
-    // Cleanup streams for conversations that are no longer present
-    conversationStreams.current.forEach((stream, id) => {
-      if (!conversations.find(c => c.id === id)) {
-        if (stream && isAsyncIterator(stream) && typeof stream.return === 'function') {
-          (stream as AsyncIterableIterator<unknown>).return?.();
-        }
-        conversationStreams.current.delete(id);
-      }
-    });
-
-    // Cleanup all on unmount
-    return () => {
-      if (cancelled) return;
-      cancelled = true;
-      activeStreams.forEach((stream, id) => {
-        if (stream && isAsyncIterator(stream) && typeof stream.return === 'function') {
-          (stream as AsyncIterableIterator<unknown>).return?.();
-        }
-        conversationStreams.current.delete(id);
-      });
     };
-  }, [client, conversations, safeSetMessages]);
+
+    setupStream();
+
+    // Cleanup on unmount or conversation change
+    return () => {
+      cancelled = true;
+      if (activeStream && isAsyncIterator(activeStream) && typeof activeStream.return === 'function') {
+        (activeStream as AsyncIterableIterator<unknown>).return?.();
+      }
+      if (selectedConversation) {
+        conversationStreams.current.delete(selectedConversation.id);
+      }
+    };
+  }, [client, selectedConversation, safeSetMessages]);
 
   // Reset state when address changes
   useEffect(() => {
@@ -896,6 +1048,9 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       setMessages({});
       setError(null);
       setLastSyncTime(null);
+      setDeletedConversationIds(new Set());
+      setConversationPreviews({});
+      setUnreadConversations(new Set());
       // Cleanup streams
       conversationStreams.current.forEach((stream) => {
         if (stream && isAsyncIterator(stream) && typeof stream.return === 'function') {
@@ -919,8 +1074,10 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       return newMsgs;
     });
 
-    // Clear from localStorage
-    localStorage.removeItem(`xmtp-messages-${conversationId}`);
+    // Clear from localStorage (wallet-specific)
+    if (address) {
+      localStorage.removeItem(`xmtp-messages-${address}-${conversationId}`);
+    }
     
     // Add to deleted set to prevent reappearing
     setDeletedConversationIds(prev => new Set([...prev, conversationId]));
@@ -934,7 +1091,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       delete newPreviews[conversationId];
       return newPreviews;
     });
-  }, []);
+  }, [address, safeSetConversations]);
 
   // Enhanced delete multiple conversations
   const deleteConversations = useCallback((conversationIds: string[]) => {
@@ -948,8 +1105,10 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       return newMsgs;
     });
     
-    // Clear from localStorage
-    conversationIds.forEach(id => localStorage.removeItem(`xmtp-messages-${id}`));
+    // Clear from localStorage (wallet-specific)
+    if (address) {
+      conversationIds.forEach(id => localStorage.removeItem(`xmtp-messages-${address}-${id}`));
+    }
     
     // Add all to deleted set
     setDeletedConversationIds(prev => new Set([...prev, ...conversationIds]));
@@ -963,13 +1122,53 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       conversationIds.forEach(id => { delete newPreviews[id]; });
       return newPreviews;
     });
-  }, []);
+  }, [address, safeSetConversations]);
+
+  // Reconnect function
+  const reconnect = useCallback(async () => {
+    if (!isOnline) {
+      setError('No internet connection. Please check your network.');
+      return;
+    }
+    
+    try {
+      setError(null);
+      if (client) {
+        await loadConversations();
+        if (selectedConversation) {
+          await loadMessages(selectedConversation.id);
+        }
+      } else {
+        await initializeClient();
+      }
+    } catch (error) {
+      console.error('Reconnection failed:', error);
+      setError('Failed to reconnect. Please try again.');
+    }
+  }, [isOnline, client, selectedConversation, loadConversations, loadMessages, initializeClient]);
+
+  // Conversation helper methods (following XMTP V3 spec)
+  const getConversationById = useCallback((conversationId: string): XMTPConversation | null => {
+    return conversations?.find(c => c.id === conversationId) || null;
+  }, [conversations]);
+
+  const getConversationByPeerAddress = useCallback((peerAddress: string): XMTPConversation | null => {
+    const normalizedAddress = peerAddress.toLowerCase();
+    return conversations?.find(c => {
+      if ('peerAddress' in c && c.peerAddress && typeof c.peerAddress === 'string') {
+        return c.peerAddress.toLowerCase() === normalizedAddress;
+      }
+      return false;
+    }) || null;
+  }, [conversations]);
 
   const contextValue: XMTPContextType = {
     client: clientRef.current,
     isInitialized,
     isInitializing,
     error,
+    isOnline,
+    reconnect,
     status,
     conversations: conversations || [],
     selectedConversation,
@@ -992,6 +1191,9 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     isSyncing,
     deleteConversation,
     deleteConversations,
+    // Helper methods
+    getConversationById,
+    getConversationByPeerAddress,
   };
 
   return (

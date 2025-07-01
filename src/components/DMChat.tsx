@@ -1,16 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { useAccount } from 'wagmi';
 import { useXMTP } from '../contexts/XMTPContext';
 import MessageInput from './MessageInput';
 import MessageThread from './MessageThread';
+import type { DecodedMessage } from '@xmtp/browser-sdk';
 
 interface DMChatProps {
   conversationId: string;
-  onRetry?: (msg: any) => void;
+  onRetry?: (msg: DecodedMessage<string>) => void;
 }
 
 const DMChat: React.FC<DMChatProps> = ({ conversationId, onRetry }) => {
-  const { address } = useAccount();
   const { conversations, loadMoreMessages, messageCursors, isLoading, sendMessage } = useXMTP();
   const [isSending, setIsSending] = useState(false);
   const [isSynced, setIsSynced] = useState(false);
@@ -25,14 +24,14 @@ const DMChat: React.FC<DMChatProps> = ({ conversationId, onRetry }) => {
     async function syncConversation() {
       setIsSynced(false);
       setSyncStatus('Syncing messages...');
-      if (conversation && typeof (conversation as any).sync === 'function') {
+      if (conversation && typeof (conversation as unknown as { sync?: () => Promise<void> }).sync === 'function') {
         try {
-          await (conversation as any).sync();
+          await (conversation as unknown as { sync: () => Promise<void> }).sync();
           if (!cancelled) {
             setIsSynced(true);
             setSyncStatus('Synced');
           }
-        } catch (err) {
+        } catch {
           if (!cancelled) {
             setSyncStatus('Failed to sync');
             setIsSynced(false);

@@ -1,10 +1,11 @@
 import React from 'react';
 import { useXMTP } from '../contexts/XMTPContext';
 import DMChat from './DMChat';
+import type { DecodedMessage } from '@xmtp/browser-sdk';
 
 interface ChatToggleProps {
   conversationId: string | null;
-  onRetry?: (msg: any) => void;
+  onRetry?: (msg: DecodedMessage<string>) => void;
 }
 
 const ChatToggle: React.FC<ChatToggleProps> = ({ conversationId, onRetry }) => {

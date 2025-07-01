@@ -18,7 +18,7 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSend, disabled = false, c
     try {
       await onSend(text.trim());
       setText('');
-    } catch (err) {
+    } catch {
       setError('Failed to send message. Please try again.');
     }
     setIsSending(false);

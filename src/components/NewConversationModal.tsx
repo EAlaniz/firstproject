@@ -37,9 +37,9 @@ const NewConversationModal: React.FC<NewConversationModalProps> = ({ isOpen, onC
         setError('Failed to create conversation. The recipient may not be registered on XMTP yet.');
         setIsCreating(false);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error creating conversation:', err);
-      setError(err?.message || 'Failed to create conversation. Please try again.');
+      setError(err instanceof Error ? err.message : 'Failed to create conversation. Please try again.');
       setIsCreating(false);
     }
   };

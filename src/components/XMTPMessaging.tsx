@@ -43,7 +43,7 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
   };
 
   // Handle message retry (for failed messages)
-  const handleRetry = (msg: any) => {
+  const handleRetry = (msg: { content?: string; id: string }) => {
     console.log('Retrying message:', msg);
     // This could be implemented to retry failed messages
     // For now, just log the attempt

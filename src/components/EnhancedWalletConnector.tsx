@@ -3,13 +3,9 @@ import { useAccount, useDisconnect, useConnect } from 'wagmi'
 import { getWalletClient } from '@wagmi/core'
 import type { WalletClient } from 'viem'
 import {
-  Monitor,
-  Smartphone,
   User,
-  LogOut,
-  Zap
+  LogOut
 } from 'lucide-react'
-import { isFarcasterMiniApp } from '../utils/farcasterCompatibility'
 import { wagmiConfig } from '../../wagmi.config'
 
 interface EnhancedWalletConnectorProps {
@@ -21,7 +17,6 @@ interface EnhancedWalletConnectorProps {
 
 export const EnhancedWalletConnector: React.FC<EnhancedWalletConnectorProps> = ({
   className = '',
-  children = null,
   onOpenModal,
   onWalletClientReady
 }) => {
