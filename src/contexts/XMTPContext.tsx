@@ -245,25 +245,6 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   const MAX_MESSAGES_PER_CONVERSATION = 100;
   const MAX_CONVERSATIONS = 50;
   
-  // Online/offline detection
-  useEffect(() => {
-    const handleOnline = () => {
-      setIsOnline(true);
-      if (client && !isInitializing) {
-        loadConversations();
-      }
-    };
-    const handleOffline = () => setIsOnline(false);
-    
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, [client, isInitializing, loadConversations]);
-
   // Safety wrapper for setConversations to prevent undefined with memory management
   const safeSetConversations = useCallback((updater: XMTPConversation[] | ((prev: XMTPConversation[]) => XMTPConversation[])) => {
     setConversations(prev => {
@@ -283,6 +264,46 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       return { ...prev, [convId]: limitedMessages };
     });
   }, [MAX_MESSAGES_PER_CONVERSATION]);
+  
+  // Enhanced paginated conversation loading with previews
+  const loadConversations = useCallback(async () => {
+    if (!client) return;
+    setIsLoading(true);
+    setStatus('Loading conversations...');
+    try {
+      // Load conversations
+      const convos = await client.conversations.list();
+      // Filter out deleted conversations
+      const filteredConvos = convos.filter(c => !deletedConversationIds.has(c.id));
+      safeSetConversations(filteredConvos as XMTPConversation[]);
+      setConversationCursor(null);
+      setStatus(`Ready (${filteredConvos.length} conversations)`);
+      console.log('[DEBUG] Loaded conversations from network:', filteredConvos);
+    } catch {
+      setError('Failed to load conversations');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [client, safeSetConversations, deletedConversationIds]);
+
+  // Online/offline detection
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      if (client && !isInitializing) {
+        loadConversations();
+      }
+    };
+    const handleOffline = () => setIsOnline(false);
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [client, isInitializing, loadConversations]);
 
   // Load cached conversations on init (wallet-specific)
   useEffect(() => {
@@ -390,34 +411,6 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       safeSetConversations(prev => prev.filter(c => !deletedConversationIds.has(c.id)));
     }
   }, [client, conversations, deletedConversationIds]);
-
-
-  // Enhanced paginated conversation loading with previews
-  const loadConversations = useCallback(async () => {
-    if (!client) return;
-    setIsLoading(true);
-    setStatus('Loading conversations...');
-    try {
-      // Load conversations (try with consent filter, fallback to all)
-      let convos;
-      try {
-        convos = await client.conversations.list({ consentState: 'allowed' });
-      } catch {
-        // Fallback for older API
-        convos = await client.conversations.list();
-      }
-      // Filter out deleted conversations
-      const filteredConvos = convos.filter(c => !deletedConversationIds.has(c.id));
-      safeSetConversations(filteredConvos as XMTPConversation[]);
-      setConversationCursor(null);
-      setStatus(`Ready (${filteredConvos.length} conversations)`);
-      console.log('[DEBUG] Loaded conversations from network:', filteredConvos);
-    } catch {
-      setError('Failed to load conversations');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [client, safeSetConversations, deletedConversationIds]);
 
   // Add debug log after setting conversations
   useEffect(() => {
@@ -810,16 +803,13 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       try {
         // First try to find existing conversation by address
         let existingConversations;
-        try {
-          existingConversations = await client.conversations.list({ consentState: 'allowed' });
-        } catch {
-          existingConversations = await client.conversations.list();
-        }
+        // Load conversations without consent filtering for simplicity
+        existingConversations = await client.conversations.list();
         const existing = existingConversations.find(conv => {
           // Check if this conversation involves the recipient
           // Handle both DM and Group types
-          if ('peerAddress' in conv) {
-            return conv.peerAddress?.toLowerCase() === normalizedRecipient.toLowerCase();
+          if ('peerAddress' in conv && conv.peerAddress && typeof conv.peerAddress === 'string') {
+            return conv.peerAddress.toLowerCase() === normalizedRecipient.toLowerCase();
           }
           return false;
         });
@@ -928,12 +918,8 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     const setupGlobalStreaming = async () => {
       try {
         // Stream all messages from all conversations
-        try {
-          globalMessageStream = await client.conversations.streamAllMessages({ consentState: 'allowed' });
-        } catch {
-          // Fallback for older API
-          globalMessageStream = await client.conversations.streamAllMessages();
-        }
+        // Stream all messages without consent filtering for now
+        globalMessageStream = await client.conversations.streamAllMessages();
         
         // Process messages in async iterator pattern
         (async () => {
