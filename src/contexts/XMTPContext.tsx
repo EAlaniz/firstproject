@@ -252,7 +252,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     setConversations(prev => {
       const newValue = typeof updater === 'function' ? updater(prev || []) : updater;
       const limitedConversations = (newValue || []).slice(0, MAX_CONVERSATIONS); // Keep only first N conversations
-      console.log('🔄 Setting conversations:', { count: limitedConversations?.length || 0, isArray: Array.isArray(limitedConversations) });
+      // console.log('🔄 Setting conversations:', { count: limitedConversations?.length || 0, isArray: Array.isArray(limitedConversations) }); // Disabled to reduce console spam
       return limitedConversations || [];
     });
   }, [MAX_CONVERSATIONS]);
@@ -431,17 +431,22 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     }
   }, [client, deletedIdsLoaded, isInitializing, loadConversations]);
 
-  // Filter out deleted conversations during sync
+  // Filter out deleted conversations only when deletedConversationIds changes
+  // (removed circular dependency on conversations to prevent infinite loop)
   useEffect(() => {
-    if (client && conversations.length > 0) {
-      safeSetConversations(prev => prev.filter(c => !deletedConversationIds.has(c.id)));
+    if (client && conversations.length > 0 && deletedConversationIds.size > 0) {
+      const filteredConversations = conversations.filter(c => !deletedConversationIds.has(c.id));
+      if (filteredConversations.length !== conversations.length) {
+        console.log(`[DEBUG] Filtering out ${conversations.length - filteredConversations.length} deleted conversations`);
+        safeSetConversations(filteredConversations);
+      }
     }
-  }, [client, conversations, deletedConversationIds]);
+  }, [client, deletedConversationIds, safeSetConversations]); // Removed 'conversations' dependency
 
-  // Add debug log after setting conversations
-  useEffect(() => {
-    console.log('[DEBUG] Conversations in state after update:', conversations);
-  }, [conversations]);
+  // Add debug log after setting conversations (disabled to reduce spam)
+  // useEffect(() => {
+  //   console.log('[DEBUG] Conversations in state after update:', conversations);
+  // }, [conversations]);
 
   // Reduced polling frequency for better performance
   React.useEffect(() => {
@@ -471,7 +476,8 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     console.log('[XMTP] 📥 Loading messages for conversation:', {
       conversationId,
       append,
-      existingMessagesCount: messages[conversationId]?.length || 0
+      existingMessagesCount: messages[conversationId]?.length || 0,
+      conversationFound: !!conversation
     });
     
     setIsLoading(true);

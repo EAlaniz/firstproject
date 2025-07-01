@@ -22,27 +22,45 @@ const DMChat: React.FC<DMChatProps> = ({ conversationId, onRetry }) => {
   useEffect(() => {
     let cancelled = false;
     async function syncConversation() {
+      if (!conversation) return;
+      
       setIsSynced(false);
-      setSyncStatus('Syncing messages...');
-      if (conversation && typeof (conversation as unknown as { sync?: () => Promise<void> }).sync === 'function') {
-        try {
-          await (conversation as unknown as { sync: () => Promise<void> }).sync();
+      setSyncStatus('Checking conversation readiness...');
+      
+      try {
+        // For DM conversations, check if we can send messages
+        if ('peerAddress' in conversation) {
+          // DM conversation - assume ready for now
           if (!cancelled) {
             setIsSynced(true);
-            setSyncStatus('Synced');
+            setSyncStatus('Ready');
           }
-        } catch {
-          if (!cancelled) {
-            setSyncStatus('Failed to sync');
-            setIsSynced(false);
+        } else {
+          // Group conversation - try sync if available
+          if (typeof (conversation as unknown as { sync?: () => Promise<void> }).sync === 'function') {
+            setSyncStatus('Syncing group...');
+            await (conversation as unknown as { sync: () => Promise<void> }).sync();
+            if (!cancelled) {
+              setIsSynced(true);
+              setSyncStatus('Synced');
+            }
+          } else {
+            // No sync method available, assume ready
+            if (!cancelled) {
+              setIsSynced(true);
+              setSyncStatus('Ready');
+            }
           }
         }
-      } else {
-        // If no sync method, assume ready
-        setIsSynced(true);
-        setSyncStatus('');
+      } catch (error) {
+        console.warn('[DMChat] Sync failed:', error);
+        if (!cancelled) {
+          setSyncStatus('Ready (sync failed)');
+          setIsSynced(true); // Allow sending even if sync failed
+        }
       }
     }
+    
     if (conversation) {
       syncConversation();
     }

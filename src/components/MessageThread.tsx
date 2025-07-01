@@ -23,14 +23,14 @@ const MessageThread: React.FC<MessageThreadProps> = ({ conversationId, loadMoreM
   // The messages array contains only messages for the currently selected conversation
   const threadMessages = safeMessages;
 
-  // Debug logging
-  console.log('[MessageThread] Messages state:', {
-    totalMessages: safeMessages.length,
-    threadMessages: threadMessages.length,
-    conversationId,
-    selectedConversationId: selectedConversation?.id,
-    messages: safeMessages.map(m => ({ id: m.id, content: m.content?.substring(0, 50) }))
-  });
+  // Debug logging (disabled to reduce console spam)
+  // console.log('[MessageThread] Messages state:', {
+  //   totalMessages: safeMessages.length,
+  //   threadMessages: threadMessages.length,
+  //   conversationId,
+  //   selectedConversationId: selectedConversation?.id,
+  //   messages: safeMessages.map(m => ({ id: m.id, content: m.content?.substring(0, 50) }))
+  // });
 
   const msgCursor = conversationId ? messageCursors[conversationId] : null;
 

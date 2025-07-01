@@ -23,8 +23,8 @@ const ConversationsList: React.FC<ConversationsListProps> = ({ onSelect, onNewCo
   // Ensure conversations is always an array
   const safeConversations = useMemo(() => conversations || [], [conversations]);
 
-  // Debug: log conversations passed to UI
-  console.log('[DEBUG] Conversations passed to ConversationsList UI:', safeConversations);
+  // Debug: log conversations passed to UI (disabled to reduce console spam)
+  // console.log('[DEBUG] Conversations passed to ConversationsList UI:', safeConversations);
 
   // Filter conversations by search
   const filtered = useMemo(() => {
