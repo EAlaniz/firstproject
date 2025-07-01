@@ -240,6 +240,8 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
 
   // Maintain a set of permanently deleted conversation IDs
   const [deletedConversationIds, setDeletedConversationIds] = useState<Set<string>>(new Set());
+  // Track whether deleted conversation IDs have been loaded from storage
+  const [deletedIdsLoaded, setDeletedIdsLoaded] = useState<boolean>(false);
   
   // Memory management - limit stored messages per conversation
   const MAX_MESSAGES_PER_CONVERSATION = 100;
@@ -267,7 +269,10 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   
   // Enhanced paginated conversation loading with previews
   const loadConversations = useCallback(async () => {
-    if (!client) return;
+    if (!client || !deletedIdsLoaded) {
+      console.log('[DEBUG] Skipping loadConversations - client:', !!client, 'deletedIdsLoaded:', deletedIdsLoaded);
+      return;
+    }
     setIsLoading(true);
     setStatus('Loading conversations...');
     try {
@@ -278,13 +283,13 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       safeSetConversations(filteredConvos as XMTPConversation[]);
       setConversationCursor(null);
       setStatus(`Ready (${filteredConvos.length} conversations)`);
-      console.log('[DEBUG] Loaded conversations from network:', filteredConvos);
+      console.log('[DEBUG] Loaded conversations from network:', filteredConvos.length, 'total, filtered out:', convos.length - filteredConvos.length, 'deleted');
     } catch {
       setError('Failed to load conversations');
     } finally {
       setIsLoading(false);
     }
-  }, [client, safeSetConversations, deletedConversationIds]);
+  }, [client, safeSetConversations, deletedConversationIds, deletedIdsLoaded]);
 
   // Online/offline detection
   useEffect(() => {
@@ -391,11 +396,24 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
 
   // Load deleted conversation IDs from localStorage on mount (wallet-specific)
   useEffect(() => {
-    if (!address) return;
+    if (!address) {
+      setDeletedIdsLoaded(false);
+      return;
+    }
     const deleted = localStorage.getItem(`xmtp-deleted-conversations-${address}`);
     if (deleted) {
-      setDeletedConversationIds(new Set(JSON.parse(deleted)));
+      try {
+        const deletedIds = JSON.parse(deleted);
+        setDeletedConversationIds(new Set(deletedIds));
+        console.log(`[DEBUG] Loaded ${deletedIds.length} deleted conversation IDs for wallet ${address}`);
+      } catch (error) {
+        console.error('Failed to parse deleted conversation IDs:', error);
+        setDeletedConversationIds(new Set());
+      }
+    } else {
+      setDeletedConversationIds(new Set());
     }
+    setDeletedIdsLoaded(true);
   }, [address]);
 
   // Debounced save for deleted conversation IDs
@@ -404,6 +422,14 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     deletedConversationIds.size > 0 ? [...deletedConversationIds] : null,
     500
   );
+
+  // Load conversations when client is ready and deleted IDs are loaded
+  useEffect(() => {
+    if (client && deletedIdsLoaded && !isInitializing) {
+      console.log('[DEBUG] Client and deleted IDs ready, loading conversations...');
+      loadConversations();
+    }
+  }, [client, deletedIdsLoaded, isInitializing, loadConversations]);
 
   // Filter out deleted conversations during sync
   useEffect(() => {
