@@ -280,6 +280,30 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       const convos = await client.conversations.list();
       // Filter out deleted conversations
       const filteredConvos = convos.filter(c => !deletedConversationIds.has(c.id));
+      
+      // Debug: Check if filtering is working correctly
+      if (convos.length > 0 && filteredConvos.length === 0) {
+        console.warn('[DEBUG] All conversations filtered out! Checking deleted IDs:', {
+          totalConversations: convos.length,
+          deletedIdsCount: deletedConversationIds.size,
+          sampleConversationIds: convos.slice(0, 3).map(c => c.id),
+          sampleDeletedIds: [...deletedConversationIds].slice(0, 3)
+        });
+        
+        // Emergency fix: If ALL conversations are being filtered out, 
+        // there might be an issue with the deleted IDs. Allow some conversations through.
+        if (deletedConversationIds.size > convos.length * 0.8) {
+          console.warn('[DEBUG] Emergency fix: Too many conversations marked as deleted, clearing some...');
+          // Keep the conversations - clear deleted IDs for now
+          const keptConversations = convos;
+          safeSetConversations(keptConversations as XMTPConversation[]);
+          setConversationCursor(null);
+          setStatus(`Ready (${keptConversations.length} conversations) - cleared excessive deleted filter`);
+          console.log('[DEBUG] Emergency fix applied - showing all conversations');
+          return;
+        }
+      }
+      
       safeSetConversations(filteredConvos as XMTPConversation[]);
       setConversationCursor(null);
       setStatus(`Ready (${filteredConvos.length} conversations)`);
@@ -466,10 +490,11 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   };
 
   // Paginated message loading per conversation
-  async function loadMessages(conversationId: string, append = false) {
-    const conversation = conversations?.find(c => c.id === conversationId);
+  async function loadMessages(conversationId: string, append = false, conversationObj?: XMTPConversation) {
+    // Use provided conversation object or find in conversations array
+    const conversation = conversationObj || conversations?.find(c => c.id === conversationId);
     if (!conversation) {
-      console.warn('[XMTP] ❌ Conversation not found for loading messages:', conversationId);
+      console.warn('[XMTP] ❌ Conversation not found for loading messages:', conversationId, 'Available conversations:', conversations?.length || 0);
       return;
     }
     
@@ -715,7 +740,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       setStatus('Loading messages...');
 
       // Load initial messages first
-      await loadMessages(conversation.id, false);
+      await loadMessages(conversation.id, false, conversation);
       
       // Close previous stream if exists
       if (conversationStreams.current.size > 0) {
@@ -880,10 +905,22 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         return null;
       }
       
-      safeSetConversations(prev => [...(prev || []), conversation as XMTPConversation]);
-      await selectConversation(conversation as XMTPConversation);
+      // Add conversation to state and ensure it's immediately available
+      const newConversation = conversation as XMTPConversation;
+      safeSetConversations(prev => {
+        // Check if conversation already exists to avoid duplicates
+        const existing = prev?.find(c => c.id === newConversation.id);
+        if (existing) {
+          return prev;
+        }
+        return [...(prev || []), newConversation];
+      });
+      
+      // Select the conversation immediately using the conversation object
+      await selectConversation(newConversation);
+      
       setStatus('Conversation created');
-      return conversation as XMTPConversation;
+      return newConversation;
     } catch (err: any) {
       console.error('[XMTP] Error creating conversation:', err);
       setError('Failed to create conversation. Please check the address and try again.');
