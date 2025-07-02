@@ -274,10 +274,20 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     setConversations(prev => {
       const newValue = typeof updater === 'function' ? updater(prev || []) : updater;
       const limitedConversations = (newValue || []).slice(0, MAX_CONVERSATIONS); // Keep only first N conversations
-      // console.log('🔄 Setting conversations:', { count: limitedConversations?.length || 0, isArray: Array.isArray(limitedConversations) }); // Disabled to reduce console spam
+      
+      // TEMPORARY DEBUG: Track conversation state changes
+      if (limitedConversations.length !== (prev || []).length) {
+        console.log('[XMTP] 📊 Conversation state change:', {
+          before: (prev || []).length,
+          after: limitedConversations.length,
+          conversationIds: limitedConversations.map(c => c.id),
+          recentlyCreated: Array.from(recentlyCreatedConversationIds)
+        });
+      }
+      
       return limitedConversations || [];
     });
-  }, [MAX_CONVERSATIONS]);
+  }, [MAX_CONVERSATIONS, recentlyCreatedConversationIds]);
 
   // Safety wrapper for setMessages to prevent undefined with memory management
   const safeSetMessages = useCallback((convId: string, updater: DecodedMessage<string>[] | ((prev: DecodedMessage<string>[]) => DecodedMessage<string>[])) => {
@@ -547,6 +557,14 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
           filteredConvos = recentlyCreatedConvos;
         }
       }
+      
+      console.log('[XMTP] 🔧 DEBUG: Setting conversations from loadConversations:', {
+        totalFound: convos.length,
+        afterFiltering: filteredConvos.length,
+        filteredConversationIds: filteredConvos.map((c: any) => c.id),
+        recentlyCreated: Array.from(recentlyCreatedConversationIds),
+        deleted: deletedConversationIds.size
+      });
       
       safeSetConversations(filteredConvos as XMTPConversation[]);
       setConversationCursor(null);
@@ -1448,13 +1466,30 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         });
       }, 30000);
       
+      console.log('[XMTP] 🔧 DEBUG: About to add new conversation to state:', {
+        conversationId: newConversation.id,
+        currentCount: conversations.length,
+        newConversation: {
+          id: newConversation.id,
+          peerAddress: 'peerAddress' in newConversation ? newConversation.peerAddress : 'N/A'
+        }
+      });
+      
       safeSetConversations(prev => {
         // Check if conversation already exists to avoid duplicates
         const existing = prev?.find(c => c.id === newConversation.id);
         if (existing) {
+          console.log('[XMTP] ⚠️ Conversation already exists in state');
           return prev;
         }
-        return [...(prev || []), newConversation];
+        
+        const updated = [...(prev || []), newConversation];
+        console.log('[XMTP] ✅ Added new conversation to state:', {
+          previousCount: prev?.length || 0,
+          newCount: updated.length,
+          newConversationId: newConversation.id
+        });
+        return updated;
       });
       
       // OFFICIAL XMTP PATTERN: Publish messages to network for receiver visibility
