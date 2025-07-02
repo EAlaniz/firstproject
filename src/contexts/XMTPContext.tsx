@@ -134,13 +134,16 @@ export function checkClockSkew() {
   }
 }
 
-// Activate persistent logging for deep diagnostics (works in all environments)
-if (typeof window !== 'undefined' && typeof (Client as unknown as Record<string, unknown>).activatePersistentLibXMTPLogWriter === 'function') {
-  try {
-    (Client as any).activatePersistentLibXMTPLogWriter?.();
-    // You can also pass a custom log writer or options if needed
-  } catch {
-    // Ignore if not supported
+// PRODUCTION: Disable verbose XMTP logging to reduce console spam
+// Only enable in development if needed for debugging
+if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+  if (typeof (Client as unknown as Record<string, unknown>).activatePersistentLibXMTPLogWriter === 'function') {
+    try {
+      // Commented out to reduce console noise
+      // (Client as any).activatePersistentLibXMTPLogWriter?.();
+    } catch {
+      // Ignore if not supported
+    }
   }
 }
 
@@ -235,6 +238,10 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
 
   // Message streaming subscriptions
   const conversationStreams = useRef<Map<string, unknown>>(new Map());
+  
+  // Global stream tracking to prevent duplicates
+  const globalStreamRef = useRef<any>(null);
+  const globalStreamActive = useRef<boolean>(false);
 
   // Message preview and unread state
   const [conversationPreviews, setConversationPreviews] = useState<{ [id: string]: string }>({});
@@ -296,10 +303,10 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     setMessageDeliveryStatus('syncing');
     
     try {
-      console.log('[XMTP] 🔄 Automatic background sync started');
+      // Automatic background sync started
       
       // Step 1: Enhanced V3 sync for conversation discovery
-      console.log('[XMTP] 🔄 V3 Enhanced sync - ensuring conversation visibility...');
+      // V3 Enhanced sync - ensuring conversation visibility
       
       // V3 Client-level sync first (critical for receiver discovery)
       if (hasMethod<{ sync: () => Promise<void> }>(client, 'sync')) {
@@ -492,7 +499,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
 
   const loadConversations = useCallback(async () => {
     if (!client || !deletedIdsLoaded) {
-      console.log('[DEBUG] Skipping loadConversations - client:', !!client, 'deletedIdsLoaded:', deletedIdsLoaded);
+      // Skipping loadConversations - waiting for client initialization
       return;
     }
     setIsLoading(true);
@@ -505,13 +512,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       
       // Debug: Check if filtering is working correctly
       if (convos.length > 0 && filteredConvos.length === 0) {
-        console.log('[DEBUG] All conversations filtered out (user deleted them):', {
-          totalConversations: convos.length,
-          deletedIdsCount: deletedConversationIds.size,
-          sampleConversationIds: convos.slice(0, 3).map(c => c.id),
-          sampleDeletedIds: [...deletedConversationIds].slice(0, 3),
-          message: 'This is expected behavior when user has deleted all conversations'
-        });
+        // All conversations filtered out (user deleted them)
         
         // REMOVED AGGRESSIVE EMERGENCY FIX: The emergency fix was incorrectly resetting user deletions
         // Users expect their deleted conversations to stay deleted permanently
@@ -520,8 +521,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         const recentUserDeletion = timeSinceLastDeletion < 300000; // 5 minutes
         
         if (deletedConversationIds.size > convos.length * 0.8 && !recentUserDeletion) {
-          console.log('[DEBUG] Many conversations marked as deleted. This is normal if user deleted them.');
-          console.log('[DEBUG] Deleted IDs count:', deletedConversationIds.size, 'Total conversations:', convos.length);
+          // Many conversations marked as deleted
           // DO NOT reset deleted IDs - user wants them to stay deleted
         }
         
@@ -531,7 +531,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         );
         
         if (recentUserDeletion && filteredConvos.length === 0 && !hasRecentlyCreated) {
-          console.log('[DEBUG] User recently deleted conversations, showing empty state');
+          // User recently deleted conversations, showing empty state
           safeSetConversations([]);
           setConversationCursor(null);
           setStatus('No conversations');
@@ -539,7 +539,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         }
         
         if (hasRecentlyCreated && filteredConvos.length === 0) {
-          console.log('[DEBUG] Found recently created conversations, including them in results');
+          // Found recently created conversations
           // Re-filter to include recently created conversations
           const recentlyCreatedConvos = convos.filter(conv => 
             recentlyCreatedConversationIds.has(conv.id)
@@ -551,7 +551,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       safeSetConversations(filteredConvos as XMTPConversation[]);
       setConversationCursor(null);
       setStatus(`Ready (${filteredConvos.length} conversations)`);
-      console.log('[DEBUG] Loaded conversations from network:', filteredConvos.length, 'total, filtered out:', convos.length - filteredConvos.length, 'deleted');
+      // Loaded conversations from network
     } catch {
       setError('Failed to load conversations');
     } finally {
@@ -673,7 +673,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       return;
     }
     
-    console.log('[XMTP] 📦 Loading cached data for instant UX...');
+    // Loading cached data for instant UX
     
     // Load deleted conversation IDs with consistent key format
     const deleted = localStorage.getItem(`xmtp-deleted-conversations-${address.toLowerCase()}`);
@@ -765,7 +765,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   // Load conversations when client is ready and deleted IDs are loaded
   useEffect(() => {
     if (client && deletedIdsLoaded && !isInitializing) {
-      console.log('[DEBUG] Client and deleted IDs ready, loading conversations...');
+      // Client ready, loading conversations
       loadConversations();
     }
   }, [client, deletedIdsLoaded, isInitializing, loadConversations]);
@@ -1165,7 +1165,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       
       try {
         const canMessageCheck = await Client.canMessage([
-          { identifier: conversation.peerAddress, identifierKind: 'Ethereum' as const }
+          { identifier: conversation.peerAddress as string, identifierKind: 'Ethereum' as const }
         ], 'production' as const);
         console.log('[XMTP] ✅ Recipient can receive messages:', canMessageCheck);
         
@@ -1235,7 +1235,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       
       // Check if this is actually a sync message disguised as an error
       const errorMessage = error instanceof Error ? error.message : String(error);
-      const errorStack = error instanceof Error ? error.stack : '';
+      // const errorStack = error instanceof Error ? error.stack : '';
       
       // Enhanced sync message detection patterns
       const isSyncMessage = 
@@ -1525,53 +1525,42 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
 
   // Global message streaming for all conversations (production pattern)
   useEffect(() => {
-    if (!client) return;
+    if (!client || globalStreamActive.current) return;
     
     let cancelled = false;
-    let globalMessageStream: any = null;
+    globalStreamActive.current = true;
 
     const setupGlobalStreaming = async () => {
       try {
+        // Prevent duplicate streams
+        if (globalStreamRef.current) {
+          console.log('[XMTP] ⚠️ Global stream already exists, skipping setup');
+          return;
+        }
+        
+        console.log('[XMTP] 🚀 Setting up global message stream...');
+        
         // Stream all messages from all conversations
-        // Stream all messages without consent filtering for now
-        globalMessageStream = await client.conversations.streamAllMessages();
+        globalStreamRef.current = await client.conversations.streamAllMessages();
         
         // Process messages in async iterator pattern
         (async () => {
           try {
-            for await (const message of globalMessageStream) {
+            for await (const message of globalStreamRef.current) {
               if (cancelled) break;
               
               if (message && message.conversationId) {
-                console.log('[XMTP] 📥 RECEIVER: Message delivered via global stream:', {
-                  messageId: message.id,
-                  conversationId: message.conversationId,
-                  contentLength: message.content?.length || 0,
-                  senderAddress: (message as any).senderAddress || 'unknown',
-                  timestamp: new Date().toISOString(),
-                  messageContent: message.content?.substring(0, 50) + (message.content?.length > 50 ? '...' : ''),
-                  receiverInboxId: client.inboxId,
-                  deliveryConfirmed: 'Message successfully delivered to receiver'
-                });
+                // Message delivered via global stream
                 
                 safeSetMessages(message.conversationId, (prev: DecodedMessage<string>[]) => {
                   // Deduplicate by message ID but with better logging
                   const duplicate = prev.some((m: DecodedMessage<string>) => m.id === message.id);
                   if (duplicate) {
-                    console.log('[XMTP] 🔄 Duplicate message detected, skipping:', {
-                      messageId: message.id,
-                      conversationId: message.conversationId,
-                      existingCount: prev.length
-                    });
+                    // Duplicate message detected, skipping
                     return prev;
                   }
                   
-                  console.log('[XMTP] ✅ Adding new message to conversation:', {
-                    messageId: message.id,
-                    conversationId: message.conversationId,
-                    previousCount: prev.length,
-                    newCount: prev.length + 1
-                  });
+                  // Adding new message to conversation
                   
                   const result = [...prev, message];
                   return result.filter((m: DecodedMessage<string>): m is DecodedMessage<string> => 
@@ -1596,7 +1585,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
           }
         })();
         
-        console.log('[XMTP] ✅ Global message streaming started');
+        // Global message streaming started
       } catch (error) {
         console.error('[XMTP] Failed to start global message stream:', error);
       }
@@ -1606,8 +1595,17 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
 
     return () => {
       cancelled = true;
-      if (globalMessageStream && typeof globalMessageStream.return === 'function') {
-        globalMessageStream.return?.();
+      globalStreamActive.current = false;
+      
+      if (globalStreamRef.current) {
+        try {
+          if (typeof globalStreamRef.current.return === 'function') {
+            globalStreamRef.current.return();
+          }
+        } catch (error) {
+          console.warn('[XMTP] Error closing global stream:', error);
+        }
+        globalStreamRef.current = null;
       }
     };
   }, [client, safeSetMessages, selectedConversation]);
@@ -1620,7 +1618,11 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     let activeStream: any = null;
 
     const setupStream = async () => {
-      if (conversationStreams.current.has(selectedConversation.id)) return; // Already streaming
+      // Check if already streaming this conversation
+      if (conversationStreams.current.has(selectedConversation.id)) {
+        console.log('[XMTP] 🔄 Conversation already streaming:', selectedConversation.id);
+        return;
+      }
       
       try {
         const messageCallback: StreamCallback<DecodedMessage<string>> = (err, message) => {
@@ -1657,9 +1659,17 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     // Cleanup on unmount or conversation change
     return () => {
       cancelled = true;
-      if (activeStream && isAsyncIterator(activeStream) && typeof activeStream.return === 'function') {
-        (activeStream as AsyncIterableIterator<unknown>).return?.();
+      
+      if (activeStream) {
+        try {
+          if (isAsyncIterator(activeStream) && typeof activeStream.return === 'function') {
+            (activeStream as AsyncIterableIterator<unknown>).return();
+          }
+        } catch (error) {
+          console.warn('[XMTP] Error closing conversation stream:', error);
+        }
       }
+      
       if (selectedConversation) {
         conversationStreams.current.delete(selectedConversation.id);
       }
@@ -1681,11 +1691,29 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       setUnreadConversations(new Set());
       // Cleanup streams
       conversationStreams.current.forEach((stream) => {
-        if (stream && isAsyncIterator(stream) && typeof stream.return === 'function') {
-          (stream as AsyncIterableIterator<unknown>).return?.();
+        try {
+          if (stream && isAsyncIterator(stream) && typeof stream.return === 'function') {
+            (stream as AsyncIterableIterator<unknown>).return?.();
+          }
+        } catch (error) {
+          console.warn('[XMTP] Error closing conversation stream:', error);
         }
       });
       conversationStreams.current.clear();
+      
+      // Cleanup global stream
+      if (globalStreamRef.current) {
+        try {
+          if (typeof globalStreamRef.current.return === 'function') {
+            globalStreamRef.current.return();
+          }
+        } catch (error) {
+          console.warn('[XMTP] Error closing global stream:', error);
+        }
+        globalStreamRef.current = null;
+      }
+      globalStreamActive.current = false;
+      
       clientRef.current = null;
     }
   }, [address, safeSetConversations]);
