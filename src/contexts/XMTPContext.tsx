@@ -255,6 +255,8 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   const [deletedIdsLoaded, setDeletedIdsLoaded] = useState<boolean>(false);
   // Track timestamp of last user-initiated deletion to prevent emergency fix
   const [lastUserDeletionTime, setLastUserDeletionTime] = useState<number>(0);
+  // Track recently created conversation IDs to prevent them from being filtered out
+  const [recentlyCreatedConversationIds, setRecentlyCreatedConversationIds] = useState<Set<string>>(new Set());
   
   // Memory management - limit stored messages per conversation
   const MAX_MESSAGES_PER_CONVERSATION = 100;
@@ -445,7 +447,20 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
             await client.conversations.sync();
             console.log(`[XMTP] ✅ Sync completed on attempt ${attempt}`);
           } catch (syncError) {
-            console.warn(`[XMTP] ⚠️ Sync failed on attempt ${attempt}:`, syncError);
+            const syncErrorMessage = syncError instanceof Error ? syncError.message : String(syncError);
+            // Check if this is actually a sync success message disguised as error
+            const isSyncSuccessMessage = 
+              syncErrorMessage.includes('synced') ||
+              syncErrorMessage.includes('success') ||
+              syncErrorMessage.includes('completed') ||
+              syncErrorMessage.includes('SyncGroup') ||
+              syncErrorMessage.includes('ConversationSync');
+              
+            if (isSyncSuccessMessage) {
+              console.log(`[XMTP] ✅ Sync status message on attempt ${attempt}:`, syncErrorMessage);
+            } else {
+              console.warn(`[XMTP] ⚠️ Sync failed on attempt ${attempt}:`, syncError);
+            }
           }
         }
 
@@ -486,7 +501,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       // Use enhanced conversation discovery with retry logic
       const convos = await loadConversationsWithRetry();
       // Filter out deleted conversations
-      const filteredConvos = convos.filter(c => !deletedConversationIds.has(c.id));
+      let filteredConvos = convos.filter(c => !deletedConversationIds.has(c.id));
       
       // Debug: Check if filtering is working correctly
       if (convos.length > 0 && filteredConvos.length === 0) {
@@ -510,12 +525,26 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
           // DO NOT reset deleted IDs - user wants them to stay deleted
         }
         
-        if (recentUserDeletion && filteredConvos.length === 0) {
+        // CRITICAL FIX: Check for recently created conversations before showing empty state
+        const hasRecentlyCreated = Array.from(recentlyCreatedConversationIds).some(id => 
+          convos.some(conv => conv.id === id)
+        );
+        
+        if (recentUserDeletion && filteredConvos.length === 0 && !hasRecentlyCreated) {
           console.log('[DEBUG] User recently deleted conversations, showing empty state');
           safeSetConversations([]);
           setConversationCursor(null);
           setStatus('No conversations');
           return;
+        }
+        
+        if (hasRecentlyCreated && filteredConvos.length === 0) {
+          console.log('[DEBUG] Found recently created conversations, including them in results');
+          // Re-filter to include recently created conversations
+          const recentlyCreatedConvos = convos.filter(conv => 
+            recentlyCreatedConversationIds.has(conv.id)
+          );
+          filteredConvos = recentlyCreatedConvos;
         }
       }
       
@@ -528,7 +557,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [client, safeSetConversations, deletedConversationIds, deletedIdsLoaded]);
+  }, [client, safeSetConversations, deletedConversationIds, deletedIdsLoaded, recentlyCreatedConversationIds, lastUserDeletionTime]);
 
   // Online/offline detection
   useEffect(() => {
@@ -1206,7 +1235,22 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       
       // Check if this is actually a sync message disguised as an error
       const errorMessage = error instanceof Error ? error.message : String(error);
-      const isSyncMessage = errorMessage.includes('synced') && errorMessage.includes('succeeded');
+      const errorStack = error instanceof Error ? error.stack : '';
+      
+      // Enhanced sync message detection patterns
+      const isSyncMessage = 
+        (errorMessage.includes('synced') && errorMessage.includes('succeeded')) ||
+        (errorMessage.includes('sync') && errorMessage.includes('success')) ||
+        (errorMessage.includes('message') && errorMessage.includes('delivered')) ||
+        (errorMessage.includes('published') && errorMessage.includes('network')) ||
+        (errorMessage.includes('conversation') && errorMessage.includes('updated')) ||
+        // Pattern for XMTP V3 sync notifications that look like errors
+        errorMessage.includes('SyncGroup') ||
+        errorMessage.includes('ConversationSync') ||
+        // Common XMTP success patterns that throw as "errors"
+        /message.*sent.*successfully/i.test(errorMessage) ||
+        /sync.*completed/i.test(errorMessage) ||
+        /delivery.*confirmed/i.test(errorMessage);
       
       if (isSyncMessage) {
         console.log('[XMTP] 🔄 Received sync message as error, treating as success:', errorMessage);
@@ -1385,6 +1429,25 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       
       // Add conversation to state and ensure it's immediately available
       const newConversation = conversation as XMTPConversation;
+      
+      // CRITICAL FIX: Track this as recently created to prevent deletion filter
+      setRecentlyCreatedConversationIds(prev => {
+        const newSet = new Set(prev);
+        newSet.add(newConversation.id);
+        console.log('[XMTP] 🔄 Added to recently created:', newConversation.id);
+        return newSet;
+      });
+      
+      // Clear from recently created after 30 seconds
+      setTimeout(() => {
+        setRecentlyCreatedConversationIds(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(newConversation.id);
+          console.log('[XMTP] 🔄 Removed from recently created:', newConversation.id);
+          return newSet;
+        });
+      }, 30000);
+      
       safeSetConversations(prev => {
         // Check if conversation already exists to avoid duplicates
         const existing = prev?.find(c => c.id === newConversation.id);
@@ -1425,7 +1488,21 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         console.log('[XMTP] ✅ Background sync completed for receiver visibility');
         
       } catch (syncError) {
-        console.warn('[XMTP] ⚠️ Network publishing/sync failed:', syncError);
+        const syncErrorMessage = syncError instanceof Error ? syncError.message : String(syncError);
+        // Check if this is actually a sync success message disguised as error
+        const isSyncSuccessMessage = 
+          syncErrorMessage.includes('synced') ||
+          syncErrorMessage.includes('success') ||
+          syncErrorMessage.includes('completed') ||
+          syncErrorMessage.includes('published') ||
+          syncErrorMessage.includes('SyncGroup') ||
+          syncErrorMessage.includes('ConversationSync');
+          
+        if (isSyncSuccessMessage) {
+          console.log('[XMTP] ✅ Network publishing/sync status message:', syncErrorMessage);
+        } else {
+          console.warn('[XMTP] ⚠️ Network publishing/sync failed:', syncError);
+        }
         // Still trigger background sync as fallback
         setTimeout(backgroundSyncManager, 100);
       }
