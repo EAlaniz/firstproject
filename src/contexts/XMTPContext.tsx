@@ -40,6 +40,7 @@ export interface XMTPContextType {
   
   // Enhanced features
   forceXMTPResync: () => Promise<void>;
+  forceConversationDiscovery: () => Promise<void>;
   lastSyncTime: Date | null;
   
   // Pagination
@@ -131,7 +132,7 @@ export function checkClockSkew() {
 // Activate persistent logging for deep diagnostics (works in all environments)
 if (typeof window !== 'undefined' && typeof (Client as unknown as Record<string, unknown>).activatePersistentLibXMTPLogWriter === 'function') {
   try {
-    (Client as unknown as Record<string, unknown>).activatePersistentLibXMTPLogWriter?.();
+    (Client as any).activatePersistentLibXMTPLogWriter?.();
     // You can also pass a custom log writer or options if needed
   } catch {
     // Ignore if not supported
@@ -270,6 +271,53 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   }, [MAX_MESSAGES_PER_CONVERSATION]);
   
   // Enhanced paginated conversation loading with previews
+  // Enhanced conversation discovery with retry logic for better receiver experience
+  const loadConversationsWithRetry = useCallback(async (maxRetries: number = 3, delay: number = 2000): Promise<XMTPConversation[]> => {
+    if (!client) {
+      throw new Error('XMTP client not initialized');
+    }
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`[XMTP] 🔄 Conversation discovery attempt ${attempt}/${maxRetries}`);
+        
+        // Force comprehensive sync before each attempt
+        if (hasMethod<{ conversations: { sync: () => Promise<void> } }>(client, 'conversations') &&
+            hasMethod<{ sync: () => Promise<void> }>(client.conversations, 'sync')) {
+          try {
+            await client.conversations.sync();
+            console.log(`[XMTP] ✅ Sync completed on attempt ${attempt}`);
+          } catch (syncError) {
+            console.warn(`[XMTP] ⚠️ Sync failed on attempt ${attempt}:`, syncError);
+          }
+        }
+
+        // Add small delay to allow for network propagation
+        if (attempt > 1) {
+          console.log(`[XMTP] ⏱️ Waiting ${delay}ms for network propagation...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+
+        // Load conversations
+        const convos = await client.conversations.list();
+        console.log(`[XMTP] 📋 Discovered ${convos.length} conversations on attempt ${attempt}`);
+        
+        return convos as XMTPConversation[];
+      } catch (error) {
+        console.error(`[XMTP] ❌ Conversation discovery failed on attempt ${attempt}:`, error);
+        if (attempt === maxRetries) {
+          throw error;
+        }
+        // Exponential backoff for retries
+        const retryDelay = delay * Math.pow(2, attempt - 1);
+        console.log(`[XMTP] ⏳ Retrying in ${retryDelay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+      }
+    }
+    
+    return [];
+  }, [client]);
+
   const loadConversations = useCallback(async () => {
     if (!client || !deletedIdsLoaded) {
       console.log('[DEBUG] Skipping loadConversations - client:', !!client, 'deletedIdsLoaded:', deletedIdsLoaded);
@@ -278,8 +326,8 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     setIsLoading(true);
     setStatus('Loading conversations...');
     try {
-      // Load conversations
-      const convos = await client.conversations.list();
+      // Use enhanced conversation discovery with retry logic
+      const convos = await loadConversationsWithRetry();
       // Filter out deleted conversations
       const filteredConvos = convos.filter(c => !deletedConversationIds.has(c.id));
       
@@ -665,10 +713,18 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       console.log('✅ Client created, inbox is ready!');
       console.log('📧 Client details:', {
         inboxId: xmtpClient.inboxId,
-        accountAddress: xmtpClient.accountAddress,
+        accountAddress: (xmtpClient as any).accountAddress || 'unknown',
         isRegistered: xmtpClient.isRegistered,
         env: 'production',
         chainId: await walletClient.getChainId?.() || 'unknown'
+      });
+      
+      // CRITICAL: Ensure client is properly connected to XMTP network
+      console.log('🔍 XMTP Client Network Validation:', {
+        canMessage: typeof xmtpClient.canMessage === 'function',
+        conversations: typeof xmtpClient.conversations?.list === 'function',
+        environment: 'production',
+        timestamp: new Date().toISOString()
       });
       
       clientRef.current = xmtpClient;
@@ -849,7 +905,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       
       console.log('[XMTP] Message sent successfully');
       console.log('[XMTP] Sent message details:', {
-        messageId: typeof sentMsg === 'object' && sentMsg ? sentMsg.id : 'unknown',
+        messageId: typeof sentMsg === 'object' && sentMsg ? (sentMsg as any).id : 'unknown',
         conversationId: conversation.id,
         timestamp: new Date().toISOString()
       });
@@ -886,11 +942,32 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       if (onSuccess) onSuccess();
     } catch (error) {
       console.error('[XMTP] Failed to send message:', error);
-      // On failure, mark the optimistic message as failed
-      safeSetMessages(conversation.id, prev => 
-        prev.map(m => m.id === optimisticMsg.id ? { ...m, status: 'failed' } as any : m)
-      );
-      setError('Failed to send message. Please try again.');
+      
+      // Check if this is actually a sync message disguised as an error
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const isSyncMessage = errorMessage.includes('synced') && errorMessage.includes('succeeded');
+      
+      if (isSyncMessage) {
+        console.log('[XMTP] 🔄 Received sync message as error, treating as success:', errorMessage);
+        // Mark optimistic message as sent since this is actually a sync status, not a failure
+        safeSetMessages(conversation.id, prev => {
+          return prev.map(m => 
+            m.id === optimisticMsg.id 
+              ? { ...m, status: 'sent' } as any
+              : m
+          );
+        });
+        setStatus('Message sent');
+        if (onSuccess) onSuccess();
+      } else {
+        // This is a real failure
+        console.error('[XMTP] ❌ Actual send failure:', error);
+        safeSetMessages(conversation.id, prev => 
+          prev.map(m => m.id === optimisticMsg.id ? { ...m, status: 'failed' } as any : m)
+        );
+        setError('Failed to send message. Please try again.');
+        throw error; // Re-throw for DMChat to handle
+      }
     }
   };
 
@@ -1003,6 +1080,18 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         return [...(prev || []), newConversation];
       });
       
+      // CRITICAL: Force a background sync to ensure the receiver can discover this conversation
+      console.log('[XMTP] 🚀 Triggering global conversation discovery refresh...');
+      setTimeout(async () => {
+        try {
+          console.log('[XMTP] 🔄 Background conversation refresh for new conversation discovery...');
+          await loadConversations();
+          console.log('[XMTP] ✅ Background refresh completed');
+        } catch (refreshError) {
+          console.warn('[XMTP] ⚠️ Background refresh failed:', refreshError);
+        }
+      }, 1000); // Give XMTP network 1 second to propagate
+      
       // Select the conversation immediately using the conversation object
       await selectConversation(newConversation);
       
@@ -1112,7 +1201,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
                   
                   const result = [...prev, message];
                   return result.filter((m: DecodedMessage<string>): m is DecodedMessage<string> => 
-                    typeof m === 'object' && m !== null && m.id
+                    typeof m === 'object' && m !== null && !!m.id
                   );
                 });
                 
@@ -1333,6 +1422,22 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     }) || null;
   }, [conversations]);
 
+  // Force conversation discovery with enhanced retry logic
+  const forceConversationDiscovery = useCallback(async () => {
+    if (!client) {
+      console.warn('[XMTP] No client available for conversation discovery');
+      return;
+    }
+    
+    console.log('[XMTP] 🔍 Forcing conversation discovery with enhanced retry...');
+    try {
+      await loadConversations();
+      console.log('[XMTP] ✅ Forced conversation discovery completed');
+    } catch (error) {
+      console.error('[XMTP] ❌ Forced conversation discovery failed:', error);
+    }
+  }, [client, loadConversations]);
+
   const contextValue: XMTPContextType = {
     client: clientRef.current,
     isInitialized,
@@ -1349,6 +1454,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     selectConversation,
     initializeClient,
     forceXMTPResync,
+    forceConversationDiscovery,
     isLoading: isInitializing,
     lastSyncTime,
     // Pagination

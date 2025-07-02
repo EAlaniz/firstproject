@@ -95,8 +95,17 @@ const DMChat: React.FC<DMChatProps> = ({ conversationId, onRetry }) => {
       await sendMessage(text, conversation);
       console.log('✅ Message sent successfully via XMTP context');
     } catch (error) {
-      console.error('❌ Failed to send message via XMTP context:', error);
-      throw error; // Let MessageInput handle the error display
+      // Check if this is a sync message error (which is actually success)
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const isSyncMessage = errorMessage.includes('synced') && errorMessage.includes('succeeded');
+      
+      if (isSyncMessage) {
+        console.log('✅ Message sent successfully via XMTP context (sync message)');
+        // Don't throw - this is actually success
+      } else {
+        console.error('❌ Failed to send message via XMTP context:', error);
+        throw error; // Let MessageInput handle the error display
+      }
     } finally {
       setIsSending(false);
     }
