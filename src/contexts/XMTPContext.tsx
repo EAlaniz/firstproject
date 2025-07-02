@@ -587,7 +587,8 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        console.log(`[XMTP] 🔄 Conversation discovery attempt ${attempt}/${maxRetries}`);
+        // Reduced logging to prevent console spam
+        // console.log(`[XMTP] 🔄 Conversation discovery attempt ${attempt}/${maxRetries}`);
         
         // Force comprehensive sync before each attempt
         if (hasMethod<{ conversations: { sync: () => Promise<void> } }>(client, 'conversations') &&
@@ -761,22 +762,23 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     };
   }, [client, isInitializing, loadConversations]);
 
-  // Load cached conversations on init (wallet-specific)
-  useEffect(() => {
-    if (!address) return;
-    const cached = localStorage.getItem(`xmtp-conversations-${address}`);
-    if (cached) {
-      try {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed)) {
-          safeSetConversations(parsed);
-          setIsSyncing(true);
-        }
-      } catch (error) {
-        console.error('Failed to parse cached conversations:', error);
-      }
-    }
-  }, [safeSetConversations, address]);
+  // DISABLED: Load cached conversations on init (wallet-specific)
+  // This was causing infinite loops - cache loading is now handled in the main cache loading useEffect
+  // useEffect(() => {
+  //   if (!address) return;
+  //   const cached = localStorage.getItem(`xmtp-conversations-${address}`);
+  //   if (cached) {
+  //     try {
+  //       const parsed = JSON.parse(cached);
+  //       if (Array.isArray(parsed)) {
+  //         safeSetConversations(parsed);
+  //         setIsSyncing(true);
+  //       }
+  //     } catch (error) {
+  //       console.error('Failed to parse cached conversations:', error);
+  //     }
+  //   }
+  // }, [safeSetConversations, address]);
 
   // Debounced save for conversations
   useDebouncedSave(
@@ -849,14 +851,25 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   // SMART CACHING & OFFLINE-FIRST APPROACH
   // ==========================================
   
+  // Track if cache has been loaded to prevent infinite loops
+  const cacheLoadedRef = useRef<string | null>(null);
+  
   // Load cached data on mount for instant UX
   useEffect(() => {
     if (!address) {
       setDeletedIdsLoaded(false);
+      cacheLoadedRef.current = null;
       return;
     }
     
-    // Loading cached data for instant UX
+    // Prevent duplicate cache loading for the same address
+    if (cacheLoadedRef.current === address) {
+      console.log('[XMTP] 🔄 Cache already loaded for this address, skipping');
+      return;
+    }
+    
+    console.log('[XMTP] 📂 Loading cached data for instant UX for address:', address);
+    cacheLoadedRef.current = address;
     
     // Load deleted conversation IDs with consistent key format
     const deleted = localStorage.getItem(`xmtp-deleted-conversations-${address.toLowerCase()}`);
@@ -864,7 +877,8 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       try {
         const deletedIds = JSON.parse(deleted);
         setDeletedConversationIds(new Set(deletedIds));
-        console.log(`[XMTP] ✅ Loaded ${deletedIds.length} deleted conversation IDs from cache for wallet:`, address.toLowerCase());
+        // Reduced logging to prevent console spam
+        // console.log(`[XMTP] ✅ Loaded ${deletedIds.length} deleted conversation IDs from cache for wallet:`, address.toLowerCase());
       } catch (error) {
         console.error('Failed to parse deleted conversation IDs:', error);
         setDeletedConversationIds(new Set());
@@ -935,7 +949,8 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
           
           if (filteredCachedConvos.length > 0) {
             safeSetConversations(filteredCachedConvos);
-            console.log(`[XMTP] ✅ Loaded ${filteredCachedConvos.length} conversations from cache (${convos.length - filteredCachedConvos.length} deleted filtered out)`);
+            // Reduced logging to prevent console spam
+            // console.log(`[XMTP] ✅ Loaded ${filteredCachedConvos.length} conversations from cache (${convos.length - filteredCachedConvos.length} deleted filtered out)`);
             setStatus(`Ready (${filteredCachedConvos.length} conversations cached)`);
           } else {
             console.log(`[XMTP] 📭 All ${convos.length} cached conversations were deleted`);
@@ -954,7 +969,8 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         const msgs = JSON.parse(cachedMessages);
         if (typeof msgs === 'object' && msgs !== null) {
           setMessages(msgs);
-          console.log(`[XMTP] ✅ Loaded cached messages for ${Object.keys(msgs).length} conversations`);
+          // Reduced logging to prevent console spam
+          // console.log(`[XMTP] ✅ Loaded cached messages for ${Object.keys(msgs).length} conversations`);
         }
       } catch (error) {
         console.warn('Failed to load cached messages:', error);
@@ -962,7 +978,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     }
     
     setDeletedIdsLoaded(true);
-  }, [address, safeSetConversations]);
+  }, [address]); // Removed safeSetConversations to prevent infinite loops
   
   // Smart caching - automatically save conversations and messages to localStorage
   useDebouncedSave(
