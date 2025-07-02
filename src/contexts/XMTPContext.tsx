@@ -376,9 +376,9 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   const backgroundSyncManager = useCallback(async () => {
     if (!client || !isInitialized) return;
     
-    // Debounce rapid sync calls
+    // Debounce rapid sync calls with longer delay
     const now = Date.now();
-    if (now - lastSyncAttemptRef.current < 2000) {
+    if (now - lastSyncAttemptRef.current < 5000) {
       console.log('[XMTP] 🔄 Sync debounced - too soon after last attempt');
       return;
     }
@@ -460,7 +460,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     } finally {
       setIsAutoSyncing(false);
     }
-  }, [client, isInitialized, deletedConversationIds, safeSetConversations]);
+  }, [client, isInitialized]); // Removed deletedConversationIds and safeSetConversations to prevent loops
 
   // ==========================================
   // INTELLIGENT NETWORK-AWARE SYNC SYSTEM
@@ -477,13 +477,13 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       
       console.log('[XMTP] 🚀 Starting intelligent network-aware sync system');
       
-      // Initial sync with debouncing
+      // Initial sync with longer debouncing
       if (syncDebounceRef.current) {
         clearTimeout(syncDebounceRef.current);
       }
-      syncDebounceRef.current = setTimeout(backgroundSyncManager, 1000);
+      syncDebounceRef.current = setTimeout(backgroundSyncManager, 3000); // Increased from 1s to 3s
       
-    }, 500); // 500ms debounce for sync system restarts
+    }, 2000); // Increased from 500ms to 2s debounce for sync system restarts
   }, [client, isInitialized, backgroundSyncManager]);
   
   // Adaptive sync timing based on connection quality and user activity
@@ -496,11 +496,11 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     // Adaptive sync intervals based on connection quality
     const getSyncInterval = () => {
       switch (connectionQuality) {
-        case 'excellent': return 15000; // 15 seconds for excellent connection
-        case 'good': return 20000;      // 20 seconds for good connection
-        case 'poor': return 30000;      // 30 seconds for poor connection
-        case 'offline': return 60000;   // 60 seconds when offline (for recovery)
-        default: return 15000;
+        case 'excellent': return 30000; // Increased from 15s to 30s
+        case 'good': return 45000;      // Increased from 20s to 45s
+        case 'poor': return 60000;      // Increased from 30s to 60s
+        case 'offline': return 120000;  // Increased from 60s to 120s
+        default: return 30000;
       }
     };
     
@@ -522,12 +522,12 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         if (syncDebounceRef.current) {
           clearTimeout(syncDebounceRef.current);
         }
-        syncDebounceRef.current = setTimeout(backgroundSyncManager, 500);
+        syncDebounceRef.current = setTimeout(backgroundSyncManager, 1000); // Increased debounce
       }, interval);
     };
     
     // Delayed setup to prevent immediate restart
-    const setupTimeout = setTimeout(setupSyncInterval, 2000);
+    const setupTimeout = setTimeout(setupSyncInterval, 5000); // Increased delay
     
     // Reconfigure when connection quality changes with debouncing
     // Skip frequent reconfigurations when no conversations exist
@@ -542,7 +542,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       if (currentInterval !== newInterval) {
         setupSyncInterval();
       }
-    }, 10000); // Reduced frequency from 5s to 10s
+    }, 30000); // Increased from 10s to 30s
     
     return () => {
       console.log('[XMTP] 🛑 Stopping intelligent sync system');
@@ -552,7 +552,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       if (syncDebounceRef.current) clearTimeout(syncDebounceRef.current);
       if (syncRestartDebounceRef.current) clearTimeout(syncRestartDebounceRef.current);
     };
-  }, [client, isInitialized, debouncedSyncSystemStart, connectionQuality]);
+  }, [client, isInitialized, debouncedSyncSystemStart, connectionQuality]); // Removed conversations dependency
   
   // Online/offline detection with automatic reconnection
   useEffect(() => {
@@ -1013,13 +1013,13 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   React.useEffect(() => {
     if (!client) return;
     const interval = setInterval(() => {
-      // Only poll if not currently loading to prevent overlapping requests
-      if (!isLoading) {
+      // Only poll if not currently loading and has conversations to prevent overlapping requests
+      if (!isLoading && conversations.length > 0) {
         loadConversations();
       }
-    }, 30000); // Reduced from 10s to 30s
+    }, 60000); // Increased from 30s to 60s
     return () => clearInterval(interval);
-  }, [client, loadConversations, isLoading]);
+  }, [client, isLoading]); // Removed loadConversations dependency to prevent loops
 
   // Load more conversations (next page)
   const loadMoreConversations = async () => {
@@ -1800,15 +1800,8 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
           newConversationId: newConversation.id
         });
         
-        // Immediately save to cache to ensure persistence
-        if (address) {
-          try {
-            localStorage.setItem(`xmtp-conversations-${address}`, JSON.stringify(updated, jsonBigIntReplacer));
-            console.log('[XMTP] 💾 Immediately saved updated conversations to cache');
-          } catch (error) {
-            console.error('[XMTP] Failed to immediately save conversations:', error);
-          }
-        }
+        // Note: Immediate cache saving removed to prevent sync loops
+        // The debounced save mechanism will handle persistence
         
         return updated;
       });
