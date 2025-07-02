@@ -976,11 +976,16 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       return;
     }
 
-    // Prevent multiple initializations
-    if (clientRef.current || isInitializing) {
-      console.log('🔄 XMTP client already exists or initializing, skipping...');
+    // Prevent multiple initializations with better checks
+    if (clientRef.current || isInitializing || isInitialized) {
+      console.log('🔄 XMTP client already exists, initialized, or initializing - skipping duplicate initialization');
+      if (clientRef.current && isInitialized) {
+        console.log('✅ XMTP client is already ready for use');
+      }
       return;
     }
+    
+    console.log('🚀 Starting XMTP initialization (first time or after reset)...');
 
     try {
       setIsInitializing(true);

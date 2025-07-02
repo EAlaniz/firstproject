@@ -287,7 +287,13 @@ function AppContent() {
                     Wallet
                   </button>
                   <button
-                    onClick={handleXMTPInitialization}
+                    onClick={() => {
+                      if (xmtpClient) {
+                        setShowXMTPMessaging(true);
+                      } else {
+                        handleXMTPInitialization();
+                      }
+                    }}
                     disabled={isInitializing}
                     className={`px-4 py-2 rounded-full transition-colors cursor-pointer text-sm flex items-center space-x-2 ${
                       xmtpClient 
@@ -673,7 +679,14 @@ function AppContent() {
                       <span>Wallet Settings</span>
                     </button>
                     <button
-                      onClick={handleXMTPInitialization}
+                      onClick={() => {
+                        if (xmtpClient) {
+                          setShowXMTPMessaging(true);
+                          setIsMobileMenuOpen(false); // Close mobile menu
+                        } else {
+                          handleXMTPInitialization();
+                        }
+                      }}
                       disabled={isInitializing}
                       className={`w-full flex items-center space-x-3 p-3 rounded-lg transition-colors ${
                         xmtpClient 
