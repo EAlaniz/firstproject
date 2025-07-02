@@ -34,6 +34,7 @@ export interface XMTPContextType {
   unreadConversations: Set<string>;
   loadMoreMessages: (conversationId: string) => Promise<void>;
   loadMessages: (conversationId: string, append?: boolean) => Promise<void>;
+  messageCursors: { [convId: string]: string | null };
   isSyncing: boolean;
   deleteConversation: (conversationId: string) => void;
   deleteConversations: (conversationIds: string[]) => void;
@@ -65,6 +66,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   // UI compatibility state (simplified)
   const [conversationPreviews, setConversationPreviews] = useState<{ [id: string]: string }>({});
   const [unreadConversations, setUnreadConversations] = useState<Set<string>>(new Set());
+  const [messageCursors, setMessageCursors] = useState<{ [convId: string]: string | null }>({});
   const [isSyncing, setIsSyncing] = useState(false);
   
   // Stream management
@@ -225,11 +227,17 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       const conversation = await client.conversations.newDm(recipientAddress);
       
       // Add to conversations list
-      setConversations(prev => [...prev, conversation as XMTPConversation]);
+      const newConversation = conversation as XMTPConversation;
+      setConversations(prev => [...prev, newConversation]);
+      
+      // Auto-select the new conversation
+      setTimeout(() => {
+        selectConversation(newConversation);
+      }, 100);
       
       console.log('[XMTP] ✅ Conversation created successfully');
       
-      return conversation as XMTPConversation;
+      return newConversation;
       
     } catch (error) {
       console.error('[XMTP] ❌ Failed to create conversation:', error);
@@ -386,6 +394,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     unreadConversations,
     loadMoreMessages,
     loadMessages,
+    messageCursors,
     isSyncing,
     deleteConversation,
     deleteConversations,
