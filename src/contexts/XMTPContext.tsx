@@ -296,10 +296,26 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     try {
       console.log('[XMTP] 🔄 Automatic background sync started');
       
-      // Step 1: Sync conversations silently
+      // Step 1: Enhanced V3 sync for conversation discovery
+      console.log('[XMTP] 🔄 V3 Enhanced sync - ensuring conversation visibility...');
+      
+      // V3 Client-level sync first (critical for receiver discovery)
+      if (hasMethod<{ sync: () => Promise<void> }>(client, 'sync')) {
+        await (client as any).sync();
+        console.log('[XMTP] ✅ Client database sync completed');
+      }
+      
+      // Conversation-level sync
       if (hasMethod<{ conversations: { sync: () => Promise<void> } }>(client, 'conversations') &&
           hasMethod<{ sync: () => Promise<void> }>(client.conversations, 'sync')) {
         await client.conversations.sync();
+        console.log('[XMTP] ✅ Conversation sync completed');
+      }
+      
+      // V3 specific: Force DM discovery
+      if (hasMethod<{ listDms: () => Promise<unknown[]> }>(client.conversations, 'listDms')) {
+        const dms = await (client.conversations as any).listDms();
+        console.log(`[XMTP] 📱 V3 DM discovery: ${dms.length} DMs found`);
       }
       
       // Step 2: Load conversations seamlessly
@@ -1103,7 +1119,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       try {
         const canMessageCheck = await Client.canMessage([
           { identifier: conversation.peerAddress, identifierKind: 'Ethereum' as const }
-        ], 'production');
+        ], 'production' as const);
         console.log('[XMTP] ✅ Recipient can receive messages:', canMessageCheck);
         
         if (!canMessageCheck || (Array.isArray(canMessageCheck) && !canMessageCheck[0])) {
@@ -1265,14 +1281,53 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
           return existing as XMTPConversation;
         }
         
-        // Create new conversation using V3 pattern
+        // Create new conversation using V3 pattern - FIXED for proper inboxId resolution
         if (hasMethod<{ findOrCreateDm: (recipientInboxIdOrAddress: string) => Promise<unknown> }>(client.conversations, 'findOrCreateDm')) {
-          // V3 preferred method - try with address (XMTP will resolve to inboxId)
-          conversation = await (client.conversations as any).findOrCreateDm(normalizedRecipient);
-          console.log(`[XMTP] ✅ Created new DM conversation using findOrCreateDm:`, {
-            recipient: normalizedRecipient,
+          // CRITICAL FIX: V3 requires inboxId, not Ethereum address
+          console.log(`[XMTP] 🔍 Resolving inboxId for address: ${normalizedRecipient}`);
+          
+          let recipientInboxId: string;
+          try {
+            // Get the recipient's inboxId (V3 requirement)
+            if (hasMethod<{ inboxIdFromAddress: (address: string) => Promise<string> }>(client, 'inboxIdFromAddress')) {
+              recipientInboxId = await (client as any).inboxIdFromAddress(normalizedRecipient);
+              console.log(`[XMTP] ✅ Resolved inboxId: ${recipientInboxId} for address: ${normalizedRecipient}`);
+            } else {
+              // Fallback: try using address directly (older V3 versions)
+              console.log(`[XMTP] ⚠️ inboxIdFromAddress not available, trying address directly`);
+              recipientInboxId = normalizedRecipient;
+            }
+          } catch (inboxIdError) {
+            console.warn(`[XMTP] ⚠️ Failed to resolve inboxId, using address as fallback:`, inboxIdError);
+            recipientInboxId = normalizedRecipient;
+          }
+          
+          // Create conversation using inboxId (proper V3 pattern)
+          conversation = await (client.conversations as any).findOrCreateDm(recipientInboxId);
+          console.log(`[XMTP] ✅ Created new DM conversation using findOrCreateDm with inboxId:`, {
+            recipientAddress: normalizedRecipient,
+            recipientInboxId: recipientInboxId,
             conversationId: conversation?.id,
-            conversationType: 'peerAddress' in conversation ? 'DM' : 'Group'
+            conversationType: 'peerAddress' in conversation ? 'DM' : 'Group',
+            senderInboxId: client.inboxId,
+            timestamp: new Date().toISOString(),
+            method: 'findOrCreateDm'
+          });
+          
+          // CRITICAL: Log conversation details for debugging receiver visibility
+          console.log(`[XMTP] 🔍 CONVERSATION CREATION DEBUG:`, {
+            senderAddress: address,
+            senderInboxId: client.inboxId,
+            recipientAddress: normalizedRecipient,
+            recipientInboxId: recipientInboxId,
+            conversationObject: {
+              id: conversation?.id,
+              type: typeof conversation,
+              hasMessages: typeof (conversation as any)?.messages === 'function',
+              hasSend: typeof (conversation as any)?.send === 'function'
+            },
+            environment: 'production',
+            timestamp: Date.now()
           });
         } else if (hasMethod<{ newDmWithIdentifier: (opts: { identifier: string, identifierKind: string }) => Promise<unknown> }>(client.conversations, 'newDmWithIdentifier')) {
           conversation = await (client.conversations as any).newDmWithIdentifier({
@@ -1307,12 +1362,32 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         return [...(prev || []), newConversation];
       });
       
-      // SEAMLESS UX: Let automatic background sync handle conversation discovery
-      // The continuous sync system will automatically pick up the new conversation
-      console.log('[XMTP] ✅ Conversation created - automatic sync will handle discovery');
+      // CRITICAL V3 FIX: Proper database synchronization for conversation visibility
+      console.log('[XMTP] 🔄 Triggering V3 database sync for conversation visibility...');
       
-      // Trigger one immediate background sync to speed up discovery
-      setTimeout(backgroundSyncManager, 100);
+      try {
+        // Force immediate conversation sync in both directions
+        if (hasMethod<{ conversations: { sync: () => Promise<void> } }>(client, 'conversations') &&
+            hasMethod<{ sync: () => Promise<void> }>(client.conversations, 'sync')) {
+          await client.conversations.sync();
+          console.log('[XMTP] ✅ Sender conversation sync completed');
+        }
+        
+        // V3 specific: Ensure local database is updated
+        if (hasMethod<{ sync: () => Promise<void> }>(client, 'sync')) {
+          await (client as any).sync();
+          console.log('[XMTP] ✅ Client database sync completed');
+        }
+        
+        // Reload conversations to ensure immediate visibility
+        await backgroundSyncManager();
+        console.log('[XMTP] ✅ Conversation discovery sync completed');
+        
+      } catch (syncError) {
+        console.warn('[XMTP] ⚠️ Post-creation sync failed:', syncError);
+        // Still trigger background sync as fallback
+        setTimeout(backgroundSyncManager, 100);
+      }
       
       // Select the conversation immediately using the conversation object
       await selectConversation(newConversation);
