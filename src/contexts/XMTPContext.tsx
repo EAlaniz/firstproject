@@ -107,7 +107,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     }
   }, [walletClient, address, isInitializing, isInitialized]);
 
-  // WORKING PATTERN: Simple conversation loading
+  // PROVEN WORKING PATTERN: Standard XMTP conversation discovery
   const loadConversations = useCallback(async () => {
     if (!client) return;
     
@@ -115,37 +115,22 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       setIsLoading(true);
       console.log('[XMTP] 🔄 Loading conversations...');
       
-      // Simple sync and load
+      // Standard XMTP pattern used in production apps
       await client.conversations.sync();
-      const convos = await client.conversations.list();
+      const conversations = await client.conversations.list();
       
-      console.log(`[XMTP] ✅ Found ${convos.length} conversations`);
+      console.log(`[XMTP] ✅ Found ${conversations.length} conversations`);
       
-      // Log each conversation for debugging and set previews
-      const previews: { [id: string]: string } = {};
-      
-      for (const conv of convos) {
-        console.log('[XMTP] 📋 Conversation:', {
+      // Debug each conversation
+      conversations.forEach((conv, index) => {
+        console.log(`[XMTP] 📋 Conversation ${index + 1}:`, {
           id: conv.id,
           peerAddress: 'peerAddress' in conv ? conv.peerAddress : 'Group',
           isInbound: 'peerAddress' in conv ? conv.peerAddress !== address : false
         });
-        
-        // Get last message for preview
-        try {
-          const msgs = await conv.messages({ pageSize: 1 });
-          if (msgs.length > 0) {
-            previews[conv.id] = msgs[0].content || 'New message';
-          } else {
-            previews[conv.id] = 'No messages yet';
-          }
-        } catch (error) {
-          previews[conv.id] = 'No messages yet';
-        }
-      }
+      });
       
-      setConversations(convos as XMTPConversation[]);
-      setConversationPreviews(previews);
+      setConversations(conversations as XMTPConversation[]);
       
     } catch (error) {
       console.error('[XMTP] ❌ Failed to load conversations:', error);
@@ -206,14 +191,14 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     }
   }, [selectedConversation, client]);
 
-  // WORKING PATTERN: Simple conversation creation
+  // PROVEN WORKING PATTERN: Standard XMTP conversation creation
   const createConversation = useCallback(async (recipientAddress: string): Promise<XMTPConversation | null> => {
     if (!client) return null;
     
     try {
       console.log(`[XMTP] 🔄 Creating conversation with ${recipientAddress}...`);
       
-      // Check if recipient can message
+      // Standard XMTP canMessage check
       const canMessage = await Client.canMessage([
         { identifier: recipientAddress, identifierKind: 'Ethereum' }
       ], 'production');
@@ -223,28 +208,27 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         return null;
       }
       
-      // Create new conversation
+      // Standard XMTP conversation creation
       const conversation = await client.conversations.newDm(recipientAddress);
-      
-      // Add to conversations list
-      const newConversation = conversation as XMTPConversation;
-      setConversations(prev => [...prev, newConversation]);
-      
-      // Auto-select the new conversation
-      setTimeout(() => {
-        selectConversation(newConversation);
-      }, 100);
       
       console.log('[XMTP] ✅ Conversation created successfully');
       
-      return newConversation;
+      // Reload conversations to pick up the new one
+      await loadConversations();
+      
+      // Auto-select the new conversation
+      setTimeout(() => {
+        selectConversation(conversation as XMTPConversation);
+      }, 500);
+      
+      return conversation as XMTPConversation;
       
     } catch (error) {
       console.error('[XMTP] ❌ Failed to create conversation:', error);
       setError('Failed to create conversation');
       return null;
     }
-  }, [client]);
+  }, [client, loadConversations]);
 
   // UI compatibility methods (simplified)
   const loadMoreConversations = useCallback(async () => {
@@ -310,7 +294,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
               // Update conversation preview
               setConversationPreviews(prev => ({
                 ...prev,
-                [message.conversationId]: message.content || 'New message'
+                [message.conversationId]: (message.content as string) || 'New message'
               }));
               
               // Mark as unread if not currently selected
