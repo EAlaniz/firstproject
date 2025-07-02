@@ -291,15 +291,19 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         });
         
         // Emergency fix: If ALL conversations are being filtered out, 
-        // there might be an issue with the deleted IDs. Allow some conversations through.
+        // there might be an issue with the deleted IDs. Reset the deleted IDs.
         if (deletedConversationIds.size > convos.length * 0.8) {
-          console.warn('[DEBUG] Emergency fix: Too many conversations marked as deleted, clearing some...');
-          // Keep the conversations - clear deleted IDs for now
-          const keptConversations = convos;
-          safeSetConversations(keptConversations as XMTPConversation[]);
+          console.warn('[DEBUG] Emergency fix: Too many conversations marked as deleted, resetting deleted IDs...');
+          // Clear the problematic deleted IDs and save to localStorage
+          setDeletedConversationIds(new Set());
+          if (address) {
+            localStorage.removeItem(`xmtp-deleted-conversations-${address}`);
+          }
+          // Show all conversations
+          safeSetConversations(convos as XMTPConversation[]);
           setConversationCursor(null);
-          setStatus(`Ready (${keptConversations.length} conversations) - cleared excessive deleted filter`);
-          console.log('[DEBUG] Emergency fix applied - showing all conversations');
+          setStatus(`Ready (${convos.length} conversations) - reset deleted filter`);
+          console.log('[DEBUG] Emergency fix applied - reset deleted IDs and showing all conversations');
           return;
         }
       }
@@ -814,16 +818,23 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     try {
       setStatus('Preparing to send...');
       const sentMsg = await conversation.send(message);
-      // On successful send, replace optimistic message with sentMsg
-      safeSetMessages(conversation.id, prev => prev.map(m => m.id === optimisticMsg.id ? sentMsg : m) as DecodedMessage<string>[]);
+      
+      console.log('[XMTP] Message sent successfully, removing optimistic message');
+      // On successful send, remove the optimistic message (the real message will come via stream)
+      safeSetMessages(conversation.id, prev => {
+        const filtered = prev.filter(m => m.id !== optimisticMsg.id);
+        console.log('[XMTP] Removed optimistic message, remaining messages:', filtered.length);
+        return filtered;
+      });
+      
       setStatus('Message sent');
       if (onSuccess) onSuccess();
-    } catch {
-      // On failure, remove the optimistic message and add a failed one as a plain object
-      safeSetMessages(conversation.id, prev => [
-        ...prev.filter((m): m is DecodedMessage<string> => typeof m === 'object' && m !== null && m.id !== optimisticMsg.id),
-        { ...optimisticMsg, status: 'failed' } as DecodedMessage<string>
-      ]);
+    } catch (error) {
+      console.error('[XMTP] Failed to send message:', error);
+      // On failure, mark the optimistic message as failed
+      safeSetMessages(conversation.id, prev => 
+        prev.map(m => m.id === optimisticMsg.id ? { ...m, status: 'failed' } as any : m)
+      );
       setError('Failed to send message. Please try again.');
     }
   };

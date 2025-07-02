@@ -20,7 +20,9 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
     loadMoreConversations, 
     conversationCursor, 
     conversationPreviews, 
-    unreadConversations 
+    unreadConversations,
+    sendMessage,
+    messages 
   } = useXMTP();
   
   const [isNewConversationModalOpen, setIsNewConversationModalOpen] = useState(false);
@@ -43,10 +45,18 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
   };
 
   // Handle message retry (for failed messages)
-  const handleRetry = (msg: { content?: string; id: string }) => {
+  const handleRetry = async (msg: { content?: string; id: string }) => {
     console.log('Retrying message:', msg);
-    // This could be implemented to retry failed messages
-    // For now, just log the attempt
+    if (msg.content && selectedConversation) {
+      // Retry sending the message using the XMTP context sendMessage function
+      try {
+        await sendMessage(msg.content, selectedConversation, () => {
+          console.log('Retry successful');
+        });
+      } catch (error) {
+        console.error('Retry failed:', error);
+      }
+    }
   };
 
   if (!isOpen) return null;
