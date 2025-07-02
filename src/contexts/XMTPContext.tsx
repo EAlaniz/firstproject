@@ -402,15 +402,32 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       setMessageDeliveryStatus('connected');
       setLastSyncTime(new Date());
       
+      // Handle empty conversation state gracefully
+      if (filteredConvos.length === 0 && convos.length > 0) {
+        console.log(`[XMTP] 💭 All ${convos.length} conversations filtered out (deleted by user)`);
+      } else if (filteredConvos.length === 0 && convos.length === 0) {
+        console.log('[XMTP] 💭 No conversations found - empty state is normal');
+      }
+      
       console.log(`[XMTP] ✅ Background sync completed in ${syncDuration}ms`);
       
     } catch (error) {
-      console.warn('[XMTP] ⚠️ Background sync failed, will retry:', error);
-      setConnectionQuality('poor');
-      setMessageDeliveryStatus('reconnecting');
+      const errorMessage = error instanceof Error ? error.message : String(error);
       
-      // Smart retry with exponential backoff
-      setTimeout(backgroundSyncManager, Math.min(5000, 1000 * Math.pow(2, 1)));
+      // Don't treat empty conversation state as an error
+      if (conversations?.length === 0 && errorMessage.includes('no conversations')) {
+        console.log('[XMTP] 💭 Empty conversation state - this is normal after deletion');
+        setConnectionQuality('excellent');
+        setMessageDeliveryStatus('connected');
+        setLastSyncTime(new Date());
+      } else {
+        console.warn('[XMTP] ⚠️ Background sync failed, will retry:', error);
+        setConnectionQuality('poor');
+        setMessageDeliveryStatus('reconnecting');
+        
+        // Smart retry with exponential backoff - but only for real errors
+        setTimeout(backgroundSyncManager, Math.min(5000, 1000 * Math.pow(2, 1)));
+      }
     } finally {
       setIsAutoSyncing(false);
     }
@@ -466,6 +483,12 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       const interval = getSyncInterval();
       console.log(`[XMTP] 📡 Setting sync interval to ${interval/1000} seconds (${connectionQuality} connection)`);
       syncInterval = setInterval(() => {
+        // Skip sync if no conversations exist to reduce unnecessary operations
+        if (conversations?.length === 0) {
+          console.log('[XMTP] 💭 Skipping background sync - no conversations to sync');
+          return;
+        }
+        
         // Add debouncing to interval-based syncs
         if (syncDebounceRef.current) {
           clearTimeout(syncDebounceRef.current);
@@ -478,7 +501,13 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     const setupTimeout = setTimeout(setupSyncInterval, 2000);
     
     // Reconfigure when connection quality changes with debouncing
+    // Skip frequent reconfigurations when no conversations exist
     const intervalRef = setInterval(() => {
+      if (conversations?.length === 0) {
+        console.log('[XMTP] 💭 Skipping sync reconfiguration - no conversations exist');
+        return;
+      }
+      
       const newInterval = getSyncInterval();
       const currentInterval = syncInterval && (syncInterval as any)._idleTimeout;
       if (currentInterval !== newInterval) {
@@ -1929,9 +1958,12 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     };
   }, [client, selectedConversation, safeSetMessages]);
 
-  // Reset state when address changes
+  // Reset state when address changes (only on actual address change, not deletion)
+  const prevAddressRef = useRef<string | undefined>();
   useEffect(() => {
-    if (address) {
+    if (address && prevAddressRef.current !== address) {
+      console.log('[XMTP] 🔄 Address changed from', prevAddressRef.current, 'to', address, '- resetting XMTP state');
+      
       setClient(null);
       setIsInitialized(false);
       safeSetConversations([]);
@@ -1968,6 +2000,12 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       globalStreamActive.current = false;
       
       clientRef.current = null;
+      
+      // Update previous address for next comparison
+      prevAddressRef.current = address;
+    } else if (!address && prevAddressRef.current) {
+      console.log('[XMTP] 🔌 Wallet disconnected - keeping XMTP state intact');
+      prevAddressRef.current = undefined;
     }
   }, [address, safeSetConversations]);
 
@@ -2066,6 +2104,12 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     
     // Clear selected conversation if it was in deleted set
     setSelectedConversation(prev => (prev && conversationIds.includes(prev.id) ? null : prev));
+    
+    // If all conversations were deleted, log this as normal behavior
+    const remainingConversations = conversations?.filter(c => !conversationIds.includes(c.id)) || [];
+    if (remainingConversations.length === 0 && conversationIds.length > 0) {
+      console.log(`[XMTP] 🧹 All conversations deleted by user - empty state is expected`);
+    }
     
     // Clear conversation previews
     setConversationPreviews(prev => {
