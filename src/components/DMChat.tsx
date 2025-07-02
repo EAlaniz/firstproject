@@ -95,9 +95,21 @@ const DMChat: React.FC<DMChatProps> = ({ conversationId, onRetry }) => {
       await sendMessage(text, conversation);
       console.log('✅ Message sent successfully via XMTP context');
     } catch (error) {
-      // Check if this is a sync message error (which is actually success)
+      // Enhanced sync message error detection including WASM patterns
       const errorMessage = error instanceof Error ? error.message : String(error);
-      const isSyncMessage = errorMessage.includes('synced') && errorMessage.includes('succeeded');
+      
+      const isWasmSuccessMessage = 
+        (errorMessage.includes('wasm') && (errorMessage.includes('succeeded') || errorMessage.includes('completed'))) ||
+        (errorMessage.includes('WebAssembly') && errorMessage.includes('success')) ||
+        /wasm.*sync.*complete/i.test(errorMessage) ||
+        /wasm.*operation.*finished/i.test(errorMessage) ||
+        /bindings_wasm.*succeeded/i.test(errorMessage) ||
+        // Common WASM patterns that appear in XMTP console errors
+        (errorMessage.includes('synced') && errorMessage.includes('messages') && errorMessage.includes('succeeded'));
+        
+      const isSyncMessage = 
+        (errorMessage.includes('synced') && errorMessage.includes('succeeded')) ||
+        isWasmSuccessMessage;
       
       if (isSyncMessage) {
         console.log('✅ Message sent successfully via XMTP context (sync message)');

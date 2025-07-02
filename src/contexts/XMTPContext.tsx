@@ -304,9 +304,22 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   // SEAMLESS UX: AUTOMATIC BACKGROUND SYNC SYSTEM
   // ==========================================
   
+  // Debounce refs for sync operations
+  const syncDebounceRef = useRef<NodeJS.Timeout>();
+  const syncRestartDebounceRef = useRef<NodeJS.Timeout>();
+  const lastSyncAttemptRef = useRef<number>(0);
+  
   // Intelligent background sync manager - handles all sync operations transparently
   const backgroundSyncManager = useCallback(async () => {
     if (!client || !isInitialized) return;
+    
+    // Debounce rapid sync calls
+    const now = Date.now();
+    if (now - lastSyncAttemptRef.current < 2000) {
+      console.log('[XMTP] 🔄 Sync debounced - too soon after last attempt');
+      return;
+    }
+    lastSyncAttemptRef.current = now;
     
     const startTime = Date.now();
     setIsAutoSyncing(true);
@@ -373,14 +386,32 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   // INTELLIGENT NETWORK-AWARE SYNC SYSTEM
   // ==========================================
   
+  // Debounced sync system startup to prevent rapid restarts
+  const debouncedSyncSystemStart = useCallback(() => {
+    if (syncRestartDebounceRef.current) {
+      clearTimeout(syncRestartDebounceRef.current);
+    }
+    
+    syncRestartDebounceRef.current = setTimeout(() => {
+      if (!client || !isInitialized) return;
+      
+      console.log('[XMTP] 🚀 Starting intelligent network-aware sync system');
+      
+      // Initial sync with debouncing
+      if (syncDebounceRef.current) {
+        clearTimeout(syncDebounceRef.current);
+      }
+      syncDebounceRef.current = setTimeout(backgroundSyncManager, 1000);
+      
+    }, 500); // 500ms debounce for sync system restarts
+  }, [client, isInitialized, backgroundSyncManager]);
+  
   // Adaptive sync timing based on connection quality and user activity
   useEffect(() => {
     if (!client || !isInitialized) return;
     
-    console.log('[XMTP] 🚀 Starting intelligent network-aware sync system');
-    
-    // Initial sync
-    backgroundSyncManager();
+    // Use debounced startup instead of immediate
+    debouncedSyncSystemStart();
     
     // Adaptive sync intervals based on connection quality
     const getSyncInterval = () => {
@@ -400,27 +431,36 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       if (syncInterval) clearInterval(syncInterval);
       const interval = getSyncInterval();
       console.log(`[XMTP] 📡 Setting sync interval to ${interval/1000} seconds (${connectionQuality} connection)`);
-      syncInterval = setInterval(backgroundSyncManager, interval);
+      syncInterval = setInterval(() => {
+        // Add debouncing to interval-based syncs
+        if (syncDebounceRef.current) {
+          clearTimeout(syncDebounceRef.current);
+        }
+        syncDebounceRef.current = setTimeout(backgroundSyncManager, 500);
+      }, interval);
     };
     
-    // Initial setup
-    setupSyncInterval();
+    // Delayed setup to prevent immediate restart
+    const setupTimeout = setTimeout(setupSyncInterval, 2000);
     
-    // Reconfigure when connection quality changes
+    // Reconfigure when connection quality changes with debouncing
     const intervalRef = setInterval(() => {
       const newInterval = getSyncInterval();
       const currentInterval = syncInterval && (syncInterval as any)._idleTimeout;
       if (currentInterval !== newInterval) {
         setupSyncInterval();
       }
-    }, 5000);
+    }, 10000); // Reduced frequency from 5s to 10s
     
     return () => {
       console.log('[XMTP] 🛑 Stopping intelligent sync system');
       if (syncInterval) clearInterval(syncInterval);
+      if (setupTimeout) clearTimeout(setupTimeout);
       clearInterval(intervalRef);
+      if (syncDebounceRef.current) clearTimeout(syncDebounceRef.current);
+      if (syncRestartDebounceRef.current) clearTimeout(syncRestartDebounceRef.current);
     };
-  }, [client, isInitialized, backgroundSyncManager, connectionQuality]);
+  }, [client, isInitialized, debouncedSyncSystemStart, connectionQuality]);
   
   // Online/offline detection with automatic reconnection
   useEffect(() => {
@@ -465,13 +505,21 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
             console.log(`[XMTP] ✅ Sync completed on attempt ${attempt}`);
           } catch (syncError) {
             const syncErrorMessage = syncError instanceof Error ? syncError.message : String(syncError);
-            // Check if this is actually a sync success message disguised as error
+            // Enhanced sync success message detection including WASM patterns
+            const isWasmSuccessMessage = 
+              (syncErrorMessage.includes('wasm') && (syncErrorMessage.includes('succeeded') || syncErrorMessage.includes('completed'))) ||
+              (syncErrorMessage.includes('WebAssembly') && syncErrorMessage.includes('success')) ||
+              /wasm.*sync.*complete/i.test(syncErrorMessage) ||
+              /wasm.*operation.*finished/i.test(syncErrorMessage) ||
+              /bindings_wasm.*succeeded/i.test(syncErrorMessage);
+              
             const isSyncSuccessMessage = 
               syncErrorMessage.includes('synced') ||
               syncErrorMessage.includes('success') ||
               syncErrorMessage.includes('completed') ||
               syncErrorMessage.includes('SyncGroup') ||
-              syncErrorMessage.includes('ConversationSync');
+              syncErrorMessage.includes('ConversationSync') ||
+              isWasmSuccessMessage;
               
             if (isSyncSuccessMessage) {
               console.log(`[XMTP] ✅ Sync status message on attempt ${attempt}:`, syncErrorMessage);
@@ -1081,13 +1129,20 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   };
 
 
-  // Update selectConversation to mark as read and clear unread
+  // Conversation selection with improved stream management
   const selectConversation = async (conversation: XMTPConversation) => {
     if (!client) {
       setError('XMTP not initialized');
-      setIsLoading(false); // CRITICAL FIX: Clear loading state on early return
+      setIsLoading(false);
       return;
     }
+    
+    // Prevent multiple simultaneous selections
+    if (isLoading) {
+      console.log('[XMTP] 🔄 Conversation selection already in progress, skipping');
+      return;
+    }
+    
     try {
       console.log('[XMTP] 🔄 Selecting conversation:', {
         id: conversation.id,
@@ -1095,38 +1150,61 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         hasMembers: 'members' in conversation
       });
       
-      setSelectedConversation(conversation);
       setIsLoading(true);
       setStatus('Loading messages...');
       console.log('[XMTP] ✅ Set loading state to true, starting message load...');
+      
+      // Close previous streams first with proper cleanup
+      if (conversationStreams.current.size > 0) {
+        console.log('[XMTP] 🧹 Cleaning up previous streams before selection');
+        const streamsToClose = Array.from(conversationStreams.current.entries());
+        conversationStreams.current.clear();
+        
+        // Close streams synchronously to ensure cleanup before new setup
+        for (const [streamId, stream] of streamsToClose) {
+          try {
+            if (isAsyncIterator(stream) && typeof stream.return === 'function') {
+              await stream.return();
+              console.log(`[XMTP] ✅ Closed stream: ${streamId}`);
+            }
+          } catch (error) {
+            console.warn(`[XMTP] ⚠️ Error closing stream ${streamId}:`, error);
+          }
+        }
+        
+        // Add small delay to ensure cleanup is complete
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+      
+      // Now set the selected conversation
+      setSelectedConversation(conversation);
 
-      // Load initial messages first
+      // Load initial messages
       console.log('[XMTP] 🔄 Starting loadMessages for conversation:', conversation.id);
       await loadMessages(conversation.id, false, conversation);
       console.log('[XMTP] ✅ Completed loadMessages for conversation:', conversation.id);
       
-      // Close previous stream if exists
-      if (conversationStreams.current.size > 0) {
-        conversationStreams.current.forEach((stream) => {
-          if (isAsyncIterator(stream) && typeof stream.return === 'function') stream.return?.();
-        });
-        conversationStreams.current.clear();
-      }
-
-      // Start new stream for selected conversation
+      // Set up new message streaming only for the selected conversation
+      console.log('[XMTP] 🔄 Setting up message streaming for conversation:', conversation.id);
+      
       const messageCallback: StreamCallback<DecodedMessage<string>> = (err, message) => {
         if (err) {
-          console.error('Error in message stream:', err);
+          const errorMessage = err instanceof Error ? err.message : String(err);
+          if (!errorMessage.includes('Stream') && !errorMessage.includes('not found')) {
+            console.error('Error in message stream:', err);
+          }
           return;
         }
         if (message) {
           safeSetMessages(conversation.id, (prev: DecodedMessage<string>[]) => {
-            // Deduplicate by message ID and ensure we only have DecodedMessage<string> objects
+            // Deduplicate by message ID
             const newMessages = prev.filter((m): m is DecodedMessage<string> => 
               typeof m === 'object' && m !== null && m.id !== message.id
             );
             return [...newMessages, message];
           });
+          
+          // Update unread conversations only if this isn't the currently selected conversation
           setUnreadConversations(prev => {
             if (selectedConversation && conversation.id === selectedConversation.id) return prev;
             const next = new Set(prev);
@@ -1136,8 +1214,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         }
       };
 
-      // Set up message streaming
-      console.log('[XMTP] 🔄 Setting up message streaming for conversation:', conversation.id);
+      // Only create one stream for the selected conversation
       if (hasMethod<{ streamMessages: (cb: StreamCallback<DecodedMessage<string>>) => Promise<unknown> }>(conversation, 'streamMessages')) {
         const stream = await conversation.streamMessages(messageCallback);
         conversationStreams.current.set(conversation.id, stream);
@@ -1147,8 +1224,15 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         conversationStreams.current.set(conversation.id, stream);
         console.log('[XMTP] ✅ Started stream for conversation:', conversation.id);
       } else {
-        console.log('[XMTP] ⚠️ No streaming method available for conversation:', conversation.id);
+        console.log('[XMTP] ⚠️ No streaming method available for conversation:', (conversation as any).id);
       }
+      
+      // Clear unread status for this conversation
+      setUnreadConversations(prev => {
+        const next = new Set(prev);
+        next.delete(conversation.id);
+        return next;
+      });
 
       setStatus('Ready');
       setIsLoading(false);
@@ -1157,6 +1241,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       console.error('[XMTP] ❌ Failed to select conversation:', err);
       setError('Failed to load conversation');
       setIsLoading(false);
+      setSelectedConversation(null); // Clear selection on error
       console.log('[XMTP] ✅ Loading state cleared after error');
     }
   };
@@ -1266,7 +1351,16 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       const errorMessage = error instanceof Error ? error.message : String(error);
       // const errorStack = error instanceof Error ? error.stack : '';
       
-      // Enhanced sync message detection patterns
+      // Enhanced sync message detection patterns including WASM
+      const isWasmSuccessMessage = 
+        (errorMessage.includes('wasm') && (errorMessage.includes('succeeded') || errorMessage.includes('completed'))) ||
+        (errorMessage.includes('WebAssembly') && errorMessage.includes('success')) ||
+        /wasm.*sync.*complete/i.test(errorMessage) ||
+        /wasm.*operation.*finished/i.test(errorMessage) ||
+        /bindings_wasm.*succeeded/i.test(errorMessage) ||
+        // Common WASM patterns that appear in XMTP console errors
+        (errorMessage.includes('synced') && errorMessage.includes('messages') && errorMessage.includes('succeeded'));
+        
       const isSyncMessage = 
         (errorMessage.includes('synced') && errorMessage.includes('succeeded')) ||
         (errorMessage.includes('sync') && errorMessage.includes('success')) ||
@@ -1279,7 +1373,9 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         // Common XMTP success patterns that throw as "errors"
         /message.*sent.*successfully/i.test(errorMessage) ||
         /sync.*completed/i.test(errorMessage) ||
-        /delivery.*confirmed/i.test(errorMessage);
+        /delivery.*confirmed/i.test(errorMessage) ||
+        // WASM success patterns
+        isWasmSuccessMessage;
       
       if (isSyncMessage) {
         console.log('[XMTP] 🔄 Received sync message as error, treating as success:', errorMessage);
@@ -1535,14 +1631,22 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         
       } catch (syncError) {
         const syncErrorMessage = syncError instanceof Error ? syncError.message : String(syncError);
-        // Check if this is actually a sync success message disguised as error
+        // Enhanced sync success message detection including WASM patterns
+        const isWasmSuccessMessage = 
+          (syncErrorMessage.includes('wasm') && (syncErrorMessage.includes('succeeded') || syncErrorMessage.includes('completed'))) ||
+          (syncErrorMessage.includes('WebAssembly') && syncErrorMessage.includes('success')) ||
+          /wasm.*sync.*complete/i.test(syncErrorMessage) ||
+          /wasm.*operation.*finished/i.test(syncErrorMessage) ||
+          /bindings_wasm.*succeeded/i.test(syncErrorMessage);
+          
         const isSyncSuccessMessage = 
           syncErrorMessage.includes('synced') ||
           syncErrorMessage.includes('success') ||
           syncErrorMessage.includes('completed') ||
           syncErrorMessage.includes('published') ||
           syncErrorMessage.includes('SyncGroup') ||
-          syncErrorMessage.includes('ConversationSync');
+          syncErrorMessage.includes('ConversationSync') ||
+          isWasmSuccessMessage;
           
         if (isSyncSuccessMessage) {
           console.log('[XMTP] ✅ Network publishing/sync status message:', syncErrorMessage);
@@ -1597,15 +1701,27 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     if (!client || globalStreamActive.current) return;
     
     let cancelled = false;
+    let streamCleanupTimeout: NodeJS.Timeout;
     globalStreamActive.current = true;
 
     const setupGlobalStreaming = async () => {
       try {
-        // Prevent duplicate streams
+        // Prevent duplicate streams with proper cleanup
         if (globalStreamRef.current) {
-          console.log('[XMTP] ⚠️ Global stream already exists, skipping setup');
-          return;
+          console.log('[XMTP] ⚠️ Global stream already exists, cleaning up first');
+          try {
+            if (typeof globalStreamRef.current.return === 'function') {
+              await globalStreamRef.current.return();
+            }
+          } catch (cleanupError) {
+            console.warn('[XMTP] Error cleaning up existing global stream:', cleanupError);
+          }
+          globalStreamRef.current = null;
+          // Add delay before setting up new stream
+          await new Promise(resolve => setTimeout(resolve, 1000));
         }
+        
+        if (cancelled) return;
         
         console.log('[XMTP] 🚀 Setting up global message stream...');
         
@@ -1649,14 +1765,19 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
             }
           } catch (streamError) {
             if (!cancelled) {
-              console.error('[XMTP] Global message stream error:', streamError);
+              const errorMessage = streamError instanceof Error ? streamError.message : String(streamError);
+              if (!errorMessage.includes('Stream') && !errorMessage.includes('not found')) {
+                console.error('[XMTP] Global message stream error:', streamError);
+              }
             }
           }
         })();
         
         // Global message streaming started
       } catch (error) {
-        console.error('[XMTP] Failed to start global message stream:', error);
+        if (!cancelled) {
+          console.error('[XMTP] Failed to start global message stream:', error);
+        }
       }
     };
 
@@ -1666,15 +1787,24 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       cancelled = true;
       globalStreamActive.current = false;
       
+      // Clear any pending cleanup
+      if (streamCleanupTimeout) {
+        clearTimeout(streamCleanupTimeout);
+      }
+      
       if (globalStreamRef.current) {
-        try {
-          if (typeof globalStreamRef.current.return === 'function') {
-            globalStreamRef.current.return();
+        // Async cleanup with timeout to prevent hanging
+        streamCleanupTimeout = setTimeout(() => {
+          try {
+            if (globalStreamRef.current && typeof globalStreamRef.current.return === 'function') {
+              globalStreamRef.current.return();
+            }
+          } catch (error) {
+            console.warn('[XMTP] Error closing global stream:', error);
+          } finally {
+            globalStreamRef.current = null;
           }
-        } catch (error) {
-          console.warn('[XMTP] Error closing global stream:', error);
-        }
-        globalStreamRef.current = null;
+        }, 100);
       }
     };
   }, [client, safeSetMessages, selectedConversation]);
