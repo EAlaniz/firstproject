@@ -26,17 +26,6 @@ export interface XMTPContextType {
   // Simple state
   status: string;
   isLoading: boolean;
-  
-  // UI compatibility (simplified)
-  loadMoreConversations: () => Promise<void>;
-  conversationCursor: string | null;
-  conversationPreviews: { [id: string]: string };
-  unreadConversations: Set<string>;
-  loadMoreMessages: (conversationId: string) => Promise<void>;
-  loadMessages: (conversationId: string, append?: boolean) => Promise<void>;
-  isSyncing: boolean;
-  deleteConversation: (conversationId: string) => void;
-  deleteConversations: (conversationIds: string[]) => void;
 }
 
 const XMTPContext = createContext<XMTPContextType | undefined>(undefined);
@@ -61,11 +50,6 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   const [conversations, setConversations] = useState<XMTPConversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<XMTPConversation | null>(null);
   const [messages, setMessages] = useState<{ [convId: string]: DecodedMessage<string>[] }>({});
-  
-  // UI compatibility state (simplified)
-  const [conversationPreviews, setConversationPreviews] = useState<{ [id: string]: string }>({});
-  const [unreadConversations, setUnreadConversations] = useState<Set<string>>(new Set());
-  const [isSyncing, setIsSyncing] = useState(false);
   
   // Stream management
   const globalStreamRef = useRef<any>(null);
@@ -119,31 +103,16 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       
       console.log(`[XMTP] ✅ Found ${convos.length} conversations`);
       
-      // Log each conversation for debugging and set previews
-      const previews: { [id: string]: string } = {};
-      
-      for (const conv of convos) {
+      // Log each conversation for debugging
+      convos.forEach(conv => {
         console.log('[XMTP] 📋 Conversation:', {
           id: conv.id,
           peerAddress: 'peerAddress' in conv ? conv.peerAddress : 'Group',
           isInbound: 'peerAddress' in conv ? conv.peerAddress !== address : false
         });
-        
-        // Get last message for preview
-        try {
-          const msgs = await conv.messages({ pageSize: 1 });
-          if (msgs.length > 0) {
-            previews[conv.id] = msgs[0].content || 'New message';
-          } else {
-            previews[conv.id] = 'No messages yet';
-          }
-        } catch (error) {
-          previews[conv.id] = 'No messages yet';
-        }
-      }
+      });
       
       setConversations(convos as XMTPConversation[]);
-      setConversationPreviews(previews);
       
     } catch (error) {
       console.error('[XMTP] ❌ Failed to load conversations:', error);
@@ -163,13 +132,6 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       // Load messages for this conversation
       const msgs = await conversation.messages();
       setMessages(prev => ({ ...prev, [conversation.id]: msgs }));
-      
-      // Clear unread status
-      setUnreadConversations(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(conversation.id);
-        return newSet;
-      });
       
       console.log(`[XMTP] ✅ Selected conversation with ${msgs.length} messages`);
       
@@ -193,7 +155,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       // Add to local messages
       setMessages(prev => ({
         ...prev,
-        [conversation.id]: [...(prev[conversation.id] || []), sentMessage as DecodedMessage<string>]
+        [conversation.id]: [...(prev[conversation.id] || []), sentMessage]
       }));
       
       console.log('[XMTP] ✅ Message sent successfully');
@@ -238,40 +200,6 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     }
   }, [client]);
 
-  // UI compatibility methods (simplified)
-  const loadMoreConversations = useCallback(async () => {
-    // Simple: just reload conversations
-    await loadConversations();
-  }, [loadConversations]);
-
-  const loadMoreMessages = useCallback(async (conversationId: string) => {
-    // Simple: reload messages for conversation
-    const conversation = conversations.find(c => c.id === conversationId);
-    if (conversation) {
-      const msgs = await conversation.messages();
-      setMessages(prev => ({ ...prev, [conversationId]: msgs }));
-    }
-  }, [conversations]);
-
-  const loadMessages = useCallback(async (conversationId: string, _append = false) => {
-    // Simple: same as loadMoreMessages (append parameter ignored for simplicity)
-    await loadMoreMessages(conversationId);
-  }, [loadMoreMessages]);
-
-  const deleteConversation = useCallback((conversationId: string) => {
-    setConversations(prev => prev.filter(c => c.id !== conversationId));
-    if (selectedConversation?.id === conversationId) {
-      setSelectedConversation(null);
-    }
-  }, [selectedConversation]);
-
-  const deleteConversations = useCallback((conversationIds: string[]) => {
-    setConversations(prev => prev.filter(c => !conversationIds.includes(c.id)));
-    if (selectedConversation && conversationIds.includes(selectedConversation.id)) {
-      setSelectedConversation(null);
-    }
-  }, [selectedConversation]);
-
   // WORKING PATTERN: Simple global message streaming
   useEffect(() => {
     if (!client || streamActiveRef.current) return;
@@ -298,17 +226,6 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
                   message
                 ]
               }));
-              
-              // Update conversation preview
-              setConversationPreviews(prev => ({
-                ...prev,
-                [message.conversationId]: message.content || 'New message'
-              }));
-              
-              // Mark as unread if not currently selected
-              if (!selectedConversation || selectedConversation.id !== message.conversationId) {
-                setUnreadConversations(prev => new Set([...prev, message.conversationId]));
-              }
             }
           } catch (streamError) {
             console.warn('[XMTP] Stream error:', streamError);
@@ -378,17 +295,6 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     selectConversation,
     sendMessage,
     createConversation,
-    
-    // UI compatibility
-    loadMoreConversations,
-    conversationCursor: null, // Simplified: no pagination
-    conversationPreviews,
-    unreadConversations,
-    loadMoreMessages,
-    loadMessages,
-    isSyncing,
-    deleteConversation,
-    deleteConversations,
   };
 
   return (
