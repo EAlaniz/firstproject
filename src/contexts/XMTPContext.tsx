@@ -1508,7 +1508,22 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       }
       
       // Select the conversation immediately using the conversation object
+      console.log('[XMTP] 🎯 Immediately selecting newly created conversation');
       await selectConversation(newConversation);
+      
+      // CRITICAL: Force immediate UI refresh to show the conversation
+      setTimeout(() => {
+        console.log('[XMTP] 🔄 Forcing conversation list refresh after creation');
+        safeSetConversations(prev => {
+          // Ensure our conversation is still in the list
+          const hasNewConvo = prev?.find(c => c.id === newConversation.id);
+          if (!hasNewConvo) {
+            console.log('[XMTP] ⚠️ New conversation missing from list, re-adding');
+            return [...(prev || []), newConversation];
+          }
+          return prev;
+        });
+      }, 100);
       
       setStatus('Conversation created');
       return newConversation;
@@ -1663,7 +1678,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       if (activeStream) {
         try {
           if (isAsyncIterator(activeStream) && typeof activeStream.return === 'function') {
-            (activeStream as AsyncIterableIterator<unknown>).return();
+            (activeStream as AsyncIterableIterator<unknown>).return?.();
           }
         } catch (error) {
           console.warn('[XMTP] Error closing conversation stream:', error);
