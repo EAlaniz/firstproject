@@ -114,6 +114,40 @@ export function clearXMTPState() {
   }
 }
 
+// Helper to debug conversation filtering issues
+export function debugConversationFiltering(address: string) {
+  try {
+    const deletedKey = `xmtp-deleted-conversations-${address.toLowerCase()}`;
+    const deletedIds = localStorage.getItem(deletedKey);
+    const conversationsKey = `xmtp-conversations-${address}`;
+    const conversations = localStorage.getItem(conversationsKey);
+    
+    console.log('[XMTP Debug] Conversation Filtering Debug:', {
+      address,
+      deletedKey,
+      deletedIds: deletedIds ? JSON.parse(deletedIds) : [],
+      conversationsCount: conversations ? JSON.parse(conversations).length : 0,
+      localStorage: {
+        deleted: deletedIds,
+        conversations: conversations ? JSON.parse(conversations).map((c: any) => ({ id: c.id, peerAddress: c.peerAddress })) : []
+      }
+    });
+    
+    // Clear deleted conversations for debugging
+    localStorage.removeItem(deletedKey);
+    console.log('[XMTP Debug] Cleared deleted conversations list for debugging');
+    
+  } catch (error) {
+    console.error('[XMTP Debug] Error debugging conversation filtering:', error);
+  }
+}
+
+// Make debug functions available globally
+if (typeof window !== 'undefined' && import.meta.env.DEV) {
+  (window as any).debugConversationFiltering = debugConversationFiltering;
+  (window as any).clearXMTPState = clearXMTPState;
+}
+
 // Helper to check for clock skew (can cause MLS validation errors)
 export function checkClockSkew() {
   try {
@@ -583,26 +617,30 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
           // DO NOT reset deleted IDs - user wants them to stay deleted
         }
         
-        // CRITICAL FIX: Check for recently created conversations before showing empty state
-        const hasRecentlyCreated = Array.from(recentlyCreatedConversationIds).some(id => 
-          convos.some(conv => conv.id === id)
+        // CRITICAL FIX: Always include recently created conversations
+        const recentlyCreatedConvos = convos.filter(conv => 
+          recentlyCreatedConversationIds.has(conv.id)
         );
         
-        if (recentUserDeletion && filteredConvos.length === 0 && !hasRecentlyCreated) {
-          // User recently deleted conversations, showing empty state
-          safeSetConversations([]);
-          setConversationCursor(null);
-          setStatus('No conversations');
-          return;
+        // Add recently created conversations back even if they were filtered out
+        if (recentlyCreatedConvos.length > 0) {
+          console.log('[XMTP] 🔄 Ensuring recently created conversations are included:', recentlyCreatedConvos.map(c => c.id));
+          const existingIds = new Set(filteredConvos.map(c => c.id));
+          const missingRecentlyCreated = recentlyCreatedConvos.filter(c => !existingIds.has(c.id));
+          filteredConvos = [...filteredConvos, ...missingRecentlyCreated];
         }
         
-        if (hasRecentlyCreated && filteredConvos.length === 0) {
-          // Found recently created conversations
-          // Re-filter to include recently created conversations
-          const recentlyCreatedConvos = convos.filter(conv => 
-            recentlyCreatedConversationIds.has(conv.id)
-          );
-          filteredConvos = recentlyCreatedConvos;
+        if (convos.length > 0 && filteredConvos.length === 0 && recentlyCreatedConvos.length === 0) {
+          // Only show empty state if there are no recently created conversations
+          const timeSinceLastDeletion = Date.now() - lastUserDeletionTime;
+          const recentUserDeletion = timeSinceLastDeletion < 300000; // 5 minutes
+          
+          if (recentUserDeletion) {
+            safeSetConversations([]);
+            setConversationCursor(null);
+            setStatus('No conversations');
+            return;
+          }
         }
       }
       
@@ -611,7 +649,9 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         afterFiltering: filteredConvos.length,
         filteredConversationIds: filteredConvos.map((c: any) => c.id),
         recentlyCreated: Array.from(recentlyCreatedConversationIds),
-        deleted: deletedConversationIds.size
+        deleted: deletedConversationIds.size,
+        deletedIds: Array.from(deletedConversationIds),
+        allConversationIds: convos.map((c: any) => c.id)
       });
       
       safeSetConversations(filteredConvos as XMTPConversation[]);
@@ -1563,15 +1603,15 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         return newSet;
       });
       
-      // Clear from recently created after 30 seconds
+      // Clear from recently created after 2 minutes (extended for better protection)
       setTimeout(() => {
         setRecentlyCreatedConversationIds(prev => {
           const newSet = new Set(prev);
           newSet.delete(newConversation.id);
-          console.log('[XMTP] 🔄 Removed from recently created:', newConversation.id);
+          console.log('[XMTP] 🔄 Removed from recently created after 2 minutes:', newConversation.id);
           return newSet;
         });
-      }, 30000);
+      }, 120000); // Extended to 2 minutes
       
       console.log('[XMTP] 🔧 DEBUG: About to add new conversation to state:', {
         conversationId: newConversation.id,
@@ -1586,8 +1626,17 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         // Check if conversation already exists to avoid duplicates
         const existing = prev?.find(c => c.id === newConversation.id);
         if (existing) {
-          console.log('[XMTP] ⚠️ Conversation already exists in state, will select it anyway');
-          return prev;
+          console.log('[XMTP] ⚠️ Conversation already exists in state, ensuring it\'s visible');
+          // If it exists but might be filtered out, make sure it's in the visible list
+          const isVisible = prev.some(c => c.id === newConversation.id);
+          if (isVisible) {
+            return prev;
+          } else {
+            // Re-add the conversation to ensure visibility
+            const updated = [...(prev || []), newConversation];
+            console.log('[XMTP] ✅ Re-added existing conversation to ensure visibility:', newConversation.id);
+            return updated;
+          }
         }
         
         const updated = [...(prev || []), newConversation];
