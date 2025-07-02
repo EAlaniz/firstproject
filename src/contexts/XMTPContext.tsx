@@ -391,8 +391,8 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     try {
       // Automatic background sync started
       
-      // Step 1: Enhanced V3 sync for conversation discovery
-      // V3 Enhanced sync - ensuring conversation visibility
+      // Step 1: CRITICAL FIX - Enhanced inbound conversation discovery
+      console.log('[XMTP] 🔍 INBOUND CONVERSATION DISCOVERY - Comprehensive sync for receiving new conversations');
       
       // V3 Client-level sync first (critical for receiver discovery)
       if (hasMethod<{ sync: () => Promise<void> }>(client, 'sync')) {
@@ -400,22 +400,98 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         console.log('[XMTP] ✅ Client database sync completed');
       }
       
-      // Conversation-level sync
-      if (hasMethod<{ conversations: { sync: () => Promise<void> } }>(client, 'conversations') &&
+      // CRITICAL: Enhanced conversation sync with consent state handling for inbound messages
+      if (hasMethod<{ conversations: { syncAll: (options?: { consentState?: string }) => Promise<void> } }>(client, 'conversations') &&
+          hasMethod<{ syncAll: (options?: { consentState?: string }) => Promise<void> }>(client.conversations, 'syncAll')) {
+        try {
+          // Sync all conversations including 'unknown' consent state for new inbound conversations
+          await client.conversations.syncAll({ consentState: 'unknown' });
+          console.log('[XMTP] ✅ Sync all conversations (including unknown/inbound) completed');
+          
+          // Also sync allowed conversations
+          await client.conversations.syncAll({ consentState: 'allowed' });
+          console.log('[XMTP] ✅ Sync allowed conversations completed');
+        } catch (syncAllError) {
+          console.warn('[XMTP] syncAll failed, falling back to basic sync:', syncAllError);
+          await client.conversations.sync();
+        }
+      } else if (hasMethod<{ conversations: { sync: () => Promise<void> } }>(client, 'conversations') &&
           hasMethod<{ sync: () => Promise<void> }>(client.conversations, 'sync')) {
         await client.conversations.sync();
-        console.log('[XMTP] ✅ Conversation sync completed');
+        console.log('[XMTP] ✅ Basic conversation sync completed');
       }
       
-      // V3 specific: Force DM discovery
-      if (hasMethod<{ listDms: () => Promise<unknown[]> }>(client.conversations, 'listDms')) {
-        const dms = await (client.conversations as any).listDms();
-        console.log(`[XMTP] 📱 V3 DM discovery: ${dms.length} DMs found`);
+      // ENHANCED: Force comprehensive DM discovery including all consent states
+      if (hasMethod<{ listDms: (options?: { consentState?: string }) => Promise<unknown[]> }>(client.conversations, 'listDms')) {
+        // Check for conversations in all consent states
+        const consentStates = ['allowed', 'denied', 'unknown'];
+        let totalDms = 0;
+        
+        for (const consentState of consentStates) {
+          try {
+            const dms = await (client.conversations as any).listDms({ consentState });
+            console.log(`[XMTP] 📱 V3 DM discovery (${consentState}): ${dms.length} DMs found`);
+            totalDms += dms.length;
+          } catch (consentError) {
+            console.warn(`[XMTP] Failed to list DMs with consent state ${consentState}:`, consentError);
+          }
+        }
+        
+        // Fallback: list all DMs without consent filtering
+        try {
+          const allDms = await (client.conversations as any).listDms();
+          console.log(`[XMTP] 📱 V3 DM discovery (all): ${allDms.length} total DMs found`);
+        } catch (allDmError) {
+          console.warn('[XMTP] Failed to list all DMs:', allDmError);
+        }
       }
       
-      // Step 2: Load conversations seamlessly
-      const convos = await client.conversations.list();
+      // Step 2: CRITICAL FIX - Load conversations including ALL consent states for inbound discovery
+      let convos: any[] = [];
+      
+      // Try to load conversations with different consent states
+      if (hasMethod<{ list: (options?: { consentState?: string }) => Promise<unknown[]> }>(client.conversations, 'list')) {
+        const consentStates = ['allowed', 'unknown']; // Include 'unknown' for new inbound conversations
+        
+        for (const consentState of consentStates) {
+          try {
+            const stateConvos = await (client.conversations as any).list({ consentState });
+            console.log(`[XMTP] 📋 Loading conversations (${consentState}): ${stateConvos.length} found`);
+            convos = [...convos, ...stateConvos];
+          } catch (consentError) {
+            console.warn(`[XMTP] Failed to load conversations with consent state ${consentState}:`, consentError);
+          }
+        }
+        
+        // Remove duplicates by ID
+        const uniqueConvos = convos.filter((conv, index, self) => 
+          index === self.findIndex(c => c.id === conv.id)
+        );
+        convos = uniqueConvos;
+        console.log(`[XMTP] 📋 Total unique conversations loaded: ${convos.length}`);
+      } else {
+        // Fallback to basic list method
+        convos = await client.conversations.list();
+        console.log(`[XMTP] 📋 Basic conversation loading: ${convos.length} found`);
+      }
+      
+      // CRITICAL FIX: Auto-allow unknown conversations for better UX
+      for (const convo of convos) {
+        try {
+          if (hasMethod<{ consentState: string }>(convo, 'consentState') && (convo as any).consentState === 'unknown') {
+            console.log(`[XMTP] 🔄 Auto-allowing unknown conversation: ${(convo as any).id}`);
+            if (hasMethod<{ allow: () => Promise<void> }>(convo, 'allow')) {
+              await (convo as any).allow();
+              console.log(`[XMTP] ✅ Auto-allowed conversation: ${(convo as any).id}`);
+            }
+          }
+        } catch (consentError) {
+          console.warn(`[XMTP] Failed to auto-allow conversation ${(convo as any).id}:`, consentError);
+        }
+      }
+      
       const filteredConvos = convos.filter(c => !deletedConversationIds.has(c.id));
+      console.log(`[XMTP] 📋 Conversations after deletion filter: ${filteredConvos.length}`);
       safeSetConversations(filteredConvos as XMTPConversation[]);
       
       // Step 3: Update connection quality based on sync performance
@@ -493,14 +569,14 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     // Use debounced startup instead of immediate
     debouncedSyncSystemStart();
     
-    // Adaptive sync intervals based on connection quality
+    // CRITICAL FIX: Faster sync intervals for better inbound conversation discovery
     const getSyncInterval = () => {
       switch (connectionQuality) {
-        case 'excellent': return 30000; // Increased from 15s to 30s
-        case 'good': return 45000;      // Increased from 20s to 45s
-        case 'poor': return 60000;      // Increased from 30s to 60s
-        case 'offline': return 120000;  // Increased from 60s to 120s
-        default: return 30000;
+        case 'excellent': return 8000;  // Reduced to 8s for rapid inbound conversation discovery
+        case 'good': return 12000;      // Reduced to 12s
+        case 'poor': return 20000;      // Reduced to 20s  
+        case 'offline': return 45000;   // Reduced to 45s
+        default: return 8000;           // Default to frequent sync for new conversations
       }
     };
     
@@ -628,9 +704,34 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
           await new Promise(resolve => setTimeout(resolve, delay));
         }
 
-        // Load conversations
-        const convos = await client.conversations.list();
-        console.log(`[XMTP] 📋 Discovered ${convos.length} conversations on attempt ${attempt}`);
+        // CRITICAL FIX: Load conversations including ALL consent states for inbound discovery
+        let convos: any[] = [];
+        
+        // Try to load conversations with different consent states
+        if (hasMethod<{ list: (options?: { consentState?: string }) => Promise<unknown[]> }>(client.conversations, 'list')) {
+          const consentStates = ['allowed', 'unknown']; // Include 'unknown' for new inbound conversations
+          
+          for (const consentState of consentStates) {
+            try {
+              const stateConvos = await (client.conversations as any).list({ consentState });
+              console.log(`[XMTP] 📋 Discovery attempt ${attempt} - conversations (${consentState}): ${stateConvos.length} found`);
+              convos = [...convos, ...stateConvos];
+            } catch (consentError) {
+              console.warn(`[XMTP] Failed to discover conversations with consent state ${consentState}:`, consentError);
+            }
+          }
+          
+          // Remove duplicates by ID
+          const uniqueConvos = convos.filter((conv, index, self) => 
+            index === self.findIndex(c => c.id === conv.id)
+          );
+          convos = uniqueConvos;
+        } else {
+          // Fallback to basic list method
+          convos = await client.conversations.list();
+        }
+        
+        console.log(`[XMTP] 📋 Discovered ${convos.length} total conversations on attempt ${attempt}`);
         
         return convos as XMTPConversation[];
       } catch (error) {
