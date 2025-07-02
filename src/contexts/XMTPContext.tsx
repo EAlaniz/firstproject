@@ -1085,6 +1085,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   const selectConversation = async (conversation: XMTPConversation) => {
     if (!client) {
       setError('XMTP not initialized');
+      setIsLoading(false); // CRITICAL FIX: Clear loading state on early return
       return;
     }
     try {
@@ -1097,9 +1098,12 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       setSelectedConversation(conversation);
       setIsLoading(true);
       setStatus('Loading messages...');
+      console.log('[XMTP] ✅ Set loading state to true, starting message load...');
 
       // Load initial messages first
+      console.log('[XMTP] 🔄 Starting loadMessages for conversation:', conversation.id);
       await loadMessages(conversation.id, false, conversation);
+      console.log('[XMTP] ✅ Completed loadMessages for conversation:', conversation.id);
       
       // Close previous stream if exists
       if (conversationStreams.current.size > 0) {
@@ -1133,20 +1137,27 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       };
 
       // Set up message streaming
+      console.log('[XMTP] 🔄 Setting up message streaming for conversation:', conversation.id);
       if (hasMethod<{ streamMessages: (cb: StreamCallback<DecodedMessage<string>>) => Promise<unknown> }>(conversation, 'streamMessages')) {
         const stream = await conversation.streamMessages(messageCallback);
         conversationStreams.current.set(conversation.id, stream);
+        console.log('[XMTP] ✅ Started streamMessages for conversation:', conversation.id);
       } else if (hasMethod<{ stream: (cb: StreamCallback<DecodedMessage<string>>) => Promise<unknown> }>(conversation, 'stream')) {
         const stream = await conversation.stream(messageCallback);
         conversationStreams.current.set(conversation.id, stream);
+        console.log('[XMTP] ✅ Started stream for conversation:', conversation.id);
+      } else {
+        console.log('[XMTP] ⚠️ No streaming method available for conversation:', conversation.id);
       }
 
       setStatus('Ready');
       setIsLoading(false);
+      console.log('[XMTP] ✅ Conversation selection completed, loading state cleared');
     } catch (err) {
-      console.error('Failed to select conversation:', err);
+      console.error('[XMTP] ❌ Failed to select conversation:', err);
       setError('Failed to load conversation');
       setIsLoading(false);
+      console.log('[XMTP] ✅ Loading state cleared after error');
     }
   };
 
@@ -1479,7 +1490,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         // Check if conversation already exists to avoid duplicates
         const existing = prev?.find(c => c.id === newConversation.id);
         if (existing) {
-          console.log('[XMTP] ⚠️ Conversation already exists in state');
+          console.log('[XMTP] ⚠️ Conversation already exists in state, will select it anyway');
           return prev;
         }
         
@@ -1544,7 +1555,15 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       
       // Select the conversation immediately using the conversation object
       console.log('[XMTP] 🎯 Immediately selecting newly created conversation');
-      await selectConversation(newConversation);
+      setIsLoading(true); // CRITICAL FIX: Ensure loading state is set before selection
+      try {
+        await selectConversation(newConversation);
+        console.log('[XMTP] ✅ Successfully selected newly created conversation');
+      } catch (selectionError) {
+        console.error('[XMTP] ❌ Failed to select newly created conversation:', selectionError);
+        setIsLoading(false); // Clear loading state on selection failure
+        setError('Failed to select the new conversation');
+      }
       
       // CRITICAL: Force immediate UI refresh to show the conversation
       setTimeout(() => {
