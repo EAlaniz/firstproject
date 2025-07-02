@@ -242,6 +242,8 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   const [deletedConversationIds, setDeletedConversationIds] = useState<Set<string>>(new Set());
   // Track whether deleted conversation IDs have been loaded from storage
   const [deletedIdsLoaded, setDeletedIdsLoaded] = useState<boolean>(false);
+  // Track timestamp of last user-initiated deletion to prevent emergency fix
+  const [lastUserDeletionTime, setLastUserDeletionTime] = useState<number>(0);
   
   // Memory management - limit stored messages per conversation
   const MAX_MESSAGES_PER_CONVERSATION = 100;
@@ -292,8 +294,13 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         
         // Emergency fix: If ALL conversations are being filtered out, 
         // there might be an issue with the deleted IDs. Reset the deleted IDs.
-        if (deletedConversationIds.size > convos.length * 0.8) {
+        // BUT: Don't trigger if user recently deleted conversations intentionally
+        const timeSinceLastDeletion = Date.now() - lastUserDeletionTime;
+        const recentUserDeletion = timeSinceLastDeletion < 300000; // 5 minutes
+        
+        if (deletedConversationIds.size > convos.length * 0.8 && !recentUserDeletion) {
           console.warn('[DEBUG] Emergency fix: Too many conversations marked as deleted, resetting deleted IDs...');
+          console.warn('[DEBUG] Time since last user deletion:', timeSinceLastDeletion, 'ms');
           // Clear the problematic deleted IDs and save to localStorage
           setDeletedConversationIds(new Set());
           if (address) {
@@ -304,6 +311,13 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
           setConversationCursor(null);
           setStatus(`Ready (${convos.length} conversations) - reset deleted filter`);
           console.log('[DEBUG] Emergency fix applied - reset deleted IDs and showing all conversations');
+          return;
+        } else if (recentUserDeletion) {
+          console.log('[DEBUG] Not triggering emergency fix - user recently deleted conversations');
+          // Show empty state instead of emergency fix
+          safeSetConversations([]);
+          setConversationCursor(null);
+          setStatus('No conversations');
           return;
         }
       }
@@ -650,7 +664,11 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       console.log('🎉 XMTP V3 client created successfully!');
       console.log('✅ Client created, inbox is ready!');
       console.log('📧 Client details:', {
-        env: 'production'
+        inboxId: xmtpClient.inboxId,
+        accountAddress: xmtpClient.accountAddress,
+        isRegistered: xmtpClient.isRegistered,
+        env: 'production',
+        chainId: await walletClient.getChainId?.() || 'unknown'
       });
       
       clientRef.current = xmtpClient;
@@ -805,6 +823,16 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       setError('No conversation selected');
       return;
     }
+    
+    console.log('[XMTP] 📤 Sending message:', {
+      messageLength: message.length,
+      conversationId: conversation.id,
+      conversationType: 'peerAddress' in conversation ? 'DM' : 'Group',
+      peerAddress: 'peerAddress' in conversation ? conversation.peerAddress : undefined,
+      clientConnected: !!client,
+      environment: 'production',
+      clientInboxId: client.inboxId
+    });
     // Create optimistic message as a plain object (not DecodedMessage instance)
     const optimisticMsg = {
       id: `pending-${Date.now()}`,
@@ -819,13 +847,40 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       setStatus('Preparing to send...');
       const sentMsg = await conversation.send(message);
       
-      console.log('[XMTP] Message sent successfully, removing optimistic message');
-      // On successful send, remove the optimistic message (the real message will come via stream)
-      safeSetMessages(conversation.id, prev => {
-        const filtered = prev.filter(m => m.id !== optimisticMsg.id);
-        console.log('[XMTP] Removed optimistic message, remaining messages:', filtered.length);
-        return filtered;
+      console.log('[XMTP] Message sent successfully');
+      console.log('[XMTP] Sent message details:', {
+        messageId: typeof sentMsg === 'object' && sentMsg ? sentMsg.id : 'unknown',
+        conversationId: conversation.id,
+        timestamp: new Date().toISOString()
       });
+      
+      // Mark optimistic message as sent but keep it until stream delivers the real one
+      safeSetMessages(conversation.id, prev => {
+        return prev.map(m => 
+          m.id === optimisticMsg.id 
+            ? { ...m, status: 'sent' } as any
+            : m
+        );
+      });
+      
+      // Set timeout to remove optimistic message if stream doesn't deliver in 10 seconds
+      setTimeout(() => {
+        safeSetMessages(conversation.id, prev => {
+          const hasRealMessage = prev.some(m => 
+            m.id !== optimisticMsg.id && 
+            m.content === message && 
+            Math.abs(Number(m.sentAtNs) - Number(optimisticMsg.sentAtNs)) < 30000000000 // 30 seconds in ns
+          );
+          
+          if (hasRealMessage) {
+            console.log('[XMTP] Real message delivered via stream, removing optimistic message');
+            return prev.filter(m => m.id !== optimisticMsg.id);
+          } else {
+            console.log('[XMTP] Stream delivery timeout, keeping optimistic message');
+            return prev;
+          }
+        });
+      }, 10000);
       
       setStatus('Message sent');
       if (onSuccess) onSuccess();
@@ -873,11 +928,28 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         let existingConversations;
         // Load conversations without consent filtering for simplicity
         existingConversations = await client.conversations.list();
+        
+        console.log(`[XMTP] 🔍 Looking for existing conversation with ${normalizedRecipient}:`, {
+          totalConversations: existingConversations.length,
+          conversationTypes: existingConversations.map(c => ({
+            id: c.id,
+            type: 'peerAddress' in c ? 'DM' : 'Group',
+            peer: 'peerAddress' in c ? c.peerAddress : 'N/A'
+          }))
+        });
+        
         const existing = existingConversations.find(conv => {
           // Check if this conversation involves the recipient
           // Handle both DM and Group types
           if ('peerAddress' in conv && conv.peerAddress && typeof conv.peerAddress === 'string') {
-            return conv.peerAddress.toLowerCase() === normalizedRecipient.toLowerCase();
+            const match = conv.peerAddress.toLowerCase() === normalizedRecipient.toLowerCase();
+            if (match) {
+              console.log(`[XMTP] ✅ Found existing conversation:`, {
+                conversationId: conv.id,
+                peerAddress: conv.peerAddress
+              });
+            }
+            return match;
           }
           return false;
         });
@@ -893,7 +965,11 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         if (hasMethod<{ findOrCreateDm: (recipientInboxIdOrAddress: string) => Promise<unknown> }>(client.conversations, 'findOrCreateDm')) {
           // V3 preferred method - try with address (XMTP will resolve to inboxId)
           conversation = await (client.conversations as any).findOrCreateDm(normalizedRecipient);
-          console.log(`[XMTP] Created new DM conversation using findOrCreateDm with: ${normalizedRecipient}`);
+          console.log(`[XMTP] ✅ Created new DM conversation using findOrCreateDm:`, {
+            recipient: normalizedRecipient,
+            conversationId: conversation?.id,
+            conversationType: 'peerAddress' in conversation ? 'DM' : 'Group'
+          });
         } else if (hasMethod<{ newDmWithIdentifier: (opts: { identifier: string, identifierKind: string }) => Promise<unknown> }>(client.conversations, 'newDmWithIdentifier')) {
           conversation = await (client.conversations as any).newDmWithIdentifier({
             identifier: normalizedRecipient,
@@ -1008,12 +1084,35 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
               if (cancelled) break;
               
               if (message && message.conversationId) {
+                console.log('[XMTP] 📥 Received message via global stream:', {
+                  messageId: message.id,
+                  conversationId: message.conversationId,
+                  contentLength: message.content?.length || 0,
+                  timestamp: new Date().toISOString()
+                });
+                
                 safeSetMessages(message.conversationId, (prev: DecodedMessage<string>[]) => {
-                  // Deduplicate by message ID
-                  if (prev.some((m: DecodedMessage<string>) => m.id === message.id)) return prev;
+                  // Deduplicate by message ID but with better logging
+                  const duplicate = prev.some((m: DecodedMessage<string>) => m.id === message.id);
+                  if (duplicate) {
+                    console.log('[XMTP] 🔄 Duplicate message detected, skipping:', {
+                      messageId: message.id,
+                      conversationId: message.conversationId,
+                      existingCount: prev.length
+                    });
+                    return prev;
+                  }
+                  
+                  console.log('[XMTP] ✅ Adding new message to conversation:', {
+                    messageId: message.id,
+                    conversationId: message.conversationId,
+                    previousCount: prev.length,
+                    newCount: prev.length + 1
+                  });
+                  
                   const result = [...prev, message];
                   return result.filter((m: DecodedMessage<string>): m is DecodedMessage<string> => 
-                    typeof m === 'object' && m !== null
+                    typeof m === 'object' && m !== null && m.id
                   );
                 });
                 
@@ -1148,6 +1247,9 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     // Add to deleted set to prevent reappearing
     setDeletedConversationIds(prev => new Set([...prev, conversationId]));
     
+    // Track user-initiated deletion to prevent emergency fix
+    setLastUserDeletionTime(Date.now());
+    
     // Clear selected conversation if it was deleted
     setSelectedConversation(prev => prev?.id === conversationId ? null : prev);
     
@@ -1178,6 +1280,9 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     
     // Add all to deleted set
     setDeletedConversationIds(prev => new Set([...prev, ...conversationIds]));
+    
+    // Track user-initiated deletion to prevent emergency fix
+    setLastUserDeletionTime(Date.now());
     
     // Clear selected conversation if it was in deleted set
     setSelectedConversation(prev => (prev && conversationIds.includes(prev.id) ? null : prev));
