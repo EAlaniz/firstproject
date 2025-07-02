@@ -142,9 +142,38 @@ export function debugConversationFiltering(address: string) {
   }
 }
 
+// Helper to debug conversation persistence issues
+export function debugConversationPersistence(address: string) {
+  try {
+    const conversationsKey = `xmtp-conversations-${address}`;
+    const deletedKey = `xmtp-deleted-conversations-${address.toLowerCase()}`;
+    const recentlyCreatedKey = `xmtp-recently-created-${address.toLowerCase()}`;
+    
+    const conversations = localStorage.getItem(conversationsKey);
+    const deletedIds = localStorage.getItem(deletedKey);
+    const recentlyCreated = localStorage.getItem(recentlyCreatedKey);
+    
+    console.log('[XMTP Debug] Conversation Persistence Debug:', {
+      address,
+      conversationsCount: conversations ? JSON.parse(conversations).length : 0,
+      deletedCount: deletedIds ? JSON.parse(deletedIds).length : 0,
+      recentlyCreatedCount: recentlyCreated ? JSON.parse(recentlyCreated).conversationIds?.length || 0 : 0,
+      localStorage: {
+        conversations: conversations ? JSON.parse(conversations).map((c: any) => ({ id: c.id, peerAddress: c.peerAddress })) : [],
+        deleted: deletedIds ? JSON.parse(deletedIds) : [],
+        recentlyCreated: recentlyCreated ? JSON.parse(recentlyCreated) : null
+      }
+    });
+    
+  } catch (error) {
+    console.error('[XMTP Debug] Error debugging conversation persistence:', error);
+  }
+}
+
 // Make debug functions available globally
 if (typeof window !== 'undefined' && import.meta.env.DEV) {
   (window as any).debugConversationFiltering = debugConversationFiltering;
+  (window as any).debugConversationPersistence = debugConversationPersistence;
   (window as any).clearXMTPState = clearXMTPState;
 }
 
@@ -687,8 +716,27 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       setConversationCursor(null);
       setStatus(`Ready (${filteredConvos.length} conversations)`);
       // Loaded conversations from network
-    } catch {
+    } catch (error) {
+      console.error('[XMTP] Failed to load conversations:', error);
       setError('Failed to load conversations');
+      
+      // If network loading fails, try to use cached conversations at least
+      if (conversations.length === 0) {
+        try {
+          const cached = localStorage.getItem(`xmtp-conversations-${address}`);
+          if (cached) {
+            const cachedConvos = JSON.parse(cached);
+            const filteredCachedConvos = cachedConvos.filter((c: any) => !deletedConversationIds.has(c.id));
+            if (filteredCachedConvos.length > 0) {
+              safeSetConversations(filteredCachedConvos);
+              setStatus(`Ready (${filteredCachedConvos.length} conversations from cache)`);
+              console.log('[XMTP] ♾️ Fallback to cached conversations after network failure');
+            }
+          }
+        } catch (cacheError) {
+          console.error('[XMTP] Failed to load cached conversations as fallback:', cacheError);
+        }
+      }
     } finally {
       setIsLoading(false);
     }
@@ -823,6 +871,45 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       }
     } else {
       setDeletedConversationIds(new Set());
+    }
+    
+    // Load recently created conversation IDs from localStorage
+    const recentlyCreated = localStorage.getItem(`xmtp-recently-created-${address.toLowerCase()}`);
+    if (recentlyCreated) {
+      try {
+        const recentlyCreatedData = JSON.parse(recentlyCreated);
+        const now = Date.now();
+        const validIds = [];
+        const validTimestamps: { [key: string]: number } = {};
+        
+        // Filter out conversations older than 24 hours
+        for (const id of recentlyCreatedData.conversationIds || []) {
+          const timestamp = recentlyCreatedData.timestamps?.[id] || 0;
+          if (now - timestamp < 86400000) { // 24 hours
+            validIds.push(id);
+            validTimestamps[id] = timestamp;
+          }
+        }
+        
+        setRecentlyCreatedConversationIds(new Set(validIds));
+        
+        // Update localStorage with cleaned data
+        if (validIds.length > 0) {
+          localStorage.setItem(`xmtp-recently-created-${address.toLowerCase()}`, JSON.stringify({
+            conversationIds: validIds,
+            timestamps: validTimestamps
+          }));
+          console.log(`[XMTP] ✅ Loaded ${validIds.length} recently created conversation IDs from cache for wallet:`, address.toLowerCase());
+        } else {
+          localStorage.removeItem(`xmtp-recently-created-${address.toLowerCase()}`);
+          console.log(`[XMTP] 🧹 All recently created conversations expired, cleared cache for wallet:`, address.toLowerCase());
+        }
+      } catch (error) {
+        console.error('Failed to parse recently created conversation IDs:', error);
+        setRecentlyCreatedConversationIds(new Set());
+      }
+    } else {
+      setRecentlyCreatedConversationIds(new Set());
     }
     
     // Load cached conversations for instant display - FIXED to properly filter deleted
@@ -1629,23 +1716,56 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       // Add conversation to state and ensure it's immediately available
       const newConversation = conversation as XMTPConversation;
       
-      // CRITICAL FIX: Track this as recently created to prevent deletion filter
+      // CRITICAL FIX: Track this as recently created with persistent storage
+      const creationTimestamp = Date.now();
       setRecentlyCreatedConversationIds(prev => {
         const newSet = new Set(prev);
         newSet.add(newConversation.id);
         console.log('[XMTP] 🔄 Added to recently created:', newConversation.id);
+        
+        // Save to localStorage with timestamp for persistence
+        if (address) {
+          const recentlyCreatedData = {
+            conversationIds: Array.from(newSet),
+            timestamps: {
+              ...JSON.parse(localStorage.getItem(`xmtp-recently-created-${address.toLowerCase()}`) || '{}').timestamps || {},
+              [newConversation.id]: creationTimestamp
+            }
+          };
+          localStorage.setItem(`xmtp-recently-created-${address.toLowerCase()}`, JSON.stringify(recentlyCreatedData));
+          console.log('[XMTP] 💾 Saved recently created to localStorage:', newConversation.id);
+        }
+        
         return newSet;
       });
       
-      // Clear from recently created after 2 minutes (extended for better protection)
+      // Clear from recently created after 24 hours (much longer protection)
       setTimeout(() => {
         setRecentlyCreatedConversationIds(prev => {
           const newSet = new Set(prev);
           newSet.delete(newConversation.id);
-          console.log('[XMTP] 🔄 Removed from recently created after 2 minutes:', newConversation.id);
+          
+          // Also remove from localStorage
+          if (address) {
+            const stored = JSON.parse(localStorage.getItem(`xmtp-recently-created-${address.toLowerCase()}`) || '{}');
+            const updatedIds = (stored.conversationIds || []).filter((id: string) => id !== newConversation.id);
+            const updatedTimestamps = { ...stored.timestamps };
+            delete updatedTimestamps[newConversation.id];
+            
+            if (updatedIds.length > 0) {
+              localStorage.setItem(`xmtp-recently-created-${address.toLowerCase()}`, JSON.stringify({
+                conversationIds: updatedIds,
+                timestamps: updatedTimestamps
+              }));
+            } else {
+              localStorage.removeItem(`xmtp-recently-created-${address.toLowerCase()}`);
+            }
+          }
+          
+          console.log('[XMTP] 🔄 Removed from recently created after 24 hours:', newConversation.id);
           return newSet;
         });
-      }, 120000); // Extended to 2 minutes
+      }, 86400000); // 24 hours = 86400000ms
       
       console.log('[XMTP] 🔧 DEBUG: About to add new conversation to state:', {
         conversationId: newConversation.id,
@@ -1679,6 +1799,17 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
           newCount: updated.length,
           newConversationId: newConversation.id
         });
+        
+        // Immediately save to cache to ensure persistence
+        if (address) {
+          try {
+            localStorage.setItem(`xmtp-conversations-${address}`, JSON.stringify(updated, jsonBigIntReplacer));
+            console.log('[XMTP] 💾 Immediately saved updated conversations to cache');
+          } catch (error) {
+            console.error('[XMTP] Failed to immediately save conversations:', error);
+          }
+        }
+        
         return updated;
       });
       
