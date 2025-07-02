@@ -675,13 +675,13 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     
     console.log('[XMTP] 📦 Loading cached data for instant UX...');
     
-    // Load deleted conversation IDs
-    const deleted = localStorage.getItem(`xmtp-deleted-conversations-${address}`);
+    // Load deleted conversation IDs with consistent key format
+    const deleted = localStorage.getItem(`xmtp-deleted-conversations-${address.toLowerCase()}`);
     if (deleted) {
       try {
         const deletedIds = JSON.parse(deleted);
         setDeletedConversationIds(new Set(deletedIds));
-        console.log(`[XMTP] ✅ Loaded ${deletedIds.length} deleted conversation IDs from cache`);
+        console.log(`[XMTP] ✅ Loaded ${deletedIds.length} deleted conversation IDs from cache for wallet:`, address.toLowerCase());
       } catch (error) {
         console.error('Failed to parse deleted conversation IDs:', error);
         setDeletedConversationIds(new Set());
@@ -697,7 +697,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         const convos = JSON.parse(cachedConversations);
         if (Array.isArray(convos) && convos.length > 0) {
           // CRITICAL FIX: Use the deletedIds set we just loaded instead of state
-          const deletedIds = localStorage.getItem(`xmtp-deleted-conversations-${address}`);
+          const deletedIds = localStorage.getItem(`xmtp-deleted-conversations-${address.toLowerCase()}`);
           let deletedSet = new Set<string>();
           if (deletedIds) {
             try {
@@ -755,9 +755,9 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     1000
   );
 
-  // Debounced save for deleted conversation IDs
+  // Debounced save for deleted conversation IDs with consistent key format
   useDebouncedSave(
-    address ? `xmtp-deleted-conversations-${address}` : '',
+    address ? `xmtp-deleted-conversations-${address.toLowerCase()}` : '',
     deletedConversationIds.size > 0 ? [...deletedConversationIds] : null,
     500
   );
@@ -1707,8 +1707,26 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       localStorage.removeItem(`xmtp-messages-${address}-${conversationId}`);
     }
     
-    // Add to deleted set to prevent reappearing
-    setDeletedConversationIds(prev => new Set([...prev, conversationId]));
+    // Add to deleted set to prevent reappearing and save to localStorage
+    setDeletedConversationIds(prev => {
+      const newSet = new Set([...prev, conversationId]);
+      
+      // CRITICAL: Save to localStorage for persistence across wallet switches
+      if (address) {
+        const storageKey = `xmtp-deleted-conversations-${address.toLowerCase()}`;
+        localStorage.setItem(storageKey, JSON.stringify([...newSet]));
+        console.log('[DEBUG] Saved deleted conversation to localStorage for wallet:', address.toLowerCase());
+      }
+      
+      return newSet;
+    });
+    
+    // CRITICAL: Remove from recently created if it exists there
+    setRecentlyCreatedConversationIds(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(conversationId);
+      return newSet;
+    });
     
     // Track user-initiated deletion to prevent emergency fix
     setLastUserDeletionTime(Date.now());
@@ -1741,8 +1759,26 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       conversationIds.forEach(id => localStorage.removeItem(`xmtp-messages-${address}-${id}`));
     }
     
-    // Add all to deleted set
-    setDeletedConversationIds(prev => new Set([...prev, ...conversationIds]));
+    // Add all to deleted set and save to localStorage
+    setDeletedConversationIds(prev => {
+      const newSet = new Set([...prev, ...conversationIds]);
+      
+      // CRITICAL: Save to localStorage for persistence across wallet switches
+      if (address) {
+        const storageKey = `xmtp-deleted-conversations-${address.toLowerCase()}`;
+        localStorage.setItem(storageKey, JSON.stringify([...newSet]));
+        console.log('[DEBUG] Saved deleted conversations to localStorage for wallet:', address.toLowerCase());
+      }
+      
+      return newSet;
+    });
+    
+    // CRITICAL: Remove from recently created if any exist there
+    setRecentlyCreatedConversationIds(prev => {
+      const newSet = new Set(prev);
+      conversationIds.forEach(id => newSet.delete(id));
+      return newSet;
+    });
     
     // Track user-initiated deletion to prevent emergency fix
     setLastUserDeletionTime(Date.now());
