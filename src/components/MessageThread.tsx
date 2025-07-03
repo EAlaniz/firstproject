@@ -13,7 +13,7 @@ interface MessageThreadProps {
 
 const MessageThread: React.FC<MessageThreadProps> = ({ conversationId, loadMoreMessages, messageCursors, isLoading, onRetry }) => {
   const { address } = useAccount();
-  const { messages, isSyncing, selectedConversation, client } = useXMTP();
+  const { messages, client } = useXMTP();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   // Get current user's inbox ID for proper message ownership detection
@@ -94,54 +94,52 @@ const MessageThread: React.FC<MessageThreadProps> = ({ conversationId, loadMoreM
   }
 
   return (
-    <div className="flex-1 overflow-y-auto px-4 py-6 bg-white dark:bg-black message-list">
-      {/* Sync badge/status */}
-      <div className="text-sm text-gray-500 dark:text-gray-400 px-2 pb-2">
-        {isSyncing ? '🔄 Syncing with XMTP...' : '✅ Synced'}
-      </div>
+    <div className="flex-1 overflow-y-auto px-4 py-6 bg-gray-50 message-list">
       {/* Load More Button for Pagination */}
       {msgCursor && (
         <button
           onClick={() => conversationId && loadMoreMessages(conversationId)}
-          className="w-full py-2 text-blue-600 border-b border-gray-200 bg-white hover:bg-blue-50 disabled:opacity-50 mb-2"
+          className="w-full py-3 text-blue-600 bg-white hover:bg-blue-50 disabled:opacity-50 mb-4 rounded-lg border border-gray-200 font-medium transition-colors"
           disabled={isLoading}
         >
-          {isLoading ? 'Loading...' : 'Load More'}
+          {isLoading ? 'Loading...' : 'Load More Messages'}
         </button>
       )}
       {isLoading ? (
-        <div className="text-gray-400 text-sm px-4 py-2">Loading messages...</div>
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+          <span className="ml-3 text-gray-500">Loading messages...</span>
+        </div>
       ) : threadMessages.length === 0 ? (
-        <div className="text-center text-gray-400">No messages yet</div>
+        <div className="flex-1 flex items-center justify-center text-center py-12">
+          <div>
+            <div className="text-4xl mb-3">💬</div>
+            <p className="text-gray-500 text-lg">No messages yet</p>
+            <p className="text-gray-400 text-sm mt-1">Start the conversation!</p>
+          </div>
+        </div>
       ) : (
         groupMessages(threadMessages).map((group, groupIdx) => {
           const isOwn = group.isOwn;
           return (
             <div key={groupIdx} className={`mb-4 flex flex-col ${isOwn ? 'items-end' : 'items-start'}`}>
-              {/* Sender label for group */}
+              {/* Sender label */}
               <div className={`text-xs mb-1 ${isOwn ? 'mr-2 text-blue-600' : 'ml-2 text-gray-500'}`}>
-                {isOwn 
-                  ? 'You'
-                  : group.sender && group.sender.length > 40 
-                    ? `${group.sender.slice(0, 8)}...${group.sender.slice(-4)}` // Inbox ID format
-                    : group.sender?.startsWith('0x') 
-                      ? `${group.sender.slice(0, 6)}...${group.sender.slice(-4)}` // Address format
-                      : group.sender || 'Unknown'
-                }
+                {isOwn ? 'You' : 'Contact'}
               </div>
               {group.messages.map((msg, i) => (
                 <div
                   key={i}
-                  className={`message-bubble ${isOwn ? 'mine' : 'theirs'} max-w-[70%] px-4 py-2 rounded-2xl mb-1 text-sm break-words shadow-md ${
+                  className={`max-w-[80%] px-4 py-3 mb-2 break-words ${
                     isOwn
-                      ? 'bg-blue-600 text-white rounded-br-none self-end ml-auto'
-                      : 'bg-gray-100 text-gray-900 rounded-bl-none self-start mr-auto dark:bg-gray-800 dark:text-gray-100'
+                      ? 'bg-blue-600 text-white rounded-2xl rounded-br-md self-end ml-auto shadow-sm'
+                      : 'bg-white text-gray-900 rounded-2xl rounded-bl-md self-start mr-auto shadow-sm border border-gray-100'
                   }`}
                 >
-                  <div className="text-base">{typeof msg.content === 'string' ? msg.content : String(msg.content || '')}</div>
-                  <div className="timestamp text-xs mt-1 opacity-70 text-right">
+                  <div className="text-sm leading-relaxed">{typeof msg.content === 'string' ? msg.content : String(msg.content || '')}</div>
+                  <div className={`text-xs mt-2 ${isOwn ? 'text-blue-100' : 'text-gray-500'}`}>
                     {msg.sentAtNs
-                      ? new Date(Number(msg.sentAtNs) / 1e6).toLocaleTimeString()
+                      ? new Date(Number(msg.sentAtNs) / 1e6).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                       : ''}
                     {renderStatus(msg)}
                   </div>

@@ -12,19 +12,9 @@ interface DMChatProps {
 const DMChat: React.FC<DMChatProps> = ({ conversationId, onRetry }) => {
   const { conversations, loadMoreMessages, messageCursors, isLoading, sendMessage } = useXMTP();
   const [isSending, setIsSending] = useState(false);
-  const [isSynced, setIsSynced] = useState(false);
-  const [syncStatus, setSyncStatus] = useState<string>('');
 
   // Get the conversation object
   const conversation = conversations.find(c => c.id === conversationId);
-
-  // Simple conversation ready check
-  useEffect(() => {
-    if (conversation) {
-      setIsSynced(true);
-      setSyncStatus('Ready');
-    }
-  }, [conversation]);
 
   if (!conversation) {
     return (
@@ -72,11 +62,8 @@ const DMChat: React.FC<DMChatProps> = ({ conversationId, onRetry }) => {
         <MessageInput
           onSend={handleSend}
           disabled={isSending}
-          canSend={isSynced}
+          canSend={!!conversation}
         />
-        {!isSynced && (
-          <div className="text-yellow-500 text-xs mt-1">{syncStatus || 'Syncing messages, please wait...'}</div>
-        )}
       </div>
     </div>
   );

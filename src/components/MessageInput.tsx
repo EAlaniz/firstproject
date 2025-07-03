@@ -32,27 +32,27 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSend, disabled = false, c
   }
 
   return (
-    <div className="message-input-container">
-      <textarea
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        placeholder="Type your message..."
-        disabled={isSending || disabled || !canSend}
-        onKeyDown={handleKeyDown}
-        className="w-full p-2 rounded border border-gray-300 focus:outline-none"
-        rows={2}
-      />
+    <div className="flex items-end gap-3">
+      <div className="flex-1">
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Type your message..."
+          disabled={isSending || disabled || !canSend}
+          onKeyDown={handleKeyDown}
+          className="w-full p-3 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:outline-none resize-none transition-colors bg-gray-50 focus:bg-white"
+          rows={1}
+          style={{ minHeight: '44px', maxHeight: '120px' }}
+        />
+        {error && <div className="text-red-500 text-xs mt-1">{error}</div>}
+      </div>
       <button
         onClick={handleSend}
         disabled={isSending || disabled || !canSend || !text.trim()}
-        className="ml-2 px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50"
+        className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors min-h-[44px]"
       >
-        {isSending ? 'Sending...' : 'Send'}
+        {isSending ? '⏳' : '→'}
       </button>
-      {error && <div className="text-red-500 text-xs mt-1">{error}</div>}
-      {!canSend && (
-        <div className="text-yellow-500 text-xs mt-1">Group membership is still syncing. Please wait…</div>
-      )}
     </div>
   );
 };
