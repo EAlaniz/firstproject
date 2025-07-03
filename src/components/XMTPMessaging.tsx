@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { X, Menu } from 'lucide-react';
 import { useXMTP } from '../contexts/XMTPContext';
 import ConversationsList from './ConversationsList';
-import ChatToggle from './ChatToggle';
+import DMChat from './DMChat';
 import NewConversationModal from './NewConversationModal';
 
 interface XMTPMessagingProps {
@@ -141,11 +141,18 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
 
               {/* Main Content - Responsive */}
               <div className="flex-1 flex flex-col bg-white min-w-0">
-                {/* NEW: Use ChatToggle for modular chat rendering */}
-                <ChatToggle 
-                  conversationId={selectedConversation?.id || null}
-                  onRetry={handleRetry}
-                />
+                {selectedConversation ? (
+                  <DMChat 
+                    conversationId={selectedConversation.id}
+                    onRetry={handleRetry}
+                  />
+                ) : (
+                  <div className="flex-1 flex items-center justify-center text-gray-400">
+                    <div className="text-center">
+                      <p className="mb-2">Select a conversation to start messaging</p>
+                    </div>
+                  </div>
+                )}
               </div>
             </>
           )}

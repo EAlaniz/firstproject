@@ -148,7 +148,7 @@ export class XMTPMemoryManager {
     }
 
     // Regular cache maintenance
-    this.performCacheMaintenance();
+    this.cleanManagedCaches();
 
     console.log('[MemoryManager] Memory check:', {
       usage: usagePercent + '%',

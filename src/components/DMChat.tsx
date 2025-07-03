@@ -18,57 +18,15 @@ const DMChat: React.FC<DMChatProps> = ({ conversationId, onRetry }) => {
   // Get the conversation object
   const conversation = conversations.find(c => c.id === conversationId);
 
-  // Per-conversation sync effect
+  // Simple conversation ready check
   useEffect(() => {
-    let cancelled = false;
-    async function syncConversation() {
-      if (!conversation) return;
-      
-      setIsSynced(false);
-      setSyncStatus('Checking conversation readiness...');
-      
-      try {
-        // For DM conversations, check if we can send messages
-        if ('peerAddress' in conversation) {
-          // DM conversation - assume ready for now
-          if (!cancelled) {
-            setIsSynced(true);
-            setSyncStatus('Ready');
-          }
-        } else {
-          // Group conversation - try sync if available
-          if (typeof (conversation as unknown as { sync?: () => Promise<void> }).sync === 'function') {
-            setSyncStatus('Syncing group...');
-            await (conversation as unknown as { sync: () => Promise<void> }).sync();
-            if (!cancelled) {
-              setIsSynced(true);
-              setSyncStatus('Synced');
-            }
-          } else {
-            // No sync method available, assume ready
-            if (!cancelled) {
-              setIsSynced(true);
-              setSyncStatus('Ready');
-            }
-          }
-        }
-      } catch (error) {
-        console.warn('[DMChat] Sync failed:', error);
-        if (!cancelled) {
-          setSyncStatus('Ready (sync failed)');
-          setIsSynced(true); // Allow sending even if sync failed
-        }
-      }
-    }
-    
     if (conversation) {
-      syncConversation();
+      setIsSynced(true);
+      setSyncStatus('Ready');
     }
-    return () => { cancelled = true; };
   }, [conversation]);
 
   if (!conversation) {
-    console.warn('[DMChat] Conversation not found for ID:', conversationId, 'Available:', conversations.map(c => c.id));
     return (
       <div className="flex-1 flex items-center justify-center">
         <div className="text-center">
@@ -82,42 +40,15 @@ const DMChat: React.FC<DMChatProps> = ({ conversationId, onRetry }) => {
   // Handle sending messages using the XMTP context sendMessage function
   const handleSend = async (text: string) => {
     if (!conversation || isSending) {
-      console.warn('Cannot send message:', { 
-        hasConversation: !!conversation, 
-        isSending 
-      });
       return;
     }
 
     setIsSending(true);
     try {
-      console.log('[DMChat] Sending message via XMTP context...');
       await sendMessage(text, conversation);
-      console.log('✅ Message sent successfully via XMTP context');
     } catch (error) {
-      // Enhanced sync message error detection including WASM patterns
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      
-      const isWasmSuccessMessage = 
-        (errorMessage.includes('wasm') && (errorMessage.includes('succeeded') || errorMessage.includes('completed'))) ||
-        (errorMessage.includes('WebAssembly') && errorMessage.includes('success')) ||
-        /wasm.*sync.*complete/i.test(errorMessage) ||
-        /wasm.*operation.*finished/i.test(errorMessage) ||
-        /bindings_wasm.*succeeded/i.test(errorMessage) ||
-        // Common WASM patterns that appear in XMTP console errors
-        (errorMessage.includes('synced') && errorMessage.includes('messages') && errorMessage.includes('succeeded'));
-        
-      const isSyncMessage = 
-        (errorMessage.includes('synced') && errorMessage.includes('succeeded')) ||
-        isWasmSuccessMessage;
-      
-      if (isSyncMessage) {
-        console.log('✅ Message sent successfully via XMTP context (sync message)');
-        // Don't throw - this is actually success
-      } else {
-        console.error('❌ Failed to send message via XMTP context:', error);
-        throw error; // Let MessageInput handle the error display
-      }
+      console.error('Failed to send message:', error);
+      throw error; // Let MessageInput handle the error display
     } finally {
       setIsSending(false);
     }

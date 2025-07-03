@@ -98,9 +98,78 @@ export class XMTPDiscoveryManager {
   }
 
   /**
+   * Specific method for detecting new incoming conversations
+   * Optimized for real-time detection when a message from unknown conversation arrives
+   */
+  public async discoverNewIncomingConversations(): Promise<DiscoveryResult> {
+    if (!this.client) {
+      throw new Error('Client not initialized');
+    }
+
+    console.log('[DiscoveryManager] 🆕 Detecting new incoming conversations...');
+    
+    try {
+      // V3: Get fresh conversation list from local database
+      const freshConversations = await this.client.conversations.list({
+        limit: 100n,
+        order: 'created_at DESC'
+      });
+      const freshDms = await this.client.conversations.listDms({
+        limit: 50n,
+        order: 'created_at DESC'
+      });
+      
+      console.log('[DiscoveryManager] Fresh conversation check:', {
+        total: freshConversations.length,
+        dms: freshDms.length,
+        cached: this.discoveryCache.size
+      });
+      
+      // Check for new conversations not in cache
+      const newConversations = freshConversations.filter(conv => 
+        !this.discoveryCache.has(conv.id)
+      );
+      
+      if (newConversations.length > 0) {
+        console.log('[DiscoveryManager] 🎉 Found NEW incoming conversations:', newConversations.length);
+        
+        // Add new conversations to cache
+        newConversations.forEach(conv => {
+          this.discoveryCache.set(conv.id, conv as XMTPConversation);
+          console.log('[DiscoveryManager] ✅ Cached new conversation:', conv.id);
+        });
+      }
+      
+      // Update full cache with all conversations
+      freshConversations.forEach(conv => {
+        this.discoveryCache.set(conv.id, conv as XMTPConversation);
+      });
+      
+      const result: DiscoveryResult = {
+        total: freshConversations.length,
+        dms: freshDms.length,
+        groups: freshConversations.length - freshDms.length,
+        combined: freshConversations.length,
+        timestamp: Date.now(),
+        method: 'new-incoming-detection',
+        networkConditions: isNetworkSuitableForXMTP() ? 'good' : 'poor'
+      };
+      
+      this.state.lastResult = result;
+      console.log('[DiscoveryManager] ✅ New incoming conversation detection completed:', result);
+      
+      return result;
+      
+    } catch (error) {
+      console.error('[DiscoveryManager] ❌ New incoming conversation detection failed:', error);
+      return this.createEmptyResult('new-incoming-detection-failed');
+    }
+  }
+
+  /**
    * Main discovery method with comprehensive retry and fallback strategies
    */
-  public async discoverConversations(forceRefresh = false): Promise<DiscoveryResult> {
+  public async discoverConversations(_forceRefresh = false): Promise<DiscoveryResult> {
     if (!this.client) {
       throw new Error('Client not initialized');
     }
@@ -237,72 +306,88 @@ export class XMTPDiscoveryManager {
   }
 
   /**
-   * Pattern 1: Standard XMTP sync
+   * Pattern 1: V3 Standard Pattern (no explicit sync needed)
    */
   private async syncPattern_Standard(): Promise<DiscoveryResult> {
-    console.log('[DiscoveryManager] 📋 Using standard sync pattern');
+    console.log('[DiscoveryManager] 📋 Using V3 standard pattern (local database)');
     
-    await this.client!.conversations.sync();
-    const conversations = await this.client!.conversations.list();
+    // V3: Local database automatically syncs, no explicit sync needed
+    const conversations = await this.client!.conversations.list({
+      limit: 100n,
+      order: 'created_at DESC'
+    });
     
-    return this.createResultFromConversations(conversations, 'standard-sync');
+    return this.createResultFromConversations(conversations, 'v3-standard');
   }
 
   /**
-   * Pattern 2: Separate API calls
+   * Pattern 2: V3 Separate API calls with pagination
    */
   private async syncPattern_SeparateAPIs(): Promise<DiscoveryResult> {
-    console.log('[DiscoveryManager] 📋 Using separate APIs pattern');
+    console.log('[DiscoveryManager] 📋 Using V3 separate APIs pattern');
     
-    await this.client!.conversations.sync();
+    // V3: Call each API separately with pagination
+    const dmConversations = await this.client!.conversations.listDms({
+      limit: 50n,
+      order: 'created_at DESC'
+    });
+    await new Promise(resolve => setTimeout(resolve, 200));
     
-    // Call each API separately with delays
-    const dmConversations = await this.client!.conversations.listDms();
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    const groupConversations = await this.client!.conversations.listGroups();
-    await new Promise(resolve => setTimeout(resolve, 500));
+    const groupConversations = await this.client!.conversations.listGroups({
+      limit: 50n,
+      order: 'created_at DESC'
+    });
+    await new Promise(resolve => setTimeout(resolve, 200));
     
     // Combine results
     const combinedConversations = [...dmConversations, ...groupConversations];
     
-    return this.createResultFromConversations(combinedConversations, 'separate-apis', {
+    return this.createResultFromConversations(combinedConversations, 'v3-separate-apis', {
       dms: dmConversations.length,
       groups: groupConversations.length
     });
   }
 
   /**
-   * Pattern 3: Sync with extended wait
+   * Pattern 3: V3 with database refresh wait
    */
   private async syncPattern_WithWait(): Promise<DiscoveryResult> {
-    console.log('[DiscoveryManager] 📋 Using extended wait pattern');
+    console.log('[DiscoveryManager] 📋 Using V3 database refresh pattern');
     
-    await this.client!.conversations.sync();
+    // V3: Wait for potential background database sync completion
+    await networkAwareDelay(2000);
     
-    // Extended wait for network propagation (V3 specific)
-    await networkAwareDelay(3000);
+    const conversations = await this.client!.conversations.list({
+      limit: 100n,
+      order: 'created_at DESC'
+    });
     
-    const conversations = await this.client!.conversations.list();
-    
-    return this.createResultFromConversations(conversations, 'extended-wait');
+    return this.createResultFromConversations(conversations, 'v3-database-refresh');
   }
 
   /**
-   * Pattern 4: Force refresh with multiple syncs
+   * Pattern 4: V3 multiple query approach
    */
   private async syncPattern_ForceRefresh(): Promise<DiscoveryResult> {
-    console.log('[DiscoveryManager] 📋 Using force refresh pattern');
+    console.log('[DiscoveryManager] 📋 Using V3 multiple query pattern');
     
-    // Multiple sync calls (V3 alpha stability workaround)
+    // V3: Multiple queries to catch timing issues
+    const results = [];
     for (let i = 0; i < 3; i++) {
-      await this.client!.conversations.sync();
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const conversations = await this.client!.conversations.list({
+        limit: 100n,
+        order: 'created_at DESC'
+      });
+      results.push(conversations);
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
     
-    const conversations = await this.client!.conversations.list();
+    // Use the result with the most conversations
+    const bestResult = results.reduce((best, current) => 
+      current.length > best.length ? current : best
+    );
     
-    return this.createResultFromConversations(conversations, 'force-refresh');
+    return this.createResultFromConversations(bestResult, 'v3-multiple-query');
   }
 
   /**

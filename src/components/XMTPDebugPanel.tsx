@@ -3,8 +3,6 @@ import { useXMTP } from '../contexts/XMTPContext';
 import { getCanSendStatus } from '../utils/xmtpGroupValidation';
 import { clearXMTPIdentityWithClient, createAutoSigner } from '../utils/xmtpSigner';
 import { useWalletClient } from 'wagmi';
-import { memoryManager } from '../utils/xmtpMemoryManager';
-import { networkManager, getNetworkQualityReport } from '../utils/networkConnectivity';
 
 interface XMTPDebugPanelProps {
   isOpen: boolean;
@@ -28,9 +26,7 @@ export const XMTPDebugPanel: React.FC<XMTPDebugPanelProps> = ({ isOpen, onClose 
   const [isLoading, setIsLoading] = useState(false);
   const [clearStatus, setClearStatus] = useState<string>('');
   const [signerTestResult, setSignerTestResult] = useState<string>('');
-  const [memoryReport, setMemoryReport] = useState<any>(null);
-  const [networkReport, setNetworkReport] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<'debug' | 'memory' | 'network' | 'advanced'>('debug');
+  const [activeTab, setActiveTab] = useState<'debug' | 'advanced'>('debug');
 
   const runDebugCheck = async () => {
     if (!xmtpClient || !selectedConversation) return;
@@ -100,80 +96,7 @@ export const XMTPDebugPanel: React.FC<XMTPDebugPanelProps> = ({ isOpen, onClose 
     }
   };
 
-  const runMemoryDiagnostics = async () => {
-    try {
-      const memoryStats = memoryManager.getCurrentStats();
-      const xmtpReport = memoryManager.getXMTPMemoryReport();
-      const fullReport = memoryManager.getMemoryReport();
-      
-      setMemoryReport({
-        ...fullReport,
-        xmtp: xmtpReport,
-        stats: memoryStats,
-        timestamp: new Date().toISOString()
-      });
-      
-      console.log('🧠 Memory diagnostics:', { memoryStats, xmtpReport, fullReport });
-    } catch (error) {
-      console.error('❌ Memory diagnostics failed:', error);
-      setMemoryReport({ error: error instanceof Error ? error.message : 'Unknown error' });
-    }
-  };
 
-  const runNetworkDiagnostics = async () => {
-    try {
-      const networkQuality = getNetworkQualityReport();
-      const endpointHealth = networkManager.getEndpointHealth();
-      const currentStatus = networkManager.getCurrentNetworkStatus();
-      
-      setNetworkReport({
-        quality: networkQuality,
-        endpoints: endpointHealth,
-        status: currentStatus,
-        timestamp: new Date().toISOString()
-      });
-      
-      console.log('🌐 Network diagnostics:', { networkQuality, endpointHealth, currentStatus });
-    } catch (error) {
-      console.error('❌ Network diagnostics failed:', error);
-      setNetworkReport({ error: error instanceof Error ? error.message : 'Unknown error' });
-    }
-  };
-
-  const performMemoryCleanup = async () => {
-    try {
-      await memoryManager.performXMTPCleanup();
-      await memoryManager.forceCleanup();
-      console.log('🧹 Memory cleanup completed');
-      
-      // Refresh memory report
-      await runMemoryDiagnostics();
-    } catch (error) {
-      console.error('❌ Memory cleanup failed:', error);
-    }
-  };
-
-  const enableBorrowMutProtection = () => {
-    memoryManager.setBorrowMutCooldown(true);
-    setTimeout(() => {
-      memoryManager.setBorrowMutCooldown(false);
-    }, 10000); // 10 second cooldown
-  };
-
-  // Auto-refresh diagnostics
-  useEffect(() => {
-    if (isOpen && (activeTab === 'memory' || activeTab === 'network')) {
-      const interval = setInterval(() => {
-        if (activeTab === 'memory') {
-          runMemoryDiagnostics();
-        } else if (activeTab === 'network') {
-          runNetworkDiagnostics();
-        }
-      }, 5000);
-      
-      return () => clearInterval(interval);
-    }
-  }, [isOpen, activeTab]);
 
   if (!isOpen) return null;
 
@@ -194,8 +117,6 @@ export const XMTPDebugPanel: React.FC<XMTPDebugPanelProps> = ({ isOpen, onClose 
         <div className="flex border-b bg-gray-50">
           {[
             { id: 'debug', label: '🐛 Debug', desc: 'Basic diagnostics' },
-            { id: 'memory', label: '🧠 Memory', desc: 'WASM & memory' },
-            { id: 'network', label: '🌐 Network', desc: 'Connectivity' },
             { id: 'advanced', label: '⚙️ Advanced', desc: 'Recovery tools' }
           ].map((tab) => (
             <button
@@ -270,124 +191,6 @@ export const XMTPDebugPanel: React.FC<XMTPDebugPanelProps> = ({ isOpen, onClose 
             </div>
           )}
 
-          {/* Memory Tab */}
-          {activeTab === 'memory' && (
-            <div className="space-y-4">
-              <div className="flex gap-2 flex-wrap">
-                <button
-                  onClick={runMemoryDiagnostics}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-                >
-                  🧠 Memory Scan
-                </button>
-                
-                <button
-                  onClick={performMemoryCleanup}
-                  className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700"
-                >
-                  🧹 Cleanup Memory
-                </button>
-                
-                <button
-                  onClick={enableBorrowMutProtection}
-                  className="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700"
-                >
-                  🛡️ BorrowMut Shield
-                </button>
-              </div>
-
-              {memoryReport && (
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <h3 className="font-semibold mb-2">Memory Report:</h3>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <strong>Memory Usage:</strong> {memoryReport.usage?.toFixed(1)}%
-                    </div>
-                    <div>
-                      <strong>Trend:</strong> {memoryReport.trend}
-                    </div>
-                    <div>
-                      <strong>XMTP Memory:</strong> {Math.round((memoryReport.xmtp?.xmtpMemory || 0) / 1024 / 1024)}MB
-                    </div>
-                    <div>
-                      <strong>Stream Buffers:</strong> {memoryReport.xmtp?.streamBuffers || 0}
-                    </div>
-                    <div>
-                      <strong>WASM Instances:</strong> {memoryReport.xmtp?.wasmInstances || 0}
-                    </div>
-                    <div>
-                      <strong>JS Heap:</strong> {Math.round((memoryReport.current?.usedJSHeapSize || 0) / 1024 / 1024)}MB
-                    </div>
-                  </div>
-                  
-                  {memoryReport.recommendations?.length > 0 && (
-                    <div className="mt-4">
-                      <strong>Recommendations:</strong>
-                      <ul className="list-disc list-inside text-sm mt-2">
-                        {memoryReport.recommendations.map((rec: string, i: number) => (
-                          <li key={i} className="text-yellow-700">{rec}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Network Tab */}
-          {activeTab === 'network' && (
-            <div className="space-y-4">
-              <div className="flex gap-2 flex-wrap">
-                <button
-                  onClick={runNetworkDiagnostics}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-                >
-                  🌐 Network Scan
-                </button>
-              </div>
-
-              {networkReport && (
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <h3 className="font-semibold mb-2">Network Report:</h3>
-                  <div className="space-y-4 text-sm">
-                    <div>
-                      <strong>Suitable for XMTP:</strong> {networkReport.quality?.suitableForXMTP ? '✅' : '❌'}
-                    </div>
-                    <div>
-                      <strong>Connection:</strong> {networkReport.status?.connectionType} ({networkReport.status?.effectiveType})
-                    </div>
-                    <div>
-                      <strong>Online:</strong> {networkReport.status?.isOnline ? '✅' : '❌'}
-                    </div>
-                    {networkReport.status?.rtt && (
-                      <div>
-                        <strong>Latency:</strong> {networkReport.status.rtt}ms
-                      </div>
-                    )}
-                    
-                    <div>
-                      <strong>XMTP Endpoints:</strong>
-                      <div className="mt-2 space-y-1">
-                        {networkReport.endpoints?.map((endpoint: any, i: number) => (
-                          <div key={i} className="flex items-center justify-between text-xs bg-white p-2 rounded">
-                            <span className="truncate">{endpoint.endpoint}</span>
-                            <span className={endpoint.healthy ? 'text-green-600' : 'text-red-600'}>
-                              {endpoint.healthy ? '✅' : '❌'} {endpoint.latency}ms
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <strong>Recommendation:</strong> {networkReport.quality?.recommendation}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
 
           {/* Advanced Tab */}
           {activeTab === 'advanced' && (
@@ -410,8 +213,6 @@ export const XMTPDebugPanel: React.FC<XMTPDebugPanelProps> = ({ isOpen, onClose 
                 
                 <div className="space-y-2 text-sm">
                   <div><strong>Clear Identity:</strong> Removes all XMTP data and forces re-initialization</div>
-                  <div><strong>BorrowMut Shield:</strong> Activates protection against BorrowMutError for 10 seconds</div>
-                  <div><strong>Memory Cleanup:</strong> Forces garbage collection and XMTP-specific cleanup</div>
                 </div>
               </div>
             </div>
