@@ -37,12 +37,12 @@ const ConversationsList: React.FC<ConversationsListProps> = ({ onSelect, onNewCo
   );
 
   return (
-    <div className="w-full h-full bg-gray-50 flex flex-col">
+    <div className="w-full h-full bg-gray-50 dark:bg-gray-800 flex flex-col">
       {/* Header - Clean and Simple */}
-      <div className="flex items-center justify-between p-4 border-b bg-white">
-        <h3 className="font-semibold text-gray-800">Messages</h3>
+      <div className="flex items-center justify-between p-4 border-b bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+        <h3 className="font-semibold text-gray-800 dark:text-gray-200">Messages</h3>
         <button
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors font-medium"
           onClick={onNewConversation}
         >
           <UserPlus className="w-4 h-4" />
@@ -51,7 +51,10 @@ const ConversationsList: React.FC<ConversationsListProps> = ({ onSelect, onNewCo
       </div>
 
       {/* Conversations List */}
-      <div className="flex-1 overflow-y-auto">
+      <div 
+        className="flex-1 overflow-y-auto"
+        onWheel={(e) => e.stopPropagation()}
+      >
         {isLoading && safeConversations.length === 0 ? (
           <div>
             {[...Array(4)].map((_, i) => <SkeletonConversation key={i} />)}

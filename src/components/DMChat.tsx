@@ -58,7 +58,7 @@ const DMChat: React.FC<DMChatProps> = ({ conversationId, onRetry }) => {
       </div>
       
       {/* Message input */}
-      <div className="border-t border-gray-200 dark:border-gray-700 p-4">
+      <div className="border-t border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-800">
         <MessageInput
           onSend={handleSend}
           disabled={isSending}

@@ -94,7 +94,10 @@ const MessageThread: React.FC<MessageThreadProps> = ({ conversationId, loadMoreM
   }
 
   return (
-    <div className="flex-1 overflow-y-auto px-4 py-6 bg-gray-50 message-list">
+    <div 
+      className="flex-1 overflow-y-auto px-4 py-6 bg-gray-50 dark:bg-gray-900 message-list"
+      onWheel={(e) => e.stopPropagation()}
+    >
       {/* Load More Button for Pagination */}
       {msgCursor && (
         <button
@@ -124,7 +127,7 @@ const MessageThread: React.FC<MessageThreadProps> = ({ conversationId, loadMoreM
           return (
             <div key={groupIdx} className={`mb-4 flex flex-col ${isOwn ? 'items-end' : 'items-start'}`}>
               {/* Sender label */}
-              <div className={`text-xs mb-1 ${isOwn ? 'mr-2 text-blue-600' : 'ml-2 text-gray-500'}`}>
+              <div className={`text-xs mb-1 ${isOwn ? 'mr-2 text-blue-600 dark:text-blue-400' : 'ml-2 text-gray-500 dark:text-gray-400'}`}>
                 {isOwn ? 'You' : 'Contact'}
               </div>
               {group.messages.map((msg, i) => (
@@ -133,11 +136,11 @@ const MessageThread: React.FC<MessageThreadProps> = ({ conversationId, loadMoreM
                   className={`max-w-[80%] px-4 py-3 mb-2 break-words ${
                     isOwn
                       ? 'bg-blue-600 text-white rounded-2xl rounded-br-md self-end ml-auto shadow-sm'
-                      : 'bg-white text-gray-900 rounded-2xl rounded-bl-md self-start mr-auto shadow-sm border border-gray-100'
+                      : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-2xl rounded-bl-md self-start mr-auto shadow-sm border border-gray-100 dark:border-gray-700'
                   }`}
                 >
                   <div className="text-sm leading-relaxed">{typeof msg.content === 'string' ? msg.content : String(msg.content || '')}</div>
-                  <div className={`text-xs mt-2 ${isOwn ? 'text-blue-100' : 'text-gray-500'}`}>
+                  <div className={`text-xs mt-2 ${isOwn ? 'text-blue-100' : 'text-gray-500 dark:text-gray-400'}`}>
                     {msg.sentAtNs
                       ? new Date(Number(msg.sentAtNs) / 1e6).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                       : ''}

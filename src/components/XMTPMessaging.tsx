@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Menu, RefreshCw } from 'lucide-react';
 import { useXMTP } from '../contexts/XMTPContext';
 import ConversationsList from './ConversationsList';
@@ -30,6 +30,26 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
   const [isNewConversationModalOpen, setIsNewConversationModalOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Prevent body scroll when modal is open and handle escape key
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+      
+      const handleEscape = (event: KeyboardEvent) => {
+        if (event.key === 'Escape') {
+          onClose();
+        }
+      };
+      
+      document.addEventListener('keydown', handleEscape);
+      
+      return () => {
+        document.body.style.overflow = 'unset';
+        document.removeEventListener('keydown', handleEscape);
+      };
+    }
+  }, [isOpen, onClose]);
 
   const handleSelectConversation = (conversationId: string) => {
     const conversation = conversations.find(c => c.id === conversationId);
@@ -92,10 +112,17 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full h-full max-w-7xl max-h-[95vh] flex flex-col">
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4"
+      onWheel={(e) => e.stopPropagation()}
+      onClick={onClose}
+    >
+      <div 
+        className="bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full h-full max-w-7xl max-h-[95vh] flex flex-col overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header - Responsive */}
-        <div className="flex items-center justify-between p-3 sm:p-4 border-b bg-white rounded-t-lg">
+        <div className="flex items-center justify-between p-3 sm:p-4 border-b bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 rounded-t-lg">
           <div className="flex items-center space-x-3">
             {/* Mobile Menu Button */}
             <button
@@ -157,8 +184,8 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
                 z-10 md:z-auto
                 w-80 max-w-[85vw] md:max-w-none
                 h-full
-                bg-white md:bg-gray-50
-                border-r border-gray-200
+                bg-white md:bg-gray-50 dark:bg-gray-900 md:dark:bg-gray-800
+                border-r border-gray-200 dark:border-gray-700
                 transition-transform duration-300 ease-in-out
                 flex flex-col
               `}>
@@ -183,7 +210,7 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
               )}
 
               {/* Main Content - Responsive */}
-              <div className="flex-1 flex flex-col bg-white min-w-0">
+              <div className="flex-1 flex flex-col bg-white dark:bg-gray-900 min-w-0">
                 {selectedConversation ? (
                   <DMChat 
                     conversationId={selectedConversation.id}

@@ -201,6 +201,21 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     try {
       setIsInitializing(true);
       setError(null);
+      setStatus('Checking browser compatibility...');
+      
+      // Browser environment compatibility checks
+      if (typeof window === 'undefined') {
+        throw new Error('XMTP requires a browser environment');
+      }
+      
+      if (!window.localStorage) {
+        throw new Error('Browser does not support localStorage. Please enable cookies and storage.');
+      }
+      
+      if (!window.indexedDB) {
+        throw new Error('Browser does not support IndexedDB. Please use a modern browser.');
+      }
+      
       setStatus('Checking database access...');
       
       // Check for database access conflicts
@@ -226,6 +241,11 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         const stored = localStorage.getItem(keyName);
         if (stored) {
           return new Uint8Array(JSON.parse(stored));
+        }
+        
+        // Browser compatibility check for crypto API
+        if (!window.crypto || !window.crypto.getRandomValues) {
+          throw new Error('Browser does not support required cryptographic APIs. Please use a modern browser.');
         }
         
         const key = crypto.getRandomValues(new Uint8Array(32));

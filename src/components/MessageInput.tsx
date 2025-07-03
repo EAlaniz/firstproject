@@ -40,7 +40,7 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSend, disabled = false, c
           placeholder="Type your message..."
           disabled={isSending || disabled || !canSend}
           onKeyDown={handleKeyDown}
-          className="w-full p-3 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:outline-none resize-none transition-colors bg-gray-50 focus:bg-white"
+          className="w-full p-3 rounded-xl border-2 border-gray-200 dark:border-gray-700 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none resize-none transition-colors bg-gray-50 dark:bg-gray-800 focus:bg-white dark:focus:bg-gray-700 text-gray-900 dark:text-gray-100"
           rows={1}
           style={{ minHeight: '44px', maxHeight: '120px' }}
         />
@@ -49,7 +49,7 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSend, disabled = false, c
       <button
         onClick={handleSend}
         disabled={isSending || disabled || !canSend || !text.trim()}
-        className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors min-h-[44px]"
+        className="px-6 py-3 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors min-h-[44px]"
       >
         {isSending ? '⏳' : '→'}
       </button>
