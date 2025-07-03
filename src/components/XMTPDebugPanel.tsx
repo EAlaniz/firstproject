@@ -16,7 +16,8 @@ export const XMTPDebugPanel: React.FC<XMTPDebugPanelProps> = ({ isOpen, onClose 
     selectedConversation, 
     conversations,
     error,
-    status 
+    status,
+    forceDiscoverConversations
   } = useXMTP();
   
   const { data: walletClient } = useWalletClient();
@@ -117,6 +118,15 @@ export const XMTPDebugPanel: React.FC<XMTPDebugPanelProps> = ({ isOpen, onClose 
               className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
             >
               {isLoading ? 'Running...' : 'Run Debug Check'}
+            </button>
+            
+            <button
+              onClick={forceDiscoverConversations}
+              disabled={!xmtpClient}
+              className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 disabled:bg-gray-400"
+              title="Force discover inbound conversations (V3 Enhanced)"
+            >
+              🔍 Force Discovery
             </button>
             
             <button
