@@ -51,14 +51,15 @@ const MessageThread: React.FC<MessageThreadProps> = ({ conversationId, loadMoreM
       const isCurrentUserMessage = msgFrom === currentUserInboxId || 
                                   msgFrom?.toLowerCase() === address?.toLowerCase();
       
-      // Debug logging for sender detection (uncomment for debugging)
-      // console.log('[MessageThread] Message sender analysis:', {
-      //   msgFrom,
-      //   currentUserInboxId,
-      //   address,
-      //   isCurrentUserMessage,
-      //   messageContent: String(msg.content).substring(0, 20)
-      // });
+      // Debug logging for sender detection
+      console.log('[MessageThread] Message sender analysis:', {
+        msgFrom,
+        currentUserInboxId,
+        address,
+        isCurrentUserMessage,
+        messageContent: String(msg.content).substring(0, 50),
+        fullMessage: msg
+      });
       
       if (msgFrom !== lastSender) {
         if (currentGroup) groups.push(currentGroup);
@@ -94,10 +95,7 @@ const MessageThread: React.FC<MessageThreadProps> = ({ conversationId, loadMoreM
   }
 
   return (
-    <div 
-      className="flex-1 overflow-y-auto px-4 py-6 bg-gray-50 dark:bg-gray-900 message-list"
-      onWheel={(e) => e.stopPropagation()}
-    >
+    <div className="flex-1 overflow-y-auto px-4 py-6 bg-gray-50 dark:bg-gray-900 message-list">
       {/* Load More Button for Pagination */}
       {msgCursor && (
         <button

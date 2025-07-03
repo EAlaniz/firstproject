@@ -51,10 +51,7 @@ const ConversationsList: React.FC<ConversationsListProps> = ({ onSelect, onNewCo
       </div>
 
       {/* Conversations List */}
-      <div 
-        className="flex-1 overflow-y-auto"
-        onWheel={(e) => e.stopPropagation()}
-      >
+      <div className="flex-1 overflow-y-auto">
         {isLoading && safeConversations.length === 0 ? (
           <div>
             {[...Array(4)].map((_, i) => <SkeletonConversation key={i} />)}

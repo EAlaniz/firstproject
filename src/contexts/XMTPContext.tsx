@@ -609,15 +609,31 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     if (!conversation || !client) return;
     
     try {
-      console.log('[XMTP] 📤 Sending message...');
+      console.log('[XMTP] 📤 Sending message...', { message, conversationId: conversation.id });
       
       const sentMessage = await conversation.send(message);
       
-      // Add to local messages
+      console.log('[XMTP] 📤 Sent message object:', sentMessage);
+      
+      // Add to local messages immediately for optimistic UI
       setMessages(prev => ({
         ...prev,
         [conversation.id]: [...(prev[conversation.id] || []), sentMessage as unknown as DecodedMessage<string>]
       }));
+      
+      // Refresh messages to get the latest state from XMTP
+      setTimeout(async () => {
+        try {
+          await conversation.sync();
+          const msgs = await conversation.messages({
+            limit: 50n
+          });
+          setMessages(prev => ({ ...prev, [conversation.id]: msgs }));
+          console.log('[XMTP] 🔄 Refreshed messages after send');
+        } catch (error) {
+          console.error('[XMTP] ❌ Failed to refresh messages after send:', error);
+        }
+      }, 1000);
       
       console.log('[XMTP] ✅ Message sent successfully');
       
