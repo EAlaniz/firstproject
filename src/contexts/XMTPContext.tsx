@@ -278,6 +278,9 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
           loadConversationsV3().catch(error => {
             console.error('[XMTP] ❌ Discovery failed:', error);
           });
+          
+          // Start backup discovery for inbound conversations
+          startBackupDiscovery();
         } else {
           console.warn('[XMTP] Managers not ready after waiting - skipping initial discovery');
         }
@@ -499,6 +502,53 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
 
   // Legacy method for backward compatibility
   const loadConversations = loadConversationsV3;
+
+  // Backup discovery system for inbound conversations
+  const startBackupDiscovery = useCallback(() => {
+    if (!client || !discoveryManagerRef.current) return;
+    
+    console.log('[XMTP] 🔄 Starting backup discovery for inbound conversations...');
+    
+    // Poll every 30 seconds for the first 5 minutes
+    let attempts = 0;
+    const maxAttempts = 10; // 5 minutes
+    
+    const backupInterval = setInterval(async () => {
+      attempts++;
+      
+      try {
+        // Force discovery of new conversations
+        const currentCount = conversations.length;
+        await loadConversationsV3();
+        
+        // If we found new conversations, reduce polling frequency
+        if (conversations.length > currentCount) {
+          console.log('[XMTP] ✅ Backup discovery found new conversations, reducing polling frequency');
+          clearInterval(backupInterval);
+          
+          // Continue with slower polling (every 2 minutes)
+          setInterval(async () => {
+            await loadConversationsV3();
+          }, 120000);
+        }
+        
+        // Stop intensive polling after 5 minutes
+        if (attempts >= maxAttempts) {
+          console.log('[XMTP] 🔄 Backup discovery completed, switching to normal polling');
+          clearInterval(backupInterval);
+          
+          // Continue with normal polling every 60 seconds
+          setInterval(async () => {
+            await loadConversationsV3();
+          }, 60000);
+        }
+        
+      } catch (error) {
+        console.error('[XMTP] ❌ Backup discovery error:', error);
+      }
+    }, 30000); // Every 30 seconds
+    
+  }, [client, conversations.length, loadConversationsV3]);
 
   // WORKING PATTERN: Simple conversation selection
   const selectConversation = useCallback(async (conversation: XMTPConversation) => {

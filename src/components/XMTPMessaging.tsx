@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Menu } from 'lucide-react';
+import { X, Menu, RefreshCw } from 'lucide-react';
 import { useXMTP } from '../contexts/XMTPContext';
 import ConversationsList from './ConversationsList';
 import DMChat from './DMChat';
@@ -22,11 +22,14 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
     conversationPreviews, 
     unreadConversations,
     sendMessage,
-    messages 
+    messages,
+    forceDiscoverConversations,
+    forceDiscoverNewConversations
   } = useXMTP();
   
   const [isNewConversationModalOpen, setIsNewConversationModalOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleSelectConversation = (conversationId: string) => {
     const conversation = conversations.find(c => c.id === conversationId);
@@ -42,6 +45,28 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
   const handleClose = () => {
     setIsSidebarOpen(false);
     onClose();
+  };
+
+  // Handle manual conversation refresh
+  const handleRefreshConversations = async () => {
+    if (isRefreshing) return;
+    
+    setIsRefreshing(true);
+    try {
+      console.log('[UI] 🔄 Manual refresh triggered');
+      
+      // Force discover new conversations first
+      await forceDiscoverNewConversations();
+      
+      // Then force discover all conversations
+      await forceDiscoverConversations();
+      
+      console.log('[UI] ✅ Manual refresh completed');
+    } catch (error) {
+      console.error('[UI] ❌ Manual refresh failed:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   // Handle message retry (for failed messages)
@@ -86,12 +111,25 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
             )}
           </div>
           
-          <button
-            onClick={handleClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center space-x-2">
+            {/* Refresh Button */}
+            <button
+              onClick={handleRefreshConversations}
+              disabled={isRefreshing}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+              title="Refresh conversations"
+            >
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            </button>
+            
+            {/* Close Button */}
+            <button
+              onClick={handleClose}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Content - Responsive Layout */}
