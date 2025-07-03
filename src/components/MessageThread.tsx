@@ -13,8 +13,11 @@ interface MessageThreadProps {
 
 const MessageThread: React.FC<MessageThreadProps> = ({ conversationId, loadMoreMessages, messageCursors, isLoading, onRetry }) => {
   const { address } = useAccount();
-  const { messages, isSyncing, selectedConversation } = useXMTP();
+  const { messages, isSyncing, selectedConversation, client } = useXMTP();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Get current user's inbox ID for proper message ownership detection
+  const currentUserInboxId = client?.inboxId;
 
   // Defensive: use empty array if messages is undefined/null
   const safeMessages = conversationId && messages && messages[conversationId] ? messages[conversationId] : [];
@@ -33,15 +36,39 @@ const MessageThread: React.FC<MessageThreadProps> = ({ conversationId, loadMoreM
 
   // Group messages by sender for display
   function groupMessages(messages: DecodedMessage<string>[]) {
-    const groups: { sender: string; messages: DecodedMessage<string>[] }[] = [];
+    const groups: { sender: string; isOwn: boolean; messages: DecodedMessage<string>[] }[] = [];
     let lastSender = null;
-    let currentGroup: { sender: string; messages: DecodedMessage<string>[] } | null = null;
+    let currentGroup: { sender: string; isOwn: boolean; messages: DecodedMessage<string>[] } | null = null;
+    
     for (const msg of messages) {
-      const msgFrom = (msg as DecodedMessage<string> & { from?: string; senderAddress?: string }).from || 
-                     (msg as DecodedMessage<string> & { from?: string; senderAddress?: string }).senderAddress || 'Unknown';
+      // XMTP V3 uses senderInboxId as the primary sender identifier
+      const msgFrom = (msg as any).senderInboxId || 
+                     (msg as any).senderAddress || 
+                     (msg as any).from || 
+                     'Unknown';
+      
+      // Determine if this message is from the current user
+      const isCurrentUserMessage = msgFrom === currentUserInboxId || 
+                                  msgFrom?.toLowerCase() === address?.toLowerCase();
+      
+      // Debug logging for sender detection
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[MessageThread] Message sender analysis:', {
+          msgFrom,
+          currentUserInboxId,
+          address,
+          isCurrentUserMessage,
+          messageContent: String(msg.content).substring(0, 20)
+        });
+      }
+      
       if (msgFrom !== lastSender) {
         if (currentGroup) groups.push(currentGroup);
-        currentGroup = { sender: msgFrom, messages: [msg] };
+        currentGroup = { 
+          sender: msgFrom, 
+          isOwn: isCurrentUserMessage,
+          messages: [msg] 
+        };
         lastSender = msgFrom;
       } else {
         currentGroup?.messages.push(msg);
@@ -90,22 +117,27 @@ const MessageThread: React.FC<MessageThreadProps> = ({ conversationId, loadMoreM
         <div className="text-center text-gray-400">No messages yet</div>
       ) : (
         groupMessages(threadMessages).map((group, groupIdx) => {
-          const isOwn = group.sender?.toLowerCase() === address?.toLowerCase();
+          const isOwn = group.isOwn;
           return (
             <div key={groupIdx} className={`mb-4 flex flex-col ${isOwn ? 'items-end' : 'items-start'}`}>
-              {/* Sender label for group (hide for own messages) */}
-              {!isOwn && (
-                <div className="text-xs text-gray-500 mb-1 ml-2">
-                  {group.sender ? `${group.sender.slice(0, 8)}...${group.sender.slice(-4)}` : 'Unknown'}
-                </div>
-              )}
+              {/* Sender label for group */}
+              <div className={`text-xs mb-1 ${isOwn ? 'mr-2 text-blue-600' : 'ml-2 text-gray-500'}`}>
+                {isOwn 
+                  ? 'You'
+                  : group.sender && group.sender.length > 40 
+                    ? `${group.sender.slice(0, 8)}...${group.sender.slice(-4)}` // Inbox ID format
+                    : group.sender?.startsWith('0x') 
+                      ? `${group.sender.slice(0, 6)}...${group.sender.slice(-4)}` // Address format
+                      : group.sender || 'Unknown'
+                }
+              </div>
               {group.messages.map((msg, i) => (
                 <div
                   key={i}
-                  className={`message-bubble ${isOwn ? 'mine' : 'theirs'} max-w-[70%] px-4 py-2 rounded-2xl mb-1 text-sm break-words shadow-md bg-white dark:bg-black ${
+                  className={`message-bubble ${isOwn ? 'mine' : 'theirs'} max-w-[70%] px-4 py-2 rounded-2xl mb-1 text-sm break-words shadow-md ${
                     isOwn
-                      ? 'bg-blue-600 text-white rounded-br-none self-end'
-                      : 'bg-gray-100 text-gray-900 rounded-bl-none self-start dark:bg-gray-800 dark:text-gray-100'
+                      ? 'bg-blue-600 text-white rounded-br-none self-end ml-auto'
+                      : 'bg-gray-100 text-gray-900 rounded-bl-none self-start mr-auto dark:bg-gray-800 dark:text-gray-100'
                   }`}
                 >
                   <div className="text-base">{typeof msg.content === 'string' ? msg.content : String(msg.content || '')}</div>
