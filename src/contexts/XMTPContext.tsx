@@ -84,6 +84,65 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   const discoveryManagerRef = useRef<XMTPDiscoveryManager | null>(null);
   const errorRecoveryRef = useRef<number>(0);
 
+  // V3 Database Access Management
+  const checkDatabaseAccess = useCallback(async (address: string): Promise<boolean> => {
+    const lockKey = `xmtp-db-lock-${address}`;
+    const tabId = `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+    
+    try {
+      // Check if another tab has database access
+      const existingLock = localStorage.getItem(lockKey);
+      if (existingLock) {
+        const lockData = JSON.parse(existingLock);
+        const lockAge = Date.now() - lockData.timestamp;
+        
+        // If lock is older than 30 seconds, assume stale and take over
+        if (lockAge > 30000) {
+          console.log('[XMTP] 🔒 Stale database lock detected, taking over...');
+          localStorage.removeItem(lockKey);
+        } else {
+          console.log('[XMTP] ❌ Database access blocked by another tab/instance');
+          setError('XMTP is already running in another tab. Please close other tabs or refresh.');
+          return false;
+        }
+      }
+      
+      // Acquire database lock
+      localStorage.setItem(lockKey, JSON.stringify({
+        tabId,
+        timestamp: Date.now()
+      }));
+      
+      // Set up lock renewal and cleanup
+      const lockInterval = setInterval(() => {
+        localStorage.setItem(lockKey, JSON.stringify({
+          tabId,
+          timestamp: Date.now()
+        }));
+      }, 10000); // Renew every 10 seconds
+      
+      // Cleanup on page unload
+      const cleanup = () => {
+        clearInterval(lockInterval);
+        const currentLock = localStorage.getItem(lockKey);
+        if (currentLock) {
+          const currentLockData = JSON.parse(currentLock);
+          if (currentLockData.tabId === tabId) {
+            localStorage.removeItem(lockKey);
+          }
+        }
+      };
+      
+      window.addEventListener('beforeunload', cleanup);
+      window.addEventListener('unload', cleanup);
+      
+      return true;
+    } catch (error) {
+      console.error('[XMTP] ❌ Database access check failed:', error);
+      return false;
+    }
+  }, []);
+
   // ENHANCED V3 PATTERN: Robust client initialization with recovery
   const initializeClient = useCallback(async () => {
     if (!walletClient || !address || isInitializing || isInitialized) {
@@ -93,6 +152,15 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     try {
       setIsInitializing(true);
       setError(null);
+      setStatus('Checking database access...');
+      
+      // Check for database access conflicts
+      const hasAccess = await checkDatabaseAccess(address);
+      if (!hasAccess) {
+        setIsInitializing(false);
+        return;
+      }
+      
       setStatus('Initializing XMTP V3...');
       errorRecoveryRef.current = 0;
 
@@ -118,6 +186,9 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       };
       
       const dbEncryptionKey = await getOrCreateEncryptionKey();
+      
+      // V3: Create client with database access protection
+      setStatus('Creating XMTP client...');
       const xmtpClient = await Client.create(signer, { 
         env: 'production',
         dbEncryptionKey // Required for V3 local database
@@ -135,19 +206,28 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       // Initialize enhanced managers
       await initializeManagers(xmtpClient);
       
-      // Start enhanced discovery
+      // Start enhanced discovery with proper timing
       setTimeout(() => {
-        console.log('[XMTP] 🔄 Triggering enhanced discovery...');
+        console.log('[XMTP] 🔄 Triggering enhanced discovery with proper timing...');
         loadConversationsV3().catch(error => {
           console.error('[XMTP] ❌ Discovery failed:', error);
         });
-      }, 1000);
+      }, 2000); // Increased delay to allow managers to initialize
       
     } catch (err) {
       console.error('[XMTP] ❌ V3 Initialization failed:', err);
       errorRecoveryRef.current++;
       
       const errorMessage = err instanceof Error ? err.message : 'Failed to initialize XMTP V3';
+      
+      // Handle specific database access errors
+      if (errorMessage.includes('createSyncAccessHandle') || errorMessage.includes('Access Handle')) {
+        setError('Database access conflict detected. Please close other XMTP tabs and refresh.');
+        setStatus('Database conflict');
+        setIsInitializing(false);
+        return;
+      }
+      
       setError(errorMessage);
       setStatus('V3 Initialization failed');
       
@@ -165,7 +245,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         setIsInitializing(false);
       }
     }
-  }, [walletClient, address, isInitializing, isInitialized]);
+  }, [walletClient, address, isInitializing, isInitialized, checkDatabaseAccess]);
 
   // Initialize enhanced managers
   const initializeManagers = useCallback(async (xmtpClient: Client) => {
@@ -281,13 +361,24 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
 
   // ENHANCED V3 PATTERN: Discovery using enhanced discovery manager
   const loadConversationsV3 = useCallback(async () => {
-    if (!client) {
-      console.warn('[XMTP] Client not available for discovery');
+    // Wait for client and discovery manager to be fully initialized
+    if (!client || !isInitialized) {
+      console.warn('[XMTP] Client not available for discovery - waiting for initialization');
       return;
     }
     
+    // Wait for discovery manager with timeout
+    let retryCount = 0;
+    const maxRetries = 10; // 5 seconds max wait
+    
+    while (!discoveryManagerRef.current && retryCount < maxRetries) {
+      console.log(`[XMTP] ⏳ Waiting for discovery manager (${retryCount + 1}/${maxRetries})...`);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      retryCount++;
+    }
+    
     if (!discoveryManagerRef.current) {
-      console.warn('[XMTP] Discovery manager not available');
+      console.warn('[XMTP] Discovery manager not available after waiting');
       return;
     }
     
@@ -335,7 +426,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [client, address]);
+  }, [client, address, isInitialized]);
 
   // Legacy method for backward compatibility
   const loadConversations = loadConversationsV3;
@@ -401,9 +492,20 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     try {
       console.log(`[XMTP] 🔄 Creating V3 conversation with ${recipientAddress}...`);
       
-      // V3: Check if recipient is on XMTP network
+      // V3: Validate address format to prevent hexadecimal errors
+      const isValidAddress = /^0x[a-fA-F0-9]{40}$/.test(recipientAddress);
+      if (!isValidAddress) {
+        setError('Invalid Ethereum address format');
+        return null;
+      }
+      
+      // V3: Normalize address to lowercase to prevent case sensitivity issues
+      const normalizedAddress = recipientAddress.toLowerCase();
+      
+      // V3: Check if recipient is on XMTP network with proper error handling
+      console.log(`[XMTP] 🔍 Checking if ${normalizedAddress} can receive messages...`);
       const canMessage = await Client.canMessage([
-        { identifier: recipientAddress, identifierKind: 'Ethereum' }
+        { identifier: normalizedAddress, identifierKind: 'Ethereum' }
       ], 'production');
       
       if (!canMessage || (Array.isArray(canMessage) && !canMessage[0])) {
@@ -411,8 +513,10 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         return null;
       }
       
-      // V3: Create conversation using address (SDK handles inbox ID internally)
-      const conversation = await client.conversations.newDm(recipientAddress);
+      console.log(`[XMTP] ✅ Recipient ${normalizedAddress} can receive messages`);
+      
+      // V3: Create conversation using normalized address
+      const conversation = await client.conversations.newDm(normalizedAddress);
       
       console.log('[XMTP] ✅ V3 conversation created successfully');
       
@@ -428,7 +532,17 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       
     } catch (error) {
       console.error('[XMTP] ❌ Failed to create conversation:', error);
-      setError('Failed to create conversation');
+      
+      // Handle specific hexadecimal errors
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create conversation';
+      if (errorMessage.includes('hexadecimal') || errorMessage.includes('SQLSTATE 22023')) {
+        setError('Invalid address format. Please check the recipient address and try again.');
+      } else if (errorMessage.includes('grpc error 500')) {
+        setError('Server error. Please try again in a moment.');
+      } else {
+        setError('Failed to create conversation');
+      }
+      
       return null;
     }
   }, [client, loadConversations]);
