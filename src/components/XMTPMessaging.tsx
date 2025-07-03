@@ -24,7 +24,8 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
     sendMessage,
     forceDiscoverConversations,
     forceDiscoverNewConversations,
-    loadMoreMessages
+    loadMoreMessages,
+    status
   } = useXMTP();
   
   const [isNewConversationModalOpen, setIsNewConversationModalOpen] = useState(false);
@@ -166,11 +167,15 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
         {/* Content - Responsive Layout */}
         <div className="flex flex-1">
           {!isInitialized ? (
-            /* Loading State - Responsive */
+            /* Enhanced Loading State with Progress */
             <div className="flex-1 flex items-center justify-center p-4">
               <div className="text-center max-w-sm">
-                <div className="animate-spin rounded-full h-8 w-8 sm:h-12 sm:w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                <p className="text-gray-600 text-sm sm:text-base">Initializing XMTP...</p>
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <p className="text-gray-800 dark:text-gray-200 font-medium mb-2">Setting up XMTP</p>
+                <p className="text-gray-600 dark:text-gray-400 text-sm">{status || 'Initializing...'}</p>
+                <div className="mt-4 bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+                  <div className="bg-blue-600 h-full rounded-full animate-pulse w-2/3"></div>
+                </div>
               </div>
             </div>
           ) : (
@@ -209,7 +214,7 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
               )}
 
               {/* Main Content - Responsive */}
-              <div className="flex-1 flex flex-col bg-white dark:bg-gray-900 min-w-0">
+              <div className="flex-1 flex flex-col bg-white dark:bg-gray-900 min-w-0 h-0">
                 {selectedConversation ? (
                   <DMChat 
                     conversationId={selectedConversation.id}

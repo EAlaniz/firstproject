@@ -45,9 +45,9 @@ const DMChat: React.FC<DMChatProps> = ({ conversationId, onRetry }) => {
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full max-h-full">
       {/* Messages */}
-      <div className="flex-1 h-0">
+      <div className="flex-1 min-h-0 overflow-hidden">
         <MessageThread
           conversationId={conversationId}
           loadMoreMessages={loadMoreMessages}
@@ -58,7 +58,7 @@ const DMChat: React.FC<DMChatProps> = ({ conversationId, onRetry }) => {
       </div>
       
       {/* Message input */}
-      <div className="border-t border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-800">
+      <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-800">
         <MessageInput
           onSend={handleSend}
           disabled={isSending}

@@ -83,6 +83,10 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   const streamManagerRef = useRef<XMTPStreamManager | null>(null);
   const discoveryManagerRef = useRef<XMTPDiscoveryManager | null>(null);
   const errorRecoveryRef = useRef<number>(0);
+  
+  // Simple conversation caching
+  const conversationCacheRef = useRef<{ [address: string]: XMTPConversation[] }>({});
+  const lastCacheTimeRef = useRef<{ [address: string]: number }>({});
 
   // V3 Database Access Management with Force Cleanup
   const forceCleanupDatabase = useCallback(async (address: string): Promise<void> => {
@@ -268,43 +272,29 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       
       setClient(xmtpClient);
       setIsInitialized(true);
-      setStatus('XMTP V3 ready');
+      setStatus('Loading conversations...');
       
       console.log('[XMTP] ✅ XMTP V3 initialized successfully');
       
-      // Initialize enhanced managers
-      await initializeManagers(xmtpClient);
+      // Initialize managers and start discovery in parallel for faster loading
+      const initPromises = [
+        initializeManagers(xmtpClient),
+        // Start immediate conversation discovery without waiting
+        loadConversationsV3().catch(error => {
+          console.error('[XMTP] ❌ Initial discovery failed:', error);
+        })
+      ];
       
-      // Start enhanced discovery with proper initialization wait
-      setTimeout(async () => {
-        console.log('[XMTP] 🔄 Triggering enhanced discovery with proper timing...');
+      // Don't await - let them run in background
+      Promise.all(initPromises).then(() => {
+        setStatus('XMTP V3 ready');
+        console.log('[XMTP] 🚀 Fast initialization completed');
         
-        // Ensure all managers are ready before discovery
-        let managersReady = false;
-        let attempts = 0;
-        const maxAttempts = 10;
-        
-        while (!managersReady && attempts < maxAttempts) {
-          if (discoveryManagerRef.current && streamManagerRef.current) {
-            managersReady = true;
-          } else {
-            console.log(`[XMTP] ⏳ Waiting for managers to initialize (${attempts + 1}/${maxAttempts})...`);
-            await new Promise(resolve => setTimeout(resolve, 500));
-            attempts++;
-          }
-        }
-        
-        if (managersReady) {
-          loadConversationsV3().catch(error => {
-            console.error('[XMTP] ❌ Discovery failed:', error);
-          });
-          
-          // Start backup discovery for inbound conversations
-          startBackupDiscovery();
-        } else {
-          console.warn('[XMTP] Managers not ready after waiting - skipping initial discovery');
-        }
-      }, 3000); // Increased delay to allow all initialization to complete
+        // Start backup discovery after initial load
+        setTimeout(() => startBackupDiscovery(), 1000);
+      }).catch(error => {
+        console.error('[XMTP] ❌ Parallel initialization failed:', error);
+      });
       
     } catch (err) {
       console.error('[XMTP] ❌ V3 Initialization failed:', err);
@@ -451,74 +441,74 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     }
   }, [selectedConversation, conversations]);
 
-  // ENHANCED V3 PATTERN: Discovery using enhanced discovery manager
+  // OPTIMIZED V3 PATTERN: Fast discovery with caching
   const loadConversationsV3 = useCallback(async () => {
-    // Wait for client and discovery manager to be fully initialized
-    if (!client || !isInitialized) {
-      console.warn('[XMTP] Client not available for discovery - waiting for initialization');
+    if (!client || !isInitialized || !address) {
+      console.warn('[XMTP] Client not available for discovery');
       return;
     }
     
-    // Wait for discovery manager with timeout
-    let retryCount = 0;
-    const maxRetries = 10; // 5 seconds max wait
+    // Check cache first (cache for 30 seconds)
+    const cacheKey = address;
+    const cached = conversationCacheRef.current[cacheKey];
+    const lastCacheTime = lastCacheTimeRef.current[cacheKey] || 0;
+    const cacheAge = Date.now() - lastCacheTime;
     
-    while (!discoveryManagerRef.current && retryCount < maxRetries) {
-      console.log(`[XMTP] ⏳ Waiting for discovery manager (${retryCount + 1}/${maxRetries})...`);
-      await new Promise(resolve => setTimeout(resolve, 500));
-      retryCount++;
-    }
-    
-    if (!discoveryManagerRef.current) {
-      console.warn('[XMTP] Discovery manager not available after waiting');
+    if (cached && cacheAge < 30000) {
+      console.log('[XMTP] ⚡ Using cached conversations');
+      setConversations(cached);
       return;
     }
     
     try {
       setIsLoading(true);
-      console.log('[XMTP] 🔄 Loading conversations with enhanced V3 discovery manager...');
+      console.log('[XMTP] 🚀 Fast loading conversations...');
       
-      // Use enhanced discovery manager
-      const discoveryResult = await discoveryManagerRef.current.discoverConversations();
+      // Try discovery manager first, fallback to direct client if needed
+      let discoveredConversations: any[] = [];
       
-      console.log('[XMTP] 📊 Enhanced discovery results:', discoveryResult);
+      if (discoveryManagerRef.current) {
+        try {
+          await discoveryManagerRef.current.discoverConversations();
+          discoveredConversations = discoveryManagerRef.current.getCachedConversations();
+          console.log('[XMTP] ✅ Discovery manager found', discoveredConversations.length, 'conversations');
+        } catch (error) {
+          console.warn('[XMTP] Discovery manager failed, using direct client method');
+        }
+      }
       
-      // Get the cached conversations from discovery manager
-      const discoveredConversations = discoveryManagerRef.current.getCachedConversations();
+      // Fallback to direct client discovery if discovery manager not ready or failed
+      if (discoveredConversations.length === 0) {
+        try {
+          const conversations = await client.conversations.list();
+          discoveredConversations = conversations;
+          console.log('[XMTP] ✅ Direct client found', discoveredConversations.length, 'conversations');
+        } catch (error) {
+          console.error('[XMTP] ❌ Direct client discovery also failed:', error);
+        }
+      }
       
-      // Enhanced debug logging
-      discoveredConversations.forEach((conv, index) => {
-        const isGroup = 'members' in conv;
-        const peerAddress = isGroup ? 'Group' : ('peerAddress' in conv ? (conv as any).peerAddress : 'Unknown');
-        const isInbound = !isGroup && peerAddress !== address;
-        
-        console.log(`[XMTP] 📋 Enhanced Conversation ${index + 1}:`, {
-          id: conv.id,
-          type: isGroup ? 'group' : 'dm',
-          peerAddress,
-          isInbound,
-          createdAt: conv.createdAt || 'Unknown',
-          lastMessage: (conv as any).lastMessage || 'No messages',
-          discoveryMethod: discoveryResult.method
-        });
-      });
+      // Cache the results
+      if (discoveredConversations.length > 0) {
+        conversationCacheRef.current[cacheKey] = discoveredConversations as XMTPConversation[];
+        lastCacheTimeRef.current[cacheKey] = Date.now();
+      }
+      
+      console.log(`[XMTP] 📊 Fast discovery completed: ${discoveredConversations.length} conversations found`);
       
       setConversations(discoveredConversations as XMTPConversation[]);
       
-      // Clear error if discovery was successful
-      if (discoveryResult.total > 0) {
+      if (discoveredConversations.length > 0) {
         setError(null);
-      } else if (discoveryResult.total === 0) {
-        console.warn('[XMTP] No conversations discovered - this may indicate network issues or new wallet');
       }
       
     } catch (error) {
-      console.error('[XMTP] ❌ Enhanced discovery failed:', error);
-      setError('Enhanced discovery failed. Network or WASM stability issues detected.');
+      console.error('[XMTP] ❌ Fast discovery failed:', error);
+      setError('Discovery failed. Please try refreshing.');
     } finally {
       setIsLoading(false);
     }
-  }, [client, address, isInitialized]);
+  }, [client, isInitialized, address]);
 
   // Legacy method for backward compatibility
   const loadConversations = loadConversationsV3;
