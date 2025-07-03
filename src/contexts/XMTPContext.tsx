@@ -2,6 +2,10 @@ import React, { createContext, useContext, useEffect, useState, ReactNode, useCa
 import { useAccount, useWalletClient } from 'wagmi';
 import { Client, DecodedMessage, Dm, Group } from '@xmtp/browser-sdk';
 import { createAutoSigner } from '../utils/xmtpSigner';
+import { XMTPStreamManager } from '../utils/xmtpStreamManager';
+import { XMTPDiscoveryManager } from '../utils/xmtpDiscoveryManager';
+import { memoryManager } from '../utils/xmtpMemoryManager';
+import { XMTPErrorBoundary } from '../components/XMTPErrorBoundary';
 
 export type XMTPConversation = Dm<string> | Group<string>;
 
@@ -72,11 +76,12 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   const [messageCursors, setMessageCursors] = useState<{ [convId: string]: string | null }>({});
   const [isSyncing, setIsSyncing] = useState(false);
   
-  // Stream management
-  const globalStreamRef = useRef<any>(null);
-  const streamActiveRef = useRef<boolean>(false);
+  // Enhanced V3 managers
+  const streamManagerRef = useRef<XMTPStreamManager | null>(null);
+  const discoveryManagerRef = useRef<XMTPDiscoveryManager | null>(null);
+  const errorRecoveryRef = useRef<number>(0);
 
-  // WORKING PATTERN: Simple client initialization
+  // ENHANCED V3 PATTERN: Robust client initialization with recovery
   const initializeClient = useCallback(async () => {
     if (!walletClient || !address || isInitializing || isInitialized) {
       return;
@@ -85,118 +90,190 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     try {
       setIsInitializing(true);
       setError(null);
-      setStatus('Initializing XMTP...');
+      setStatus('Initializing XMTP V3...');
+      errorRecoveryRef.current = 0;
 
-      console.log('[XMTP] 🚀 Starting simple XMTP initialization...');
+      console.log('[XMTP] 🚀 Starting enhanced XMTP V3 initialization...');
+      
+      // Start memory monitoring
+      memoryManager.startMonitoring();
       
       const signer = createAutoSigner(walletClient);
       const xmtpClient = await Client.create(signer, { env: 'production' });
       
+      // Register client with memory manager
+      memoryManager.registerXMTPClient(xmtpClient, `client-${Date.now()}`);
+      
       setClient(xmtpClient);
       setIsInitialized(true);
-      setStatus('XMTP ready');
+      setStatus('XMTP V3 ready');
       
-      console.log('[XMTP] ✅ XMTP initialized successfully');
+      console.log('[XMTP] ✅ XMTP V3 initialized successfully');
       
-      // Start simple background sync
-      setTimeout(() => loadConversations(), 1000);
+      // Initialize enhanced managers
+      await initializeManagers(xmtpClient);
+      
+      // Start enhanced discovery
+      setTimeout(() => loadConversationsV3(), 1000);
       
     } catch (err) {
-      console.error('[XMTP] ❌ Initialization failed:', err);
-      setError(err instanceof Error ? err.message : 'Failed to initialize XMTP');
-      setStatus('Initialization failed');
+      console.error('[XMTP] ❌ V3 Initialization failed:', err);
+      errorRecoveryRef.current++;
+      
+      const errorMessage = err instanceof Error ? err.message : 'Failed to initialize XMTP V3';
+      setError(errorMessage);
+      setStatus('V3 Initialization failed');
+      
+      // Enhanced error recovery
+      if (errorRecoveryRef.current < 3) {
+        console.log(`[XMTP] Scheduling recovery attempt ${errorRecoveryRef.current}/3...`);
+        setTimeout(() => {
+          setIsInitializing(false);
+          initializeClient();
+        }, errorRecoveryRef.current * 5000);
+        return;
+      }
     } finally {
-      setIsInitializing(false);
+      if (errorRecoveryRef.current >= 3) {
+        setIsInitializing(false);
+      }
     }
   }, [walletClient, address, isInitializing, isInitialized]);
 
-  // ENHANCED PATTERN: V3-optimized conversation discovery with retry logic
-  const loadConversations = useCallback(async () => {
-    if (!client) return;
+  // Initialize enhanced managers
+  const initializeManagers = useCallback(async (xmtpClient: Client) => {
+    try {
+      // Initialize discovery manager
+      if (!discoveryManagerRef.current) {
+        discoveryManagerRef.current = new XMTPDiscoveryManager({
+          enableDeepSync: true,
+          enableCrossWalletDetection: true,
+          enableIdentityBasedDiscovery: true,
+          wasmStabilityDelay: 3000
+        });
+        await discoveryManagerRef.current.initialize(xmtpClient);
+      }
+
+      // Initialize stream manager
+      if (!streamManagerRef.current) {
+        streamManagerRef.current = new XMTPStreamManager({
+          borrowMutErrorCooldown: 5000,
+          wasmPanicRecoveryDelay: 10000,
+          maxConsecutiveErrors: 3
+        });
+        await streamManagerRef.current.initialize(xmtpClient);
+        
+        // Set up message handler
+        streamManagerRef.current.onMessage((message) => {
+          console.log('[XMTP] Enhanced stream message:', message);
+          
+          // Update messages state
+          setMessages(prev => ({
+            ...prev,
+            [message.conversationId]: [
+              ...(prev[message.conversationId] || []),
+              message
+            ]
+          }));
+          
+          // Update conversation preview
+          setConversationPreviews(prev => ({
+            ...prev,
+            [message.conversationId]: (message.content as string) || 'New message'
+          }));
+          
+          // Mark as unread if not currently selected
+          if (!selectedConversation || selectedConversation.id !== message.conversationId) {
+            setUnreadConversations(prev => new Set([...prev, message.conversationId]));
+          }
+          
+          // Trigger conversation discovery for new conversations
+          const currentConversations = conversations.map(c => c.id);
+          if (!currentConversations.includes(message.conversationId)) {
+            console.log('[XMTP] New conversation detected, triggering discovery...');
+            setTimeout(() => loadConversationsV3(), 1000);
+          }
+        });
+        
+        // Set up error handler with enhanced recovery
+        streamManagerRef.current.onError((error) => {
+          console.error('[XMTP] Enhanced stream error:', error);
+          setError(`Stream error: ${error.message}`);
+          
+          // Enhanced error handling based on error type
+          const errorType = (error as any).errorType;
+          if (errorType === 'WASM_PANIC') {
+            console.log('[XMTP] WASM panic detected, enabling memory protection...');
+            memoryManager.setBorrowMutCooldown(true);
+            setTimeout(() => memoryManager.setBorrowMutCooldown(false), 15000);
+          } else if (errorType === 'BORROW_MUT_ERROR') {
+            console.log('[XMTP] BorrowMutError detected, performing cleanup...');
+            memoryManager.performXMTPCleanup();
+          }
+        });
+        
+        // Start enhanced streaming
+        streamManagerRef.current.startStream();
+      }
+      
+      console.log('[XMTP] ✅ Enhanced managers initialized');
+    } catch (error) {
+      console.error('[XMTP] ❌ Failed to initialize managers:', error);
+    }
+  }, [selectedConversation, conversations]);
+
+  // ENHANCED V3 PATTERN: Discovery using enhanced discovery manager
+  const loadConversationsV3 = useCallback(async () => {
+    if (!client || !discoveryManagerRef.current) return;
     
     try {
       setIsLoading(true);
-      console.log('[XMTP] 🔄 Loading conversations with enhanced V3 pattern...');
+      console.log('[XMTP] 🔄 Loading conversations with enhanced V3 discovery manager...');
       
-      // V3 Enhanced Pattern: Multiple sync attempts with progressive delay
-      let conversations: any[] = [];
-      let attempts = 0;
-      const maxAttempts = 3;
+      // Use enhanced discovery manager
+      const discoveryResult = await discoveryManagerRef.current.discoverConversations();
       
-      while (attempts < maxAttempts) {
-        attempts++;
-        console.log(`[XMTP] 🔄 Sync attempt ${attempts}/${maxAttempts}...`);
-        
-        try {
-          // Enhanced sync pattern for V3
-          await client.conversations.sync();
-          
-          // V3 specific: Try both list methods
-          const allConversations = await client.conversations.list();
-          const dmConversations = await client.conversations.listDms();
-          const groupConversations = await client.conversations.listGroups();
-          
-          // Combine and deduplicate
-          const conversationMap = new Map();
-          [...allConversations, ...dmConversations, ...groupConversations].forEach(conv => {
-            conversationMap.set(conv.id, conv);
-          });
-          
-          conversations = Array.from(conversationMap.values());
-          
-          console.log(`[XMTP] 📊 Discovery results - Attempt ${attempts}:`, {
-            total: conversations.length,
-            dms: dmConversations.length,
-            groups: groupConversations.length,
-            combined: allConversations.length
-          });
-          
-          // If we found conversations or this is the last attempt, break
-          if (conversations.length > 0 || attempts === maxAttempts) {
-            break;
-          }
-          
-          // Progressive delay between attempts (1s, 2s, 3s)
-          if (attempts < maxAttempts) {
-            console.log(`[XMTP] ⏳ Waiting ${attempts}s before retry...`);
-            await new Promise(resolve => setTimeout(resolve, attempts * 1000));
-          }
-          
-        } catch (syncError) {
-          console.warn(`[XMTP] ⚠️ Sync attempt ${attempts} failed:`, syncError);
-          if (attempts === maxAttempts) {
-            throw syncError;
-          }
-        }
-      }
+      console.log('[XMTP] 📊 Enhanced discovery results:', discoveryResult);
       
-      console.log(`[XMTP] ✅ Found ${conversations.length} conversations after ${attempts} attempts`);
+      // Get the cached conversations from discovery manager
+      const discoveredConversations = discoveryManagerRef.current.getCachedConversations();
       
-      // Enhanced debug logging for each conversation
-      conversations.forEach((conv, index) => {
+      // Enhanced debug logging
+      discoveredConversations.forEach((conv, index) => {
         const isGroup = 'members' in conv;
         const peerAddress = isGroup ? 'Group' : ('peerAddress' in conv ? conv.peerAddress : 'Unknown');
         const isInbound = !isGroup && peerAddress !== address;
         
-        console.log(`[XMTP] 📋 Conversation ${index + 1}:`, {
+        console.log(`[XMTP] 📋 Enhanced Conversation ${index + 1}:`, {
           id: conv.id,
           type: isGroup ? 'group' : 'dm',
           peerAddress,
           isInbound,
           createdAt: conv.createdAt || 'Unknown',
-          lastMessage: conv.lastMessage || 'No messages'
+          lastMessage: conv.lastMessage || 'No messages',
+          discoveryMethod: discoveryResult.method
         });
       });
       
-      setConversations(conversations as XMTPConversation[]);
+      setConversations(discoveredConversations as XMTPConversation[]);
+      
+      // Clear error if discovery was successful
+      if (discoveryResult.total > 0) {
+        setError(null);
+      } else if (discoveryResult.total === 0) {
+        console.warn('[XMTP] No conversations discovered - this may indicate network issues or new wallet');
+      }
       
     } catch (error) {
-      console.error('[XMTP] ❌ Failed to load conversations after all attempts:', error);
-      setError('Failed to discover conversations. This may be due to V3 network delays.');
+      console.error('[XMTP] ❌ Enhanced discovery failed:', error);
+      setError('Enhanced discovery failed. Network or WASM stability issues detected.');
     } finally {
       setIsLoading(false);
     }
   }, [client, address]);
+
+  // Legacy method for backward compatibility
+  const loadConversations = loadConversationsV3;
 
   // WORKING PATTERN: Simple conversation selection
   const selectConversation = useCallback(async (conversation: XMTPConversation) => {
@@ -323,142 +400,75 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     }
   }, [selectedConversation]);
 
-  // V3 Enhancement: Manual discovery function for debugging
+  // V3 Enhancement: Enhanced manual discovery function for debugging
   const forceDiscoverConversations = useCallback(async () => {
-    if (!client) {
-      console.warn('[XMTP] Cannot force discovery: client not initialized');
+    if (!client || !discoveryManagerRef.current) {
+      console.warn('[XMTP] Cannot force discovery: client or discovery manager not initialized');
       return;
     }
     
-    console.log('[XMTP] 🔍 Force discovering conversations...');
+    console.log('[XMTP] 🔍 Force discovering conversations with enhanced V3 patterns...');
     setError(null);
-    await loadConversations();
-  }, [client, loadConversations]);
+    
+    try {
+      // Force fresh discovery with all patterns
+      await discoveryManagerRef.current.discoverConversations(true);
+      await loadConversationsV3();
+      console.log('[XMTP] ✅ Force discovery completed');
+    } catch (error) {
+      console.error('[XMTP] ❌ Force discovery failed:', error);
+      setError('Force discovery failed - check debug panel for details');
+    }
+  }, [client, loadConversationsV3]);
 
-  // ENHANCED PATTERN: V3-optimized message streaming with conversation discovery
-  useEffect(() => {
-    if (!client || streamActiveRef.current) return;
-    
-    streamActiveRef.current = true;
-    
-    const setupStream = async () => {
-      try {
-        console.log('[XMTP] 🔄 Setting up enhanced V3 message stream...');
-        
-        globalStreamRef.current = await client.conversations.streamAllMessages();
-        
-        // Process incoming messages with conversation discovery
-        (async () => {
-          try {
-            for await (const message of globalStreamRef.current) {
-              console.log('[XMTP] 📨 New message received:', message);
-              
-              // V3 Enhancement: Trigger conversation discovery on new message
-              // This helps discover inbound conversations that weren't initially found
-              const currentConversations = conversations.map(c => c.id);
-              if (!currentConversations.includes(message.conversationId)) {
-                console.log('[XMTP] 🔍 New conversation detected via message stream, triggering discovery...');
-                // Slight delay to allow network propagation
-                setTimeout(() => loadConversations(), 1000);
-              }
-              
-              // Add to messages
-              setMessages(prev => ({
-                ...prev,
-                [message.conversationId]: [
-                  ...(prev[message.conversationId] || []),
-                  message
-                ]
-              }));
-              
-              // Update conversation preview
-              setConversationPreviews(prev => ({
-                ...prev,
-                [message.conversationId]: (message.content as string) || 'New message'
-              }));
-              
-              // Mark as unread if not currently selected
-              if (!selectedConversation || selectedConversation.id !== message.conversationId) {
-                setUnreadConversations(prev => new Set([...prev, message.conversationId]));
-              }
-            }
-          } catch (streamError) {
-            console.warn('[XMTP] Stream error:', streamError);
-            // V3 Enhancement: On stream error, try to reconnect and rediscover
-            setTimeout(() => {
-              console.log('[XMTP] 🔄 Attempting stream recovery and conversation rediscovery...');
-              loadConversations();
-            }, 5000);
-          }
-        })();
-        
-        console.log('[XMTP] ✅ Enhanced V3 message stream active');
-        
-      } catch (error) {
-        console.error('[XMTP] ❌ Failed to setup enhanced stream:', error);
-        // V3 Enhancement: Fallback to periodic discovery if streaming fails
-        console.log('[XMTP] 🔄 Stream setup failed, relying on periodic sync...');
-      }
-    };
-    
-    setupStream();
-    
-    return () => {
-      streamActiveRef.current = false;
-      if (globalStreamRef.current) {
-        try {
-          globalStreamRef.current.return?.();
-        } catch (error) {
-          console.warn('[XMTP] Error closing stream:', error);
-        }
-      }
-    };
-  }, [client, conversations, selectedConversation, loadConversations]);
+  // Enhanced streaming is now handled by the XMTPStreamManager
+  // No additional effects needed here as the manager handles everything
 
-  // ENHANCED PATTERN: V3-optimized periodic sync with adaptive timing
+  // Enhanced periodic sync - lighter since discovery manager handles heavy lifting
   useEffect(() => {
-    if (!client) return;
+    if (!client || !discoveryManagerRef.current) return;
     
     let syncInterval: NodeJS.Timeout;
-    let intensiveSyncTimeout: NodeJS.Timeout;
     
-    // Initial intensive sync for first 2 minutes (V3 network propagation)
-    console.log('[XMTP] 🚀 Starting intensive sync period for V3 network propagation...');
-    const intensiveSync = () => {
-      console.log('[XMTP] 🔄 Intensive periodic sync...');
-      loadConversations();
-    };
-    
-    // Intensive sync every 10 seconds for the first 2 minutes
-    intensiveSync(); // Immediate first sync
-    syncInterval = setInterval(intensiveSync, 10000);
-    
-    // After 2 minutes, switch to normal sync every 30 seconds
-    intensiveSyncTimeout = setTimeout(() => {
-      console.log('[XMTP] 🔄 Switching to normal sync interval...');
-      clearInterval(syncInterval);
-      
-      // Normal sync every 30 seconds after intensive period
-      syncInterval = setInterval(() => {
-        console.log('[XMTP] 🔄 Normal periodic sync...');
-        loadConversations();
-      }, 30000);
-    }, 120000); // 2 minutes
+    // Lighter periodic sync every 60 seconds
+    // The discovery manager and stream manager handle most real-time updates
+    syncInterval = setInterval(() => {
+      console.log('[XMTP] 🔄 Periodic enhanced sync...');
+      loadConversationsV3();
+    }, 60000);
     
     return () => {
       clearInterval(syncInterval);
-      clearTimeout(intensiveSyncTimeout);
     };
-  }, [client, loadConversations]);
+  }, [client, loadConversationsV3]);
 
-  // Reset state when wallet changes
+  // Reset state when wallet changes with enhanced cleanup
   useEffect(() => {
     if (address) {
+      // Enhanced cleanup for V3 managers
+      if (streamManagerRef.current) {
+        streamManagerRef.current.destroy();
+        streamManagerRef.current = null;
+      }
+      
+      if (discoveryManagerRef.current) {
+        discoveryManagerRef.current.destroy();
+        discoveryManagerRef.current = null;
+      }
+      
+      // Stop memory monitoring
+      memoryManager.stopMonitoring();
+      
+      // Reset state
       setConversations([]);
       setSelectedConversation(null);
       setMessages({});
       setIsInitialized(false);
       setClient(null);
+      setError(null);
+      errorRecoveryRef.current = 0;
+      
+      console.log('[XMTP] ✅ Enhanced cleanup completed for wallet change');
     }
   }, [address]);
 
@@ -499,9 +509,24 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   };
 
   return (
-    <XMTPContext.Provider value={value}>
-      {children}
-    </XMTPContext.Provider>
+    <XMTPErrorBoundary
+      onError={(error, errorInfo) => {
+        console.error('[XMTP] Error boundary caught error:', error, errorInfo);
+        setError(`XMTP Error: ${error.message}`);
+        
+        // Enhanced error recovery
+        if (error.message.includes('WASM') || error.message.includes('BorrowMut')) {
+          console.log('[XMTP] WASM/BorrowMut error detected, triggering memory protection...');
+          memoryManager.setBorrowMutCooldown(true);
+          setTimeout(() => memoryManager.setBorrowMutCooldown(false), 15000);
+        }
+      }}
+      maxRetries={3}
+    >
+      <XMTPContext.Provider value={value}>
+        {children}
+      </XMTPContext.Provider>
+    </XMTPErrorBoundary>
   );
 };
 
