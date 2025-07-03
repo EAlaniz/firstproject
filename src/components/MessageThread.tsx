@@ -95,7 +95,7 @@ const MessageThread: React.FC<MessageThreadProps> = ({ conversationId, loadMoreM
   }
 
   return (
-    <div className="flex-1 overflow-y-auto px-4 py-6 bg-gray-50 dark:bg-gray-900 message-list">
+    <div className="flex-1 overflow-y-auto px-4 py-6 bg-gray-50 dark:bg-gray-900 message-list h-full">
       {/* Load More Button for Pagination */}
       {msgCursor && (
         <button

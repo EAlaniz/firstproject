@@ -47,7 +47,7 @@ const DMChat: React.FC<DMChatProps> = ({ conversationId, onRetry }) => {
   return (
     <div className="flex flex-col h-full">
       {/* Messages */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 h-0">
         <MessageThread
           conversationId={conversationId}
           loadMoreMessages={loadMoreMessages}

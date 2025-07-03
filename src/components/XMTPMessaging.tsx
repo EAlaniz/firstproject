@@ -164,7 +164,7 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
         </div>
 
         {/* Content - Responsive Layout */}
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1">
           {!isInitialized ? (
             /* Loading State - Responsive */
             <div className="flex-1 flex items-center justify-center p-4">
