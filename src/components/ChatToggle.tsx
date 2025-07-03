@@ -1,4 +1,4 @@
-Ccimport React from 'react';
+import React from 'react';
 import { useXMTP } from '../contexts/XMTPContext';
 import DMChat from './DMChat';
 import type { DecodedMessage } from '@xmtp/browser-sdk';

@@ -108,7 +108,7 @@ const MessageThread: React.FC<MessageThreadProps> = ({ conversationId, loadMoreM
                       : 'bg-gray-100 text-gray-900 rounded-bl-none self-start dark:bg-gray-800 dark:text-gray-100'
                   }`}
                 >
-                  <div className="text-base">{msg.content}</div>
+                  <div className="text-base">{typeof msg.content === 'string' ? msg.content : String(msg.content || '')}</div>
                   <div className="timestamp text-xs mt-1 opacity-70 text-right">
                     {msg.sentAtNs
                       ? new Date(Number(msg.sentAtNs) / 1e6).toLocaleTimeString()

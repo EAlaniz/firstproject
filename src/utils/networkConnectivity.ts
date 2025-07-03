@@ -31,12 +31,12 @@ class NetworkConnectivityManager {
   private healthCheckInterval: NodeJS.Timeout | null = null;
 
   // XMTP V3 production endpoints to monitor (updated for SDK v3.0.3+)
+  // Note: grpc.production.xmtp.network removed as it's not accessible via HTTP/CORS from browsers
   private xmtpEndpoints = [
-    'https://grpc.production.xmtp.network',
     'https://production.xmtp.network',
     'https://node.production.xmtp.network',
     'https://api.production.xmtp.network',
-    // Additional monitoring endpoints for comprehensive health checking
+    // gRPC endpoints are handled internally by the XMTP SDK
   ];
 
   constructor() {
