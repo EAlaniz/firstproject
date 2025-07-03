@@ -593,19 +593,22 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       // V3: Get inbox ID from address (required for official V3 pattern)
       console.log(`[XMTP] 🔍 Getting inbox ID for ${normalizedAddress}...`);
       
-      // V3: Use the canMessage result to get inbox IDs
-      const inboxIds = await client.findInboxIdFromAddress(normalizedAddress);
+      // V3: Get inbox ID using correct browser SDK method
+      const inboxId = await client.findInboxIdByIdentifier({
+        identifier: normalizedAddress,
+        identifierKind: 'Ethereum'
+      });
       
-      if (!inboxIds) {
+      if (!inboxId) {
         setError('Could not find inbox ID for recipient address');
         return null;
       }
       
-      const recipientInboxId = inboxIds;
+      const recipientInboxId = inboxId;
       console.log(`[XMTP] ✅ Found inbox ID: ${recipientInboxId}`);
       
       // V3: Create conversation using inbox ID (official V3 pattern)
-      const conversation = await client.conversations.findOrCreateDm(recipientInboxId);
+      const conversation = await client.conversations.newDm(recipientInboxId);
       
       console.log('[XMTP] ✅ V3 conversation created successfully');
       
