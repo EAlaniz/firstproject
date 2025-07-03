@@ -22,9 +22,9 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
     conversationPreviews, 
     unreadConversations,
     sendMessage,
-    messages,
     forceDiscoverConversations,
-    forceDiscoverNewConversations
+    forceDiscoverNewConversations,
+    loadMoreMessages
   } = useXMTP();
   
   const [isNewConversationModalOpen, setIsNewConversationModalOpen] = useState(false);
@@ -61,6 +61,12 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
       // Then force discover all conversations
       await forceDiscoverConversations();
       
+      // If there's a selected conversation, reload its messages
+      if (selectedConversation) {
+        await loadMoreMessages(selectedConversation.id);
+        console.log('[UI] 🔄 Reloaded messages for selected conversation');
+      }
+      
       console.log('[UI] ✅ Manual refresh completed');
     } catch (error) {
       console.error('[UI] ❌ Manual refresh failed:', error);
@@ -75,9 +81,8 @@ const XMTPMessaging: React.FC<XMTPMessagingProps> = ({ isOpen, onClose }) => {
     if (msg.content && selectedConversation) {
       // Retry sending the message using the XMTP context sendMessage function
       try {
-        await sendMessage(msg.content, selectedConversation, () => {
-          console.log('Retry successful');
-        });
+        await sendMessage(msg.content, selectedConversation);
+        console.log('Retry successful');
       } catch (error) {
         console.error('Retry failed:', error);
       }

@@ -558,6 +558,9 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
       setIsLoading(true);
       setSelectedConversation(conversation);
       
+      // V3: Sync conversation first to get latest messages
+      await conversation.sync();
+      
       // V3: Load messages with pagination
       const msgs = await conversation.messages({
         limit: 50n
@@ -704,6 +707,9 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     // V3: Load more messages with pagination
     const conversation = conversations.find(c => c.id === conversationId);
     if (conversation) {
+      // V3: Sync conversation first to get latest messages
+      await conversation.sync();
+      
       const msgs = await conversation.messages({
         limit: 25n
       });

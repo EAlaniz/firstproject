@@ -51,16 +51,14 @@ const MessageThread: React.FC<MessageThreadProps> = ({ conversationId, loadMoreM
       const isCurrentUserMessage = msgFrom === currentUserInboxId || 
                                   msgFrom?.toLowerCase() === address?.toLowerCase();
       
-      // Debug logging for sender detection
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[MessageThread] Message sender analysis:', {
-          msgFrom,
-          currentUserInboxId,
-          address,
-          isCurrentUserMessage,
-          messageContent: String(msg.content).substring(0, 20)
-        });
-      }
+      // Debug logging for sender detection (uncomment for debugging)
+      // console.log('[MessageThread] Message sender analysis:', {
+      //   msgFrom,
+      //   currentUserInboxId,
+      //   address,
+      //   isCurrentUserMessage,
+      //   messageContent: String(msg.content).substring(0, 20)
+      // });
       
       if (msgFrom !== lastSender) {
         if (currentGroup) groups.push(currentGroup);
