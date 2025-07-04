@@ -220,6 +220,32 @@ export class XMTPStreamManager {
   private handleError(error: Error): void {
     console.error('[StreamManager] Handling error:', error.message);
     
+    // Check for specific welcome message errors that indicate database inconsistency
+    const isWelcomeError = error.message.includes('group with welcome id') && error.message.includes('not found');
+    const isBorrowMutError = error.message.includes('BorrowMutError');
+    
+    if (isWelcomeError) {
+      console.warn('[StreamManager] ⚠️ Welcome message state inconsistency detected. This requires database cleanup.');
+      console.warn('[StreamManager] Recommendation: Clear XMTP database and re-initialize client.');
+      
+      // Disable auto-restart for welcome errors to prevent infinite loops
+      this.updateState({ 
+        error: new Error('Welcome message state inconsistency - database cleanup required'),
+        isActive: false 
+      });
+      
+      // Notify error handlers
+      this.errorHandlers.forEach(handler => {
+        try {
+          handler(new Error('XMTP database state inconsistency detected. Please clear database and re-initialize.'));
+        } catch (handlerError) {
+          console.error('[StreamManager] Error handler failed:', handlerError);
+        }
+      });
+      
+      return; // Don't auto-restart for welcome errors
+    }
+    
     this.updateState({ 
       error,
       isActive: false 
@@ -234,14 +260,16 @@ export class XMTPStreamManager {
       }
     });
 
-    // Simple auto-restart (per XMTP docs - streams can be restarted)
-    if (this.config.enableAutoRestart && !this.isDestroyed) {
+    // Only auto-restart for non-critical errors
+    if (this.config.enableAutoRestart && !this.isDestroyed && !isWelcomeError && !isBorrowMutError) {
       console.log(`[StreamManager] Scheduling restart in ${this.config.restartDelay}ms...`);
       setTimeout(() => {
         if (!this.isDestroyed) {
           this.startStream();
         }
       }, this.config.restartDelay);
+    } else {
+      console.log('[StreamManager] Auto-restart disabled for this error type. Manual intervention required.');
     }
   }
 

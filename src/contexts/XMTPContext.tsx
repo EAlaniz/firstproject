@@ -47,6 +47,9 @@ export interface XMTPContextType {
   
   // V3 Enhancement: Manual new conversation detection trigger
   forceDiscoverNewConversations: () => Promise<void>;
+  
+  // V3 Enhancement: Database cleanup for state inconsistency issues
+  clearDatabase: () => Promise<void>;
 }
 
 const XMTPContext = createContext<XMTPContextType | undefined>(undefined);
@@ -402,6 +405,32 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         // Set up error handler with enhanced recovery
         streamManagerRef.current.onError((error) => {
           console.error('[XMTP] Enhanced stream error:', error);
+          
+          // Check for specific database inconsistency errors
+          if (error.message.includes('database state inconsistency') || 
+              error.message.includes('Welcome message state inconsistency')) {
+            console.error('[XMTP] 🚨 CRITICAL: XMTP database state inconsistency detected!');
+            console.error('[XMTP] This is the "welcome id 121264166 not found" infinite loop issue.');
+            console.error('[XMTP] Solution: Database cleanup is required.');
+            console.error('[XMTP] 🔧 Auto-triggering database cleanup in 3 seconds...');
+            
+            setError('XMTP Database Error: State inconsistency detected. Auto-cleaning database...');
+            setStatus('Auto-cleaning database...');
+            
+            // Auto-trigger database cleanup after a short delay
+            setTimeout(async () => {
+              try {
+                await clearDatabase();
+                console.log('[XMTP] ✅ Auto-cleanup completed. Please re-initialize XMTP.');
+              } catch (cleanupError) {
+                console.error('[XMTP] ❌ Auto-cleanup failed:', cleanupError);
+                setError('Database cleanup failed. Please manually clear database or refresh page.');
+              }
+            }, 3000);
+            
+            return;
+          }
+          
           setError(`Stream error: ${error.message}`);
           
           // Enhanced error handling based on error type
@@ -847,6 +876,47 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     }
   }, [address]);
 
+  // Database cleanup function for welcome message state inconsistencies
+  const clearDatabase = useCallback(async (): Promise<void> => {
+    if (!address) {
+      console.warn('[XMTP] No address available for database cleanup');
+      return;
+    }
+    
+    console.log('[XMTP] 🧹 Clearing XMTP database to fix state inconsistency...');
+    setStatus('Clearing database...');
+    
+    try {
+      // Stop current stream and cleanup
+      if (streamManagerRef.current) {
+        await streamManagerRef.current.destroy();
+        streamManagerRef.current = null;
+      }
+      
+      if (discoveryManagerRef.current) {
+        await discoveryManagerRef.current.destroy();
+        discoveryManagerRef.current = null;
+      }
+      
+      // Force cleanup database
+      await forceCleanupDatabase(address);
+      
+      // Reset state
+      setClient(null);
+      setIsInitialized(false);
+      setConversations([]);
+      setSelectedConversation(null);
+      setMessages({});
+      setError(null);
+      setStatus('Database cleared - ready to re-initialize');
+      
+      console.log('[XMTP] ✅ Database cleanup completed successfully');
+    } catch (error) {
+      console.error('[XMTP] ❌ Database cleanup failed:', error);
+      setError('Database cleanup failed - please refresh the page');
+    }
+  }, [address, forceCleanupDatabase]);
+
   const value: XMTPContextType = {
     // Core state
     client,
@@ -882,6 +952,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     // V3 Enhancement
     forceDiscoverConversations,
     forceDiscoverNewConversations,
+    clearDatabase,
   };
 
   return (
