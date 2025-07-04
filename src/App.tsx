@@ -3,15 +3,12 @@ import { useAccount, useBalance, useWalletClient, useDisconnect } from 'wagmi';
 import { ENV_CONFIG } from './constants';
 import { EnhancedWalletConnector } from './components/EnhancedWalletConnector';
 import Modal from './components/Modal';
-import XMTPMessaging from './components/XMTPMessaging';
-import { XMTPDebugPanel } from './components/XMTPDebugPanel';
-import { useXMTP, XMTPProvider } from './contexts/XMTPContext';
-import type { XMTPConversation } from './contexts/XMTPContext';
+import { SimpleXMTPMessaging } from './components/SimpleXMTPMessaging';
+import { useSimpleXMTP, SimpleXMTPProvider } from './contexts/SimpleXMTPContext';
+import type { DecodedMessage } from '@xmtp/browser-sdk';
 import { Activity, Trophy, Circle, MessageCircle, Menu, X, User, ExternalLink, Settings, Lock, LogOut } from 'lucide-react';
 // Import the Farcaster Frame SDK for mini app splash screen control
 import { sdk } from '@farcaster/frame-sdk';
-import ConversationsList from './components/ConversationsList';
-import NewConversationModal from './components/NewConversationModal';
 import { Toaster } from 'react-hot-toast';
 
 // Add this type declaration at the top of the file
@@ -27,14 +24,11 @@ function AppContent() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [showXMTPMessaging, setShowXMTPMessaging] = useState(false);
-  const [showXMTPDebugPanel, setShowXMTPDebugPanel] = useState(false);
+  const [activeView, setActiveView] = useState<'dashboard' | 'messages'>('dashboard');
   const [currentSteps, setCurrentSteps] = useState(7240);
   const [dailyGoal, setDailyGoal] = useState(10000);
   const [currentStreak] = useState(12);
   const [totalTokens] = useState(156);
-  const [selectedConversation, setSelectedConversation] = useState<XMTPConversation | null>(null);
-  const [isNewConversationModalOpen, setIsNewConversationModalOpen] = useState(false);
 
   const { address, isConnected } = useAccount();
   const { data: balance } = useBalance({ address: address });
@@ -59,18 +53,13 @@ function AppContent() {
       }
     })();
   }, []);
-  // Use XMTP context
+  // Use Simple XMTP context
   const {
     client: xmtpClient,
-    initializeClient,
-    isInitializing,
-    conversationPreviews,
-    unreadConversations,
-    loadMoreConversations,
-    conversationCursor,
-    isLoading,
-    conversations,
-  } = useXMTP();
+    initialize: initializeClient,
+    isLoading: isInitializing,
+    error: xmtpError
+  } = useSimpleXMTP();
 
   // Debug modal state
   useEffect(() => {
@@ -180,7 +169,7 @@ function AppContent() {
       await initializeClient();
       console.log('✅ XMTP initialized successfully');
       setSuccess('XMTP messaging enabled successfully!');
-      setShowXMTPMessaging(true);
+      setActiveView('messages');
     } catch (error) {
       console.error('❌ XMTP initialization failed:', error);
       setError('XMTP setup failed. Please try again.');
@@ -195,10 +184,6 @@ function AppContent() {
     console.log('  - Address:', address);
   }, [isConnected, address]);
 
-  const handleSelectConversation = (id: string) => {
-    const convo = conversations.find((c: XMTPConversation) => c.id === id);
-    if (convo) setSelectedConversation(convo);
-  };
 
   // Main return with conditional rendering
   return (
@@ -265,6 +250,31 @@ function AppContent() {
               </div>
               {/* Desktop Navigation */}
               <div className="hidden sm:flex items-center space-x-6">
+                {/* Navigation */}
+                <div className="flex items-center space-x-4">
+                  <button
+                    onClick={() => setActiveView('dashboard')}
+                    className={`px-4 py-2 rounded-full transition-colors text-sm ${
+                      activeView === 'dashboard'
+                        ? 'bg-black text-white'
+                        : 'text-gray-600 hover:text-gray-800'
+                    }`}
+                  >
+                    Dashboard
+                  </button>
+                  {xmtpClient && (
+                    <button
+                      onClick={() => setActiveView('messages')}
+                      className={`px-4 py-2 rounded-full transition-colors text-sm ${
+                        activeView === 'messages'
+                          ? 'bg-black text-white'
+                          : 'text-gray-600 hover:text-gray-800'
+                      }`}
+                    >
+                      Messages
+                    </button>
+                  )}
+                </div>
                 {/* Stats */}
                 <div className="flex items-center space-x-6 text-sm">
                   <div className="flex items-center space-x-2">
@@ -286,36 +296,20 @@ function AppContent() {
                   >
                     Wallet
                   </button>
-                  <button
-                    onClick={() => {
-                      if (xmtpClient) {
-                        setShowXMTPMessaging(true);
-                      } else {
-                        handleXMTPInitialization();
-                      }
-                    }}
-                    disabled={isInitializing}
-                    className={`px-4 py-2 rounded-full transition-colors cursor-pointer text-sm flex items-center space-x-2 ${
-                      xmtpClient 
-                        ? 'bg-green-100 text-green-700 hover:bg-green-200' 
-                        : isInitializing
+                  {!xmtpClient && (
+                    <button
+                      onClick={handleXMTPInitialization}
+                      disabled={isInitializing}
+                      className={`px-4 py-2 rounded-full transition-colors cursor-pointer text-sm flex items-center space-x-2 ${
+                        isInitializing
                         ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
                         : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                    }`}
-                  >
-                    <MessageCircle className="w-4 h-4" />
-                    <span>
-                      {xmtpClient ? 'Messages' : isInitializing ? 'Initializing...' : 'Enable Messages'}
-                    </span>
-                  </button>
-                  {/* Debug Panel Button - Only show in development */}
-                  {import.meta.env.DEV && xmtpClient && (
-                    <button
-                      onClick={() => setShowXMTPDebugPanel(true)}
-                      className="bg-yellow-100 text-yellow-700 px-4 py-2 rounded-full hover:bg-yellow-200 transition-colors cursor-pointer text-sm"
-                      title="XMTP Debug Panel"
+                      }`}
                     >
-                      🐛 Debug
+                      <MessageCircle className="w-4 h-4" />
+                      <span>
+                        {isInitializing ? 'Initializing...' : 'Enable Messages'}
+                      </span>
                     </button>
                   )}
                 </div>
@@ -333,7 +327,10 @@ function AppContent() {
           </header>
 
           {/* Main Content */}
-          <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
+          <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
+            {activeView === 'dashboard' ? (
+              // Dashboard Content
+              <div>
             {/* Today's Progress */}
             <section className="mb-8 sm:mb-16">
               <div className="text-center space-y-6 sm:space-y-8">
@@ -615,19 +612,20 @@ function AppContent() {
               </div>
             </section>
 
-            {/* Conversations List */}
+            {/* Conversations List - Simplified */}
             <section className="mb-8 sm:mb-16">
-              <h2 className="text-xl sm:text-2xl font-light mb-6 sm:mb-8">Conversations</h2>
-              <ConversationsList
-                onSelect={handleSelectConversation}
-                onNewConversation={() => setIsNewConversationModalOpen(true)}
-                selectedId={selectedConversation?.id}
-                loadMoreConversations={loadMoreConversations}
-                conversationCursor={conversationCursor}
-                isLoading={isLoading}
-                conversationPreviews={conversationPreviews}
-                unreadConversations={unreadConversations}
-              />
+              <h2 className="text-xl sm:text-2xl font-light mb-6 sm:mb-8">Quick Actions</h2>
+              <div className="text-center py-8">
+                <p className="text-gray-500 mb-4">Enable messaging to start conversations</p>
+                {xmtpClient && (
+                  <button
+                    onClick={() => setActiveView('messages')}
+                    className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+                  >
+                    Open Messages
+                  </button>
+                )}
+              </div>
             </section>
 
             {/* Footer */}
@@ -644,6 +642,13 @@ function AppContent() {
               )}
               <p>Secure • Decentralized • Community-driven</p>
             </footer>
+            </div>
+            ) : (
+              // Messages Content
+              <div className="h-[calc(100vh-120px)]">
+                <SimpleXMTPMessaging />
+              </div>
+            )}
 
             {/* Mobile Menu */}
             {isMobileMenuOpen && (
@@ -680,27 +685,49 @@ function AppContent() {
                     </button>
                     <button
                       onClick={() => {
-                        if (xmtpClient) {
-                          setShowXMTPMessaging(true);
-                          setIsMobileMenuOpen(false); // Close mobile menu
-                        } else {
-                          handleXMTPInitialization();
-                        }
+                        setActiveView('dashboard');
+                        setIsMobileMenuOpen(false);
                       }}
-                      disabled={isInitializing}
                       className={`w-full flex items-center space-x-3 p-3 rounded-lg transition-colors ${
-                        xmtpClient 
-                          ? 'bg-green-50 text-green-700' 
-                          : isInitializing
-                          ? 'bg-gray-50 text-gray-500 cursor-not-allowed'
-                          : 'hover:bg-gray-50'
+                        activeView === 'dashboard' ? 'bg-black text-white' : 'hover:bg-gray-50'
                       }`}
                     >
-                      <MessageCircle className="w-5 h-5" />
-                      <span>
-                        {xmtpClient ? 'Messages' : isInitializing ? 'Initializing...' : 'Enable Messages'}
-                      </span>
+                      <Activity className="w-5 h-5" />
+                      <span>Dashboard</span>
                     </button>
+                    {xmtpClient && (
+                      <button
+                        onClick={() => {
+                          setActiveView('messages');
+                          setIsMobileMenuOpen(false);
+                        }}
+                        className={`w-full flex items-center space-x-3 p-3 rounded-lg transition-colors ${
+                          activeView === 'messages' ? 'bg-black text-white' : 'hover:bg-gray-50'
+                        }`}
+                      >
+                        <MessageCircle className="w-5 h-5" />
+                        <span>Messages</span>
+                      </button>
+                    )}
+                    {!xmtpClient && (
+                      <button
+                        onClick={() => {
+                          handleXMTPInitialization();
+                          setIsMobileMenuOpen(false);
+                        }}
+                        disabled={isInitializing}
+                        className={`w-full flex items-center space-x-3 p-3 rounded-lg transition-colors ${
+                          isInitializing
+                          ? 'bg-gray-50 text-gray-500 cursor-not-allowed'
+                          : 'hover:bg-gray-50'
+                        }`}
+                      >
+                        <MessageCircle className="w-5 h-5" />
+                        <span>
+                          {isInitializing ? 'Initializing...' : 'Enable Messages'}
+                        </span>
+                      </button>
+                    )}
                     <button
                       onClick={() => {
                         disconnect();
@@ -830,29 +857,9 @@ function AppContent() {
         </Modal>
       )}
 
-      {/* XMTP Messaging Modal */}
-      {showXMTPMessaging && (
-        <XMTPMessaging
-          isOpen={showXMTPMessaging}
-          onClose={() => setShowXMTPMessaging(false)}
-        />
-      )}
 
-      {/* XMTP Debug Panel - Only in development */}
-      {showXMTPDebugPanel && (
-        <XMTPDebugPanel
-          isOpen={showXMTPDebugPanel}
-          onClose={() => setShowXMTPDebugPanel(false)}
-        />
-      )}
+      {/* XMTP Debug Panel - Removed for simplified implementation */}
 
-      {/* New Conversation Modal */}
-      {isNewConversationModalOpen && (
-        <NewConversationModal
-          isOpen={isNewConversationModalOpen}
-          onClose={() => setIsNewConversationModalOpen(false)}
-        />
-      )}
 
       {/* Error/Success Messages */}
       {error && (
@@ -876,13 +883,13 @@ function AppContent() {
   );
 }
 
-// Main App component that wraps everything with XMTP provider
+// Main App component that wraps everything with Simple XMTP provider
 function App() {
   return (
-    <XMTPProvider>
+    <SimpleXMTPProvider>
       <Toaster position="top-center" />
       <AppContent />
-    </XMTPProvider>
+    </SimpleXMTPProvider>
   );
 }
 
