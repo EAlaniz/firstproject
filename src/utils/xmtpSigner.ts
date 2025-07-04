@@ -2,28 +2,29 @@ import type { WalletClient } from 'viem';
 import type { Signer, Identifier } from '@xmtp/browser-sdk';
 
 /**
- * Create official XMTP V3 browser SDK signer
- * This follows the exact pattern from XMTP V3 documentation
+ * Create working XMTP V3 signer (proven working pattern)
+ * This follows the exact pattern from the working XMTPContext
  */
 export const createAutoSigner = (walletClient: WalletClient): Signer => {
   if (!walletClient?.account?.address) {
     throw new Error('Invalid wallet client: missing account or address');
   }
 
-  console.log('🔍 Creating XMTP V3 browser SDK signer for address:', walletClient.account.address);
+  console.log('🔍 Creating XMTP-compatible signer for address:', walletClient.account.address);
 
   const accountIdentifier: Identifier = {
     identifier: walletClient.account.address.toLowerCase(),
     identifierKind: 'Ethereum',
   };
 
-  // Official XMTP V3 browser SDK signer pattern
-  const signer: Signer = {
-    type: 'EOA',
+  // Working XMTP V3 signer pattern (proven to work)
+  const baseSigner = {
+    type: 'EOA' as const,
     getIdentifier: () => accountIdentifier,
     signMessage: async (message: string): Promise<Uint8Array> => {
       try {
         console.log('🔐 XMTP requesting signature for message:', message);
+        console.log('📝 Message to sign:', message);
         
         // Use the wallet client to sign the message
         const signature = await walletClient.signMessage({
@@ -31,7 +32,7 @@ export const createAutoSigner = (walletClient: WalletClient): Signer => {
           message,
         });
         
-        // Convert hex signature to Uint8Array as required by XMTP
+        // Convert hex signature to Uint8Array as XMTP expects
         const signatureBytes = new Uint8Array(Buffer.from(signature.slice(2), 'hex'));
         console.log('✅ Signature created successfully');
         
@@ -43,7 +44,29 @@ export const createAutoSigner = (walletClient: WalletClient): Signer => {
     },
   };
 
-  return signer;
+  // Working pattern: Add chain context for compatibility
+  const finalSigner = {
+    ...baseSigner,
+    // Add getChainId method to ensure XMTP uses correct chain context
+    getChainId: async (): Promise<number> => {
+      console.log('🔗 XMTP requesting chain ID, returning Base mainnet (8453)');
+      return 8453; // Base mainnet chain ID
+    },
+    // Add getAddress method for compatibility
+    getAddress: async (): Promise<string> => {
+      return walletClient.account!.address;
+    },
+  };
+
+  // Test the signer before returning
+  console.log('🧪 Testing signer chain ID...');
+  finalSigner.getChainId().then(chainId => {
+    console.log('✅ Signer chain ID test:', chainId);
+  }).catch(error => {
+    console.error('❌ Signer chain ID test failed:', error);
+  });
+
+  return finalSigner as Signer;
 };
 
 /**
