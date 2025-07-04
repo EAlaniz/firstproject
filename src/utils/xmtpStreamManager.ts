@@ -92,23 +92,25 @@ export class XMTPStreamManager {
 
     try {
       // Step 1: Sync conversations first (per official docs)
+      // This handles welcome messages and ensures we have latest state
       await this.syncConversations();
 
-      // Step 2: Create abort controller for clean shutdown
+      // Step 2: Create abort controller for clean shutdown (per docs: streams are infinite)
       this.abortController = new AbortController();
 
       // Step 3: Create stream with consent filtering (official pattern)
-      console.log('[StreamManager] Creating message stream...');
+      console.log('[StreamManager] Creating infinite message stream...');
       this.stream = await this.client.conversations.streamAllMessages(
         undefined, // callback
         undefined, // conversationType 
-        this.config.consentStates // consentStates
+        this.config.consentStates // consentStates (allowed + unknown)
       );
       
       this.updateState({ isActive: true, error: null });
-      console.log('[StreamManager] ✅ Stream started successfully');
+      console.log('[StreamManager] ✅ Infinite stream started successfully');
 
       // Step 4: Start processing messages (official pattern)
+      // Note: This is an infinite stream that requires explicit termination
       this.processMessages();
 
     } catch (error) {
@@ -145,14 +147,14 @@ export class XMTPStreamManager {
     const signal = this.abortController.signal;
 
     try {
-      console.log('[StreamManager] Starting message processing (official pattern)...');
+      console.log('[StreamManager] Starting infinite message processing loop...');
 
-      // Official XMTP pattern: simple for await loop
+      // Official XMTP pattern: simple for await loop on infinite stream
       for await (const message of this.stream) {
-        // Check for abort signal
+        // Explicit termination check (per docs: infinite streams require explicit termination)
         if (signal.aborted || this.isDestroyed) {
-          console.log('[StreamManager] Message processing aborted');
-          break;
+          console.log('[StreamManager] Infinite stream explicitly terminated');
+          break; // Explicit termination as per XMTP docs
         }
 
         try {
@@ -178,14 +180,14 @@ export class XMTPStreamManager {
       }
 
     } catch (error) {
-      // Only handle errors if not aborted or destroyed
+      // Only handle errors if not explicitly aborted or destroyed
       if (!signal.aborted && !this.isDestroyed) {
-        console.error('[StreamManager] Stream error:', error);
+        console.error('[StreamManager] Infinite stream error:', error);
         this.handleError(error instanceof Error ? error : new Error(String(error)));
       }
     }
 
-    console.log('[StreamManager] Message processing ended');
+    console.log('[StreamManager] Infinite message processing loop ended');
   }
 
   private handleError(error: Error): void {
