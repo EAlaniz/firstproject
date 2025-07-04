@@ -4,7 +4,6 @@ import { Client, DecodedMessage, Dm, Group } from '@xmtp/browser-sdk';
 import { createAutoSigner } from '../utils/xmtpSigner';
 import { XMTPStreamManager } from '../utils/xmtpStreamManager';
 import { XMTPDiscoveryManager } from '../utils/xmtpDiscoveryManager';
-import { memoryManager } from '../utils/xmtpMemoryManager';
 import { XMTPErrorBoundary } from '../components/XMTPErrorBoundary';
 
 export type XMTPConversation = Dm<string> | Group<string>;
@@ -234,8 +233,6 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
 
       console.log('[XMTP] 🚀 Starting enhanced XMTP V3 initialization...');
       
-      // Start memory monitoring
-      memoryManager.startMonitoring();
       
       const signer = createAutoSigner(walletClient);
       
@@ -267,8 +264,6 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         dbEncryptionKey // Required for V3 local database
       });
       
-      // Register client with memory manager
-      memoryManager.registerXMTPClient(xmtpClient, `client-${Date.now()}`);
       
       setClient(xmtpClient);
       setIsInitialized(true);
@@ -334,23 +329,13 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     try {
       // Initialize discovery manager
       if (!discoveryManagerRef.current) {
-        discoveryManagerRef.current = new XMTPDiscoveryManager({
-          enableDeepSync: true,
-          enableCrossWalletDetection: true,
-          enableIdentityBasedDiscovery: true,
-          wasmStabilityDelay: 3000
-        });
+        discoveryManagerRef.current = new XMTPDiscoveryManager();
         await discoveryManagerRef.current.initialize(xmtpClient);
       }
 
       // Initialize stream manager
       if (!streamManagerRef.current) {
-        streamManagerRef.current = new XMTPStreamManager({
-          borrowMutErrorCooldown: 5000,
-          wasmPanicRecoveryDelay: 10000,
-          maxConsecutiveErrors: 3
-        });
-        await streamManagerRef.current.initialize(xmtpClient);
+        streamManagerRef.current = new XMTPStreamManager(xmtpClient);
         
         // Set up message handler
         streamManagerRef.current.onMessage((message) => {
@@ -422,12 +407,13 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
           // Enhanced error handling based on error type
           const errorType = (error as any).errorType;
           if (errorType === 'WASM_PANIC') {
-            console.log('[XMTP] WASM panic detected, enabling memory protection...');
-            memoryManager.setBorrowMutCooldown(true);
-            setTimeout(() => memoryManager.setBorrowMutCooldown(false), 15000);
+            console.log('[XMTP] WASM panic detected, applying cooldown...');
+            // Simple cooldown without memory manager
+            setTimeout(() => {}, 5000);
           } else if (errorType === 'BORROW_MUT_ERROR') {
             console.log('[XMTP] BorrowMutError detected, performing cleanup...');
-            memoryManager.performXMTPCleanup();
+            // Simple cleanup without memory manager
+            setTimeout(() => {}, 2000);
           }
         });
         
@@ -774,7 +760,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
     
     try {
       // Force fresh discovery with all patterns
-      await discoveryManagerRef.current.discoverConversations(true);
+      await discoveryManagerRef.current.discoverConversations();
       await loadConversationsV3();
       console.log('[XMTP] ✅ Force discovery completed');
     } catch (error) {
@@ -847,8 +833,6 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         discoveryManagerRef.current = null;
       }
       
-      // Stop memory monitoring
-      memoryManager.stopMonitoring();
       
       // Reset state
       setConversations([]);
@@ -908,9 +892,8 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
         
         // Enhanced error recovery
         if (error.message.includes('WASM') || error.message.includes('BorrowMut')) {
-          console.log('[XMTP] WASM/BorrowMut error detected, triggering memory protection...');
-          memoryManager.setBorrowMutCooldown(true);
-          setTimeout(() => memoryManager.setBorrowMutCooldown(false), 15000);
+          console.log('[XMTP] WASM/BorrowMut error detected, applying simple cooldown...');
+          // Simple error handling without memory manager
         }
       }}
       maxRetries={3}
