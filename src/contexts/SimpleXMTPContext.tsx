@@ -40,7 +40,7 @@ export const SimpleXMTPProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [selectedConversation, setSelectedConversation] = useState<XMTPConversation | null>(null);
   const [messages, setMessages] = useState<{ [conversationId: string]: DecodedMessage<string>[] }>({});
 
-  // Simple initialization - official XMTP pattern
+  // Simple initialization - official XMTP V3 browser SDK pattern
   const initialize = useCallback(async () => {
     if (!walletClient || !address || isLoading) return;
     
@@ -50,17 +50,18 @@ export const SimpleXMTPProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     try {
       console.log('[SimpleXMTP] Initializing XMTP client...');
       
-      // Official pattern: Create signer and client
+      // Official XMTP V3 browser SDK pattern: Create signer and client
       const signer = createAutoSigner(walletClient);
+      
+      // Browser SDK: No dbEncryptionKey (database is unencrypted in browser)
       const xmtpClient = await Client.create(signer, { 
-        env: 'production',
-        dbEncryptionKey: await getOrCreateEncryptionKey(address)
+        env: 'production'
       });
       
       setClient(xmtpClient);
       setIsInitialized(true);
       
-      // Load initial conversations
+      // Load initial conversations with consent filtering
       await loadConversations(xmtpClient);
       
       // Start simple streaming
@@ -76,12 +77,16 @@ export const SimpleXMTPProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   }, [walletClient, address, isLoading]);
 
-  // Simple conversation loading - official XMTP pattern
+  // Simple conversation loading - official XMTP V3 pattern with consent filtering
   const loadConversations = async (xmtpClient: Client) => {
     try {
       console.log('[SimpleXMTP] Loading conversations...');
+      
+      // Official V3 pattern: Sync conversations first
       await xmtpClient.conversations.sync();
-      const convs = await xmtpClient.conversations.list();
+      
+      // Load conversations with consent filtering to avoid spam
+      const convs = await xmtpClient.conversations.list(['allowed']);
       setConversations(convs as XMTPConversation[]);
       console.log(`[SimpleXMTP] Loaded ${convs.length} conversations`);
     } catch (err) {
@@ -89,30 +94,47 @@ export const SimpleXMTPProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   };
 
-  // Simple streaming - official XMTP pattern
+  // Simple streaming - official XMTP V3 browser SDK pattern
   const startStreaming = async (xmtpClient: Client) => {
     try {
       console.log('[SimpleXMTP] Starting message stream...');
       
-      // Official pattern: Simple streaming loop
-      for await (const message of xmtpClient.conversations.streamAllMessages()) {
+      // Official V3 pattern: Stream all messages with consent filtering
+      const stream = await xmtpClient.conversations.streamAllMessages(['allowed']);
+      
+      for await (const message of stream) {
         console.log('[SimpleXMTP] New message received:', message);
         
-        // Update messages
+        // Filter out own messages
+        if (message.senderInboxId === xmtpClient.inboxId) {
+          continue;
+        }
+        
+        // Ensure content is properly handled (handle fallback for unsupported content types)
+        const messageContent = message.fallback || String(message.content || '');
+        
+        // Update messages with proper content
         setMessages(prev => ({
           ...prev,
           [message.conversationId]: [
             ...(prev[message.conversationId] || []),
-            message
+            {
+              ...message,
+              content: messageContent
+            }
           ]
         }));
         
-        // Check for new conversations
-        const currentConvIds = conversations.map(c => c.id);
-        if (!currentConvIds.includes(message.conversationId)) {
-          console.log('[SimpleXMTP] New conversation detected, refreshing...');
-          loadConversations(xmtpClient);
-        }
+        // Check for new conversations and refresh if needed
+        setConversations(prev => {
+          const currentConvIds = prev.map(c => c.id);
+          if (!currentConvIds.includes(message.conversationId)) {
+            console.log('[SimpleXMTP] New conversation detected, refreshing...');
+            // Trigger refresh asynchronously
+            setTimeout(() => loadConversations(xmtpClient), 100);
+          }
+          return prev;
+        });
       }
     } catch (err) {
       console.error('[SimpleXMTP] Streaming error:', err);
@@ -135,7 +157,7 @@ export const SimpleXMTPProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   }, [client, selectedConversation]);
 
-  // Simple conversation creation - official XMTP pattern
+  // Simple conversation creation - official XMTP V3 pattern
   const createConversation = useCallback(async (recipientAddress: string) => {
     if (!client) return;
     
@@ -152,8 +174,9 @@ export const SimpleXMTPProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         return;
       }
       
-      // Create conversation
-      const conversation = await client.conversations.newDm(recipientAddress);
+      // V3 Pattern: Create DM conversation using findOrCreateDm
+      // Note: For V3, we should ideally use inboxId, but we can still use address for compatibility
+      const conversation = await client.conversations.findOrCreateDm(recipientAddress);
       console.log('[SimpleXMTP] ✅ Conversation created');
       
       // Refresh conversations
@@ -198,19 +221,6 @@ export const SimpleXMTPProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   };
 
-  // Simple encryption key management
-  const getOrCreateEncryptionKey = async (address: string): Promise<Uint8Array> => {
-    const keyName = `xmtp-key-${address}`;
-    const stored = localStorage.getItem(keyName);
-    
-    if (stored) {
-      return new Uint8Array(JSON.parse(stored));
-    }
-    
-    const key = crypto.getRandomValues(new Uint8Array(32));
-    localStorage.setItem(keyName, JSON.stringify(Array.from(key)));
-    return key;
-  };
 
   // Reset on wallet change
   useEffect(() => {

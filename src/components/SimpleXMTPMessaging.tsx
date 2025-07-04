@@ -221,33 +221,40 @@ export const SimpleXMTPMessaging: React.FC = () => {
                   <p className="text-sm">Send a message to start the conversation</p>
                 </div>
               ) : (
-                messages[selectedConversation.id]?.map((message, index) => (
-                  <div
-                    key={index}
-                    className={`flex ${
-                      message.senderInboxId === client?.inboxId ? 'justify-end' : 'justify-start'
-                    }`}
-                  >
+                messages[selectedConversation.id]?.map((message, index) => {
+                  // Ensure content is properly handled to avoid React render errors
+                  const messageContent = message.fallback || String(message.content || '');
+                  const messageId = message.id || `msg-${index}`;
+                  const sentAt = message.sentAt ? new Date(message.sentAt) : new Date();
+                  
+                  return (
                     <div
-                      className={`max-w-xs lg:max-w-md px-3 py-2 rounded-lg ${
-                        message.senderInboxId === client?.inboxId
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-200 text-gray-800'
+                      key={messageId}
+                      className={`flex ${
+                        message.senderInboxId === client?.inboxId ? 'justify-end' : 'justify-start'
                       }`}
                     >
-                      <p className="text-sm">{message.content}</p>
-                      <p
-                        className={`text-xs mt-1 ${
+                      <div
+                        className={`max-w-xs lg:max-w-md px-3 py-2 rounded-lg ${
                           message.senderInboxId === client?.inboxId
-                            ? 'text-blue-100'
-                            : 'text-gray-500'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-200 text-gray-800'
                         }`}
                       >
-                        {new Date(message.sentAt).toLocaleTimeString()}
-                      </p>
+                        <p className="text-sm">{messageContent}</p>
+                        <p
+                          className={`text-xs mt-1 ${
+                            message.senderInboxId === client?.inboxId
+                              ? 'text-blue-100'
+                              : 'text-gray-500'
+                          }`}
+                        >
+                          {sentAt.toLocaleTimeString()}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
 
