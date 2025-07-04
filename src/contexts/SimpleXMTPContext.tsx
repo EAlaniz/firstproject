@@ -1,6 +1,14 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { useAccount, useWalletClient } from 'wagmi';
-import { Client, DecodedMessage, Dm, Group } from '@xmtp/browser-sdk';
+import { 
+  Client, 
+  DecodedMessage, 
+  Dm, 
+  Group, 
+  ContentTypeId,
+  ConsentState,
+  ConsentEntityType 
+} from '@xmtp/browser-sdk';
 import { createAutoSigner } from '../utils/xmtpSigner';
 import { XMTPErrorBoundary } from '../components/XMTPErrorBoundary';
 
@@ -16,17 +24,21 @@ interface SimpleXMTPContextType {
   // Data
   conversations: XMTPConversation[];
   selectedConversation: XMTPConversation | null;
-  messages: { [conversationId: string]: DecodedMessage<string>[] };
+  messages: { [conversationId: string]: DecodedMessage<any>[] };
   
   // Actions
   initialize: () => Promise<void>;
   selectConversation: (conversation: XMTPConversation) => void;
-  sendMessage: (text: string) => Promise<void>;
+  sendMessage: (text: string, contentType?: ContentTypeId) => Promise<void>;
   createConversation: (recipientAddress: string) => Promise<void>;
+  createGroupConversation: (participantAddresses: string[], groupName?: string) => Promise<void>;
   refreshConversations: () => Promise<void>;
   
   // V3 Helpers
   resolveAddressToInboxId: (ethAddress: string) => Promise<string | null>;
+  
+  // V3 Content Handling
+  processMessageContent: (message: DecodedMessage<any>) => string;
 }
 
 const SimpleXMTPContext = createContext<SimpleXMTPContextType | undefined>(undefined);
@@ -35,6 +47,59 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
   const { address } = useAccount();
   const { data: walletClient } = useWalletClient();
   
+  // Simple state
+  const [client, setClient] = useState<Client | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [conversations, setConversations] = useState<XMTPConversation[]>([]);
+  const [selectedConversation, setSelectedConversation] = useState<XMTPConversation | null>(null);
+  const [messages, setMessages] = useState<{ [conversationId: string]: DecodedMessage<any>[] }>({});
+
+  // V3 Enhanced Content Processing (handles unsupported content types)
+  const processMessageContent = useCallback((message: DecodedMessage<any>): string => {
+    try {
+      // V3 Pattern: Handle unsupported content types with fallback
+      if (!client) return String(message.content || '');
+      
+      const codec = client.codecFor(message.contentType);
+      if (!codec && message.fallback) {
+        console.log('[SimpleXMTP] Using fallback for unsupported content type:', message.contentType);
+        return message.fallback;
+      }
+      
+      // V3 Pattern: Process known content types
+      const content = message.content;
+      
+      // Handle text content
+      if (typeof content === 'string') {
+        return content;
+      }
+      
+      // Handle complex content types (reactions, replies, etc.)
+      if (content && typeof content === 'object') {
+        // For reaction content type
+        if ('content' in content && 'action' in content) {
+          return `${content.action} ${content.content}`;
+        }
+        
+        // For reply content type
+        if ('content' in content && 'reference' in content) {
+          return String(content.content);
+        }
+        
+        // For other structured content, extract readable text
+        return JSON.stringify(content);
+      }
+      
+      // Fallback to string conversion
+      return String(content || '');
+    } catch (err) {
+      console.error('[SimpleXMTP] Error processing message content:', err);
+      return message.fallback || 'Error loading message';
+    }
+  }, [client]);
+
   // Working V3 pattern: Helper to resolve addresses to inbox IDs
   const resolveAddressToInboxId = useCallback(async (ethAddress: string): Promise<string | null> => {
     if (!client) return null;
@@ -55,15 +120,6 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
       return null;
     }
   }, [client]);
-  
-  // Simple state
-  const [client, setClient] = useState<Client | null>(null);
-  const [isInitialized, setIsInitialized] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [conversations, setConversations] = useState<XMTPConversation[]>([]);
-  const [selectedConversation, setSelectedConversation] = useState<XMTPConversation | null>(null);
-  const [messages, setMessages] = useState<{ [conversationId: string]: DecodedMessage<string>[] }>({});
 
   // Working XMTP V3 initialization pattern (from proven working code)
   const initialize = useCallback(async () => {
@@ -124,13 +180,13 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
       
       // Working pattern: Comprehensive sync first
       await xmtpClient.conversations.sync();
-      await xmtpClient.conversations.syncAll(['allowed']);
+      await xmtpClient.conversations.syncAll();
       
       // Load conversations with proven pattern
-      const convs = await xmtpClient.conversations.list(['allowed']);
+      const convs = await xmtpClient.conversations.list();
       
       // Also load DMs specifically (working pattern)
-      const dms = await xmtpClient.conversations.listDms(['allowed']);
+      const dms = await xmtpClient.conversations.listDms();
       
       // Combine all conversations
       const allConversations = [...convs, ...dms.filter(dm => !convs.some(c => c.id === dm.id))];
@@ -151,7 +207,7 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
       await xmtpClient.conversations.sync();
       
       // Working pattern: Stream with consent filtering and config
-      const stream = await xmtpClient.conversations.streamAllMessages(['allowed']);
+      const stream = await xmtpClient.conversations.streamAllMessages();
       
       for await (const message of stream) {
         console.log('[SimpleXMTP] Enhanced stream message:', message);
@@ -169,10 +225,7 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
           ...prev,
           [message.conversationId]: [
             ...(prev[message.conversationId] || []),
-            {
-              ...message,
-              content: messageContent
-            }
+            message
           ]
         }));
         
@@ -210,13 +263,20 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-  // Simple message sending - official XMTP pattern
-  const sendMessage = useCallback(async (text: string) => {
+  // V3 Enhanced message sending with content type support
+  const sendMessage = useCallback(async (text: string, contentType?: ContentTypeId) => {
     if (!client || !selectedConversation) return;
     
     try {
       console.log('[SimpleXMTP] Sending message...');
-      await selectedConversation.send(text);
+      
+      // V3 Pattern: Send with content type if specified
+      if (contentType) {
+        await selectedConversation.send(text, contentType);
+      } else {
+        await selectedConversation.send(text);
+      }
+      
       console.log('[SimpleXMTP] ✅ Message sent');
     } catch (err) {
       console.error('[SimpleXMTP] Failed to send message:', err);
@@ -224,7 +284,66 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
     }
   }, [client, selectedConversation]);
 
-  // Working V3 conversation creation pattern (from proven working code)
+  // V3 Enhanced group conversation creation
+  const createGroupConversation = useCallback(async (participantAddresses: string[], groupName?: string) => {
+    if (!client) return;
+    
+    try {
+      console.log('[SimpleXMTP] Creating V3 group conversation with:', participantAddresses);
+      
+      // V3 Pattern: Resolve all addresses to inbox IDs
+      const inboxIds: string[] = [];
+      
+      for (const address of participantAddresses) {
+        const normalizedAddress = address.toLowerCase().trim();
+        
+        // Validate address format
+        if (!/^0x[a-fA-F0-9]{40}$/.test(normalizedAddress)) {
+          setError(`Invalid address format: ${address}`);
+          return;
+        }
+        
+        // Check if recipient can message
+        const canMessage = await Client.canMessage([
+          { identifier: normalizedAddress, identifierKind: 'Ethereum' }
+        ], 'production');
+        
+        if (!canMessage[0]) {
+          setError(`Address ${address} is not registered with XMTP`);
+          return;
+        }
+        
+        // Resolve to inbox ID
+        const inboxId = await client.findInboxIdByIdentifier({
+          identifier: normalizedAddress,
+          identifierKind: 'Ethereum'
+        });
+        
+        if (!inboxId) {
+          setError(`Could not resolve address ${address} to inbox ID`);
+          return;
+        }
+        
+        inboxIds.push(inboxId);
+      }
+      
+      console.log('[SimpleXMTP] Creating group with inbox IDs:', inboxIds);
+      
+      // V3 Pattern: Create group with inbox IDs
+      const group = await client.conversations.newGroup(inboxIds);
+      
+      console.log('[SimpleXMTP] ✅ V3 Group conversation created');
+      
+      // Refresh conversations and select the new group
+      await refreshConversations();
+      setSelectedConversation(group as XMTPConversation);
+      
+    } catch (err) {
+      console.error('[SimpleXMTP] Failed to create group conversation:', err);
+      setError(`Failed to create group: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    }
+  }, [client]);
+
   const createConversation = useCallback(async (recipientAddress: string) => {
     if (!client) return;
     
@@ -317,7 +436,7 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
       
       // Working pattern: Load with pagination
       const msgs = await conversation.messages({
-        limit: 50n
+        limit: BigInt(50)
       });
       
       setMessages(prev => ({
@@ -330,7 +449,6 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
       console.error('[SimpleXMTP] Failed to load messages:', err);
     }
   };
-
 
   // Reset on wallet change
   useEffect(() => {
@@ -359,6 +477,8 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
     createConversation,
     refreshConversations,
     resolveAddressToInboxId,
+    createGroupConversation,
+    processMessageContent,
   };
 
   return (
