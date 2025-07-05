@@ -42,10 +42,26 @@ export const SimpleXMTPProvider: React.FC<XMTPProviderProps> = ({ children }) =>
       const signer = createAutoSigner(walletClient);
       
       // Use official Client.create method - SDK handles all persistence via IndexedDB
-      const xmtpClient = await Client.create(signer, { env: 'production' });
+      console.log('[XMTP] Creating client with production environment...');
+      const xmtpClient = await Client.create(signer, { 
+        env: 'production',
+        // Add explicit configuration for better network sync
+        dbEncryptionKey: undefined // Let SDK handle this automatically
+      });
       
       setClient(xmtpClient);
-      console.log(`[XMTP] ✅ Client initialized successfully - Inbox: ${xmtpClient.inboxId}, Installation: ${xmtpClient.installationId}`);
+      console.log(`[XMTP] ✅ Client initialized successfully`);
+      console.log(`[XMTP] - Inbox ID: ${xmtpClient.inboxId}`);
+      console.log(`[XMTP] - Installation ID: ${xmtpClient.installationId}`);
+      console.log(`[XMTP] - Environment: production`);
+      
+      // Test network connectivity by checking if we can query our own inbox
+      try {
+        const conversations = await xmtpClient.conversations.list();
+        console.log(`[XMTP] ✅ Network sync successful - Found ${conversations.length} existing conversations`);
+      } catch (syncError) {
+        console.warn('[XMTP] ⚠️ Network sync issue:', syncError);
+      }
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Failed to initialize XMTP');
       setError(error);

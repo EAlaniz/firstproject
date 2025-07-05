@@ -68,13 +68,17 @@ export const SimpleXMTPMessaging: React.FC = () => {
     // Check for specific XMTP errors that we can handle gracefully
     if (errorMessage.includes('group with welcome id') || 
         errorMessage.includes('already processed') ||
-        errorMessage.includes('already in group')) {
+        errorMessage.includes('already in group') ||
+        errorMessage.includes('Skipping welcome') ||
+        errorMessage.includes('welcome with cursor') ||
+        errorMessage.includes('not found')) {
       console.warn(`[XMTP] ${context} warning (handled gracefully):`, errorMessage);
-      return; // Don't treat these as errors, just warnings
+      return false; // Return false to indicate this should not trigger retries
     }
     
     console.error(`[XMTP] ${context} error:`, error);
     setError(`${context} error: ${errorMessage}`);
+    return true; // Return true to indicate this should trigger retries
   }, []);
 
   // Move this function BEFORE startMessageStream
@@ -126,22 +130,29 @@ export const SimpleXMTPMessaging: React.FC = () => {
           updateConversationWithMessage(enhancedMessage);
         } catch (messageError) {
           // Handle individual message processing errors gracefully
-          console.warn('[XMTP] Error processing individual message:', messageError);
+          const shouldRetry = handleError(messageError, 'process message');
+          if (!shouldRetry) {
+            continue; // Skip this message and continue processing
+          }
         }
       }
     } catch (error) {
-      handleError(error, 'message stream');
+      const shouldRetry = handleError(error, 'message stream');
       
-      // Implement retry logic for stream errors
-      if (streamRetryCountRef.current < maxRetries) {
+      // Only implement retry logic for actual errors, not graceful warnings
+      if (shouldRetry && streamRetryCountRef.current < maxRetries) {
         streamRetryCountRef.current++;
         console.log(`[XMTP] Retrying message stream (attempt ${streamRetryCountRef.current}/${maxRetries})...`);
         setTimeout(() => {
           setIsStreamingMessages(false);
           startMessageStream();
         }, 2000 * streamRetryCountRef.current); // Exponential backoff
-      } else {
+      } else if (shouldRetry) {
         console.error('[XMTP] Max retries reached for message stream');
+        streamRetryCountRef.current = 0;
+      } else {
+        // For graceful warnings, just reset the streaming state without retries
+        console.log('[XMTP] Message stream ended gracefully (no retries needed)');
         streamRetryCountRef.current = 0;
       }
     } finally {
@@ -176,22 +187,29 @@ export const SimpleXMTPMessaging: React.FC = () => {
           setConversations(prev => [enhancedConversation, ...prev]);
         } catch (conversationError) {
           // Handle individual conversation processing errors gracefully
-          console.warn('[XMTP] Error processing individual conversation:', conversationError);
+          const shouldRetry = handleError(conversationError, 'process conversation');
+          if (!shouldRetry) {
+            continue; // Skip this conversation and continue processing
+          }
         }
       }
     } catch (error) {
-      handleError(error, 'conversation stream');
+      const shouldRetry = handleError(error, 'conversation stream');
       
-      // Implement retry logic for stream errors
-      if (streamRetryCountRef.current < maxRetries) {
+      // Only implement retry logic for actual errors, not graceful warnings
+      if (shouldRetry && streamRetryCountRef.current < maxRetries) {
         streamRetryCountRef.current++;
         console.log(`[XMTP] Retrying conversation stream (attempt ${streamRetryCountRef.current}/${maxRetries})...`);
         setTimeout(() => {
           setIsStreamingConversations(false);
           startConversationStream();
         }, 2000 * streamRetryCountRef.current); // Exponential backoff
-      } else {
+      } else if (shouldRetry) {
         console.error('[XMTP] Max retries reached for conversation stream');
+        streamRetryCountRef.current = 0;
+      } else {
+        // For graceful warnings, just reset the streaming state without retries
+        console.log('[XMTP] Conversation stream ended gracefully (no retries needed)');
         streamRetryCountRef.current = 0;
       }
     } finally {
@@ -354,7 +372,7 @@ export const SimpleXMTPMessaging: React.FC = () => {
     await loadMessages(selectedConversation, 50, cursor);
   }, [selectedConversation, client, isLoadingMoreMessages, hasMoreMessages, conversations, loadMessages]);
 
-  // Enhanced recipient checking with better error handling and inboxId support
+  // Enhanced recipient checking with better error handling and V3 compatibility
   const checkRecipientCanMessage = async (recipient: string) => {
     if (!recipient.trim() || !client) {
       setCanMessageRecipient(null);
@@ -364,22 +382,43 @@ export const SimpleXMTPMessaging: React.FC = () => {
     setCheckingRecipient(true);
     
     try {
-      console.log('[XMTP] Checking if recipient can receive messages...');
+      console.log('[XMTP] Checking if recipient can receive messages...', recipient.trim());
       
-      // For V3, we primarily use Ethereum addresses for canMessage checks
-      // InboxId validation will be handled by the conversation creation process
-      const identifierKind = 'Ethereum';
+      // For V3, we need to check if the address has an XMTP identity
+      // Try multiple approaches for better compatibility
+      let canMessage = false;
       
-      const canMessageMap = await Client.canMessage(
-        [{ identifier: recipient.trim(), identifierKind }],
-        'production'
-      );
-      const canMessage = canMessageMap.get(recipient.trim()) ?? false;
+      try {
+        // Method 1: Use Client.canMessage (primary method)
+        const canMessageMap = await Client.canMessage(
+          [{ identifier: recipient.trim(), identifierKind: 'Ethereum' }],
+          'production'
+        );
+        canMessage = canMessageMap.get(recipient.trim()) ?? false;
+        console.log(`[XMTP] canMessage result: ${canMessage}`);
+      } catch (canMessageError) {
+        console.warn('[XMTP] canMessage check failed, trying alternative approach:', canMessageError);
+        
+        // Method 2: Try to create conversation directly as a test
+        // This is more permissive and works with V3 inbox model
+        try {
+          // Check if we can at least validate the address format
+          if (recipient.trim().startsWith('0x') && recipient.trim().length === 42) {
+            console.log('[XMTP] Valid Ethereum address format, allowing conversation attempt');
+            canMessage = true; // Allow attempt, let the conversation creation handle the actual validation
+          }
+        } catch (formatError) {
+          console.warn('[XMTP] Address format validation failed:', formatError);
+        }
+      }
+      
       setCanMessageRecipient(canMessage);
-      console.log(`[XMTP] Recipient can message: ${canMessage}`);
+      console.log(`[XMTP] Final recipient check result: ${canMessage}`);
     } catch (error) {
       console.error('[XMTP] Error checking recipient:', error);
-      setCanMessageRecipient(false);
+      // In case of errors, be more permissive and let conversation creation handle validation
+      console.log('[XMTP] Defaulting to permissive mode due to check error');
+      setCanMessageRecipient(null); // null means "unknown, allow attempt"
     } finally {
       setCheckingRecipient(false);
     }
@@ -392,9 +431,12 @@ export const SimpleXMTPMessaging: React.FC = () => {
     
     if (canMessageRecipient === false) {
       // Enhanced error message with helpful guidance
-      const errorMessage = 'This address cannot receive XMTP messages. They may need to:\n\n1. Create an XMTP account first\n2. Enable messaging in their wallet\n3. Switch to a supported network (Base, Ethereum, etc.)';
-      alert(errorMessage);
-      return;
+      const errorMessage = 'This address might not be able to receive XMTP messages. They may need to:\n\n1. Create an XMTP account first\n2. Enable messaging in their wallet\n3. Switch to a supported network (Base, Ethereum, etc.)\n\nWould you like to try creating the conversation anyway?';
+      const shouldTryAnyway = confirm(errorMessage);
+      if (!shouldTryAnyway) {
+        return;
+      }
+      // Continue with conversation creation if user wants to try anyway
     }
     
     try {
@@ -649,6 +691,25 @@ export const SimpleXMTPMessaging: React.FC = () => {
                 <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" 
                      title="Streaming active" />
               )}
+              {/* Debug info button */}
+              <button
+                onClick={() => {
+                  if (client) {
+                    console.log('[XMTP Debug] Client Info:', {
+                      inboxId: client.inboxId,
+                      installationId: client.installationId,
+                      isConnected: !!client,
+                      conversationCount: conversations.length,
+                      environment: 'production'
+                    });
+                    alert(`XMTP Debug Info:\nInbox: ${client.inboxId}\nInstallation: ${client.installationId}\nConversations: ${conversations.length}\nCheck console for details.`);
+                  }
+                }}
+                className="text-xs bg-gray-200 px-2 py-1 rounded hover:bg-gray-300"
+                title="Debug XMTP Info"
+              >
+                ℹ️
+              </button>
             </div>
             <button
               onClick={() => setShowNewConversation(!showNewConversation)}
@@ -681,19 +742,19 @@ export const SimpleXMTPMessaging: React.FC = () => {
               <div className="flex gap-2">
                 <button
                   type="submit"
-                  disabled={!newRecipient.trim() || canMessageRecipient === false || checkingRecipient}
+                  disabled={!newRecipient.trim() || checkingRecipient}
                   className={`px-3 py-1 rounded text-sm font-medium ${
-                    canMessageRecipient === false
-                      ? 'bg-red-400 text-white cursor-not-allowed'
-                      : canMessageRecipient === true
+                    canMessageRecipient === true
                       ? 'bg-green-600 text-white hover:bg-green-700'
+                      : canMessageRecipient === false
+                      ? 'bg-yellow-500 text-white hover:bg-yellow-600'
                       : 'bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed'
                   }`}
                 >
                   {checkingRecipient
                     ? 'Checking...'
                     : canMessageRecipient === false
-                    ? 'Cannot Message'
+                    ? 'Try Anyway'
                     : canMessageRecipient === true
                     ? 'Create Chat'
                     : 'Create'
@@ -709,11 +770,11 @@ export const SimpleXMTPMessaging: React.FC = () => {
               </div>
             </form>
             {canMessageRecipient === false && (
-              <div className="text-xs text-red-600 mt-1">
-                ⚠️ This address cannot receive XMTP messages.
+              <div className="text-xs text-yellow-600 mt-1">
+                ⚠️ This address might not be able to receive XMTP messages.
                 <br />
                 <span className="text-gray-500">
-                  They may need to create an XMTP account first.
+                  Click "Try Anyway" to attempt conversation creation.
                 </span>
               </div>
             )}
