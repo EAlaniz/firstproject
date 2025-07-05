@@ -1,26 +1,17 @@
-import React, { createContext, useEffect, useState, useCallback, useMemo, useContext } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { Client } from '@xmtp/browser-sdk';
 import type { WalletClient } from 'viem';
-import { Client, Conversations } from '../xmtp';
-import { createAutoSigner, validateSigner } from '../xmtp';
-import type { ClientOptions, DecodedMessage, ConversationMetadata, Signer } from '../xmtp';
+import { createAutoSigner } from '../utils/xmtpSigner';
 
-// Use only official XMTP V3 types and patterns
+// Official XMTP V3 types
 interface XMTPContextValue {
   client: Client | null;
   isInitialized: boolean;
   isConnecting: boolean;
   error: Error | null;
-  conversations: Conversations | null;
-  isLoadingConversations: boolean;
-  messages: DecodedMessage[];
-  isLoadingMessages: boolean;
-  initialize: (walletClient: WalletClient, options?: ClientOptions) => Promise<void>;
+  initialize: (walletClient: WalletClient) => Promise<void>;
   disconnect: () => Promise<void>;
-  sendMessage: (conversationId: string, content: unknown) => Promise<string>;
-  newConversation: (peerAddress: string, context?: { conversationId?: string; metadata?: ConversationMetadata }) => Promise<unknown>;
-  canMessage: (peerAddress: string) => Promise<boolean>;
   clearError: () => void;
-  loadMessages: (conversationId: string) => Promise<void>;
 }
 
 const XMTPContext = createContext<XMTPContextValue | null>(null);
@@ -29,129 +20,80 @@ export { XMTPContext };
 
 interface XMTPProviderProps {
   children: React.ReactNode;
-  defaultOptions?: ClientOptions;
 }
 
-export const SimpleXMTPProvider: React.FC<XMTPProviderProps> = ({ children, defaultOptions = { env: 'production' } }) => {
+export const SimpleXMTPProvider: React.FC<XMTPProviderProps> = ({ children }) => {
   const [client, setClient] = useState<Client | null>(null);
-  const [isInitialized, setIsInitialized] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  const [conversations, setConversations] = useState<Conversations | null>(null);
-  const [messages, setMessages] = useState<DecodedMessage[]>([]);
-  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
 
   // Initialize XMTP client using official V3 pattern
-  const initialize = useCallback(async (walletClient: WalletClient, options?: ClientOptions) => {
-    if (isInitialized || isConnecting) return;
+  const initialize = useCallback(async (walletClient: WalletClient) => {
+    if (client || isConnecting) return;
+    
     setIsConnecting(true);
     setError(null);
     
     try {
-      const signer = createAutoSigner(walletClient);
-      const isValid = await validateSigner(signer);
-      if (!isValid) throw new Error('Invalid signer');
+      console.log('[XMTP] Initializing client...');
       
-      // Create XMTP client - this automatically handles persistence through IndexedDB
-      // The XMTP V3 browser-SDK will automatically detect existing installations
-      // and reuse them if available, or create new ones if needed
-      const xmtpClient = await Client.create(signer as Signer, { ...defaultOptions, ...options });
+      // Create signer using official V3 pattern
+      const signer = createAutoSigner(walletClient);
+      
+      // Use official Client.create method - SDK handles all persistence via IndexedDB
+      const xmtpClient = await Client.create(signer, { env: 'production' });
       
       setClient(xmtpClient);
-      setIsInitialized(true);
-      setConversations(xmtpClient.conversations);
-      console.log(`[XMTP] Client ready with inbox: ${xmtpClient.inboxId}, installation: ${xmtpClient.installationId}`);
+      console.log(`[XMTP] ✅ Client initialized successfully - Inbox: ${xmtpClient.inboxId}, Installation: ${xmtpClient.installationId}`);
     } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to initialize XMTP'));
-      setIsInitialized(false);
+      const error = err instanceof Error ? err : new Error('Failed to initialize XMTP');
+      setError(error);
+      console.error('[XMTP] ❌ Initialization failed:', error);
     } finally {
       setIsConnecting(false);
     }
-  }, [isInitialized, isConnecting, defaultOptions]);
+  }, [client, isConnecting]);
 
-  // Disconnect
+  // Disconnect using official pattern
   const disconnect = useCallback(async () => {
     if (!client) return;
+    
     try {
-      await client.cleanup();
+      console.log('[XMTP] Disconnecting client...');
+      // Use the correct cleanup method from the official SDK
+      if (typeof (client as any).close === 'function') {
+        await (client as any).close();
+      }
+      console.log('[XMTP] ✅ Client disconnected successfully');
     } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to disconnect XMTP'));
+      console.error('[XMTP] ❌ Disconnect failed:', err);
     } finally {
       setClient(null);
-      setIsInitialized(false);
-      setConversations(null);
-      setMessages([]);
       setError(null);
     }
   }, [client]);
 
-  // Send message (official pattern)
-  const sendMessage = useCallback(async (conversationId: string, content: unknown): Promise<string> => {
-    if (!conversations) throw new Error('Conversations not initialized');
-    // Find the conversation by id
-    const convs = await conversations.listConversations();
-    const conversation = convs.find((c: { id?: string; topic?: string }) => c.id === conversationId || c.topic === conversationId);
-    if (!conversation) throw new Error('Conversation not found');
-    const messageId = await conversation.send(content);
-    return messageId;
-  }, [conversations]);
-
-  // New conversation (official pattern)
-  const newConversation = useCallback(async (peerAddress: string, context?: { conversationId?: string; metadata?: ConversationMetadata }) => {
-    if (!conversations) throw new Error('Conversations not initialized');
-    return await conversations.newConversation(peerAddress, context);
-  }, [conversations]);
-
-  // Can message (official pattern)
-  const canMessage = useCallback(async (peerAddress: string) => {
-    if (!conversations) return false;
-    return await conversations.canMessage(peerAddress);
-  }, [conversations]);
-
   // Clear error
   const clearError = useCallback(() => setError(null), []);
 
-  // Load messages for a conversation (official pattern)
-  const loadMessages = useCallback(async (conversationId: string) => {
-    if (!conversations) return;
-    setIsLoadingMessages(true);
-    try {
-      const convs = await conversations.listConversations();
-      const conversation = convs.find((c: { id?: string; topic?: string }) => c.id === conversationId || c.topic === conversationId);
-      if (!conversation) throw new Error('Conversation not found');
-      const msgs = await conversation.messages();
-      setMessages(msgs);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to load messages'));
-    } finally {
-      setIsLoadingMessages(false);
-    }
-  }, [conversations]);
-
-  // Memoize context value
-  const contextValue = useMemo<XMTPContextValue>(() => ({
-    client,
-    isInitialized,
-    isConnecting,
-    error,
-    conversations,
-    isLoadingConversations: false,
-    messages,
-    isLoadingMessages,
-    initialize,
-    disconnect,
-    sendMessage,
-    newConversation,
-    canMessage,
-    clearError,
-    loadMessages,
-  }), [client, isInitialized, isConnecting, error, conversations, isLoadingMessages, initialize, disconnect, sendMessage, newConversation, canMessage, clearError, loadMessages]);
-
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (client) disconnect();
+      if (client) {
+        disconnect();
+      }
     };
   }, [client, disconnect]);
+
+  const contextValue: XMTPContextValue = {
+    client,
+    isInitialized: !!client,
+    isConnecting,
+    error,
+    initialize,
+    disconnect,
+    clearError,
+  };
 
   return (
     <XMTPContext.Provider value={contextValue}>
@@ -160,51 +102,15 @@ export const SimpleXMTPProvider: React.FC<XMTPProviderProps> = ({ children, defa
   );
 };
 
+// Official hook pattern
 export const useXMTP = (): XMTPContextValue => {
   const context = useContext(XMTPContext);
-  if (!context) throw new Error('useXMTP must be used within a SimpleXMTPProvider');
+  if (!context) {
+    throw new Error('useXMTP must be used within a SimpleXMTPProvider');
+  }
   return context;
 };
 
+// Legacy export for backward compatibility
 export const useSimpleXMTP = useXMTP;
-
-export const useXMTPClient = (): Client | null => {
-  const context = useXMTP();
-  return context.client;
-};
-
-export const useXMTPInitialized = (): boolean => {
-  const context = useXMTP();
-  return context.isInitialized;
-};
-
-export const useXMTPConversations = (): Conversations | null => {
-  const context = useXMTP();
-  return context.conversations;
-};
-
-export const useXMTPMessages = (): DecodedMessage[] => {
-  const context = useXMTP();
-  return context.messages;
-};
-
-export const useXMTPSendMessage = () => {
-  const context = useXMTP();
-  return context.sendMessage;
-};
-
-export const useXMTPNewConversation = () => {
-  const context = useXMTP();
-  return context.newConversation;
-};
-
-export const useXMTPCanMessage = () => {
-  const context = useXMTP();
-  return context.canMessage;
-};
-
-export const useXMTPError = () => {
-  const context = useXMTP();
-  return context.error;
-};
 

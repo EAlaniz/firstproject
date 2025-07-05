@@ -1,96 +1,118 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Client } from '@xmtp/browser-sdk';
 import { useSimpleXMTP } from '../contexts/SimpleXMTPContext';
+import { useXMTPClient, useXMTPInitialized, useXMTPError } from '../contexts/useXMTPHooks';
 
 export const SimpleXMTPMessaging: React.FC = () => {
-  const {
-    client,
-    isInitialized,
-    isConnecting,
-    error,
-    conversations,
-    messages,
-    initialize,
-    newConversation,
-    canMessage,
-    sendMessage,
-    loadMessages,
-  } = useSimpleXMTP();
+  const { isConnecting } = useSimpleXMTP();
+  const client = useXMTPClient();
+  const isInitialized = useXMTPInitialized();
+  const { error } = useXMTPError();
 
+  // Local state for conversations and messages
+  const [conversations, setConversations] = useState<any[]>([]);
+  const [selectedConversation, setSelectedConversation] = useState<any>(null);
+  const [messages, setMessages] = useState<any[]>([]);
   const [newRecipient, setNewRecipient] = useState('');
   const [messageText, setMessageText] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [showNewConversation, setShowNewConversation] = useState(false);
   const [canMessageRecipient, setCanMessageRecipient] = useState<boolean | null>(null);
   const [checkingRecipient, setCheckingRecipient] = useState(false);
-  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
+  const [isLoadingConversations, setIsLoadingConversations] = useState(false);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
 
-  // Auto-initialize when component mounts
-  useEffect(() => {
-    if (!isInitialized && !isConnecting) {
-      // Note: initialize requires a wallet client, so we can't auto-initialize here
-      console.log('XMTP not initialized - user needs to connect wallet first');
-    }
-  }, [isInitialized, isConnecting]);
-
-  // Handle message sending
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!messageText.trim() || isSending || !selectedConversationId) return;
-
-    setIsSending(true);
+  // Load conversations using official SDK method
+  const loadConversations = useCallback(async () => {
+    if (!client) return;
+    setIsLoadingConversations(true);
     try {
-      await sendMessage(selectedConversationId, messageText.trim());
-      setMessageText('');
-      // Reload messages to show the new message
-      await loadMessages(selectedConversationId);
+      const convs = await client.conversations.list();
+      setConversations(convs);
     } catch (err) {
-      console.error('Failed to send message:', err);
+      // ignore
     } finally {
-      setIsSending(false);
+      setIsLoadingConversations(false);
     }
-  };
+  }, [client]);
 
-  // Check if recipient can receive messages
+  // Load messages for a conversation using official SDK method
+  const loadMessages = useCallback(async (conversation: any) => {
+    if (!conversation) return;
+    setIsLoadingMessages(true);
+    try {
+      const msgs = await conversation.messages();
+      setMessages(msgs);
+    } catch (err) {
+      // ignore
+    } finally {
+      setIsLoadingMessages(false);
+    }
+  }, []);
+
+  // Check if recipient can receive messages using official SDK method
   const checkRecipientCanMessage = async (recipient: string) => {
-    if (!recipient.trim()) {
+    if (!recipient.trim() || !client) {
       setCanMessageRecipient(null);
       return;
     }
-    
     setCheckingRecipient(true);
     try {
-      const canMessageResult = await canMessage(recipient.trim());
-      setCanMessageRecipient(canMessageResult);
+      const canMessageMap = await Client.canMessage(
+        [{ identifier: recipient.trim(), identifierKind: 'Ethereum' }],
+        'production'
+      );
+      const canMessage = canMessageMap.get(recipient.trim()) ?? false;
+      setCanMessageRecipient(canMessage);
     } catch (error) {
-      console.error('Failed to check if recipient can receive messages:', error);
       setCanMessageRecipient(false);
     } finally {
       setCheckingRecipient(false);
     }
   };
-  
-  // Handle creating new conversation with validation
+
+  // Create new conversation using official SDK method
   const handleCreateConversation = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newRecipient.trim()) return;
-    
-    // Final check before creating conversation
+    if (!newRecipient.trim() || !client) return;
     if (canMessageRecipient === false) {
       alert('This recipient cannot receive XMTP messages. They may need to create an XMTP account first.');
       return;
     }
-
     try {
-      await newConversation(newRecipient.trim());
+      await (client.conversations as any).newConversation(newRecipient.trim());
       setNewRecipient('');
       setShowNewConversation(false);
       setCanMessageRecipient(null);
+      await loadConversations();
     } catch (err) {
-      console.error('Failed to create conversation:', err);
+      alert('Failed to create conversation. Please try again.');
     }
   };
 
-  // Loading state
+  // Send message using official SDK method
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!messageText.trim() || isSending || !selectedConversation) return;
+    setIsSending(true);
+    try {
+      await selectedConversation.send(messageText.trim());
+      setMessageText('');
+      await loadMessages(selectedConversation);
+    } catch (err) {
+      alert('Failed to send message. Please try again.');
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  // Load conversations when client is available
+  useEffect(() => {
+    if (client && isInitialized) {
+      loadConversations();
+    }
+  }, [client, isInitialized, loadConversations]);
+
   if (isConnecting) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -102,7 +124,6 @@ export const SimpleXMTPMessaging: React.FC = () => {
     );
   }
 
-  // Error state
   if (error) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -123,7 +144,6 @@ export const SimpleXMTPMessaging: React.FC = () => {
     );
   }
 
-  // Not initialized
   if (!isInitialized) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -134,23 +154,6 @@ export const SimpleXMTPMessaging: React.FC = () => {
       </div>
     );
   }
-
-  // Get conversations list
-  const [conversationsList, setConversationsList] = useState<any[]>([]);
-  
-  useEffect(() => {
-    const loadConversations = async () => {
-      if (conversations) {
-        try {
-          const convs = await conversations.listConversations();
-          setConversationsList(convs);
-        } catch (err) {
-          console.error('Failed to load conversations:', err);
-        }
-      }
-    };
-    loadConversations();
-  }, [conversations]);
 
   return (
     <div className="flex h-full bg-white">
@@ -168,8 +171,6 @@ export const SimpleXMTPMessaging: React.FC = () => {
             </button>
           </div>
         </div>
-
-        {/* New Conversation Form */}
         {showNewConversation && (
           <div className="p-4 border-b border-gray-200 bg-blue-50">
             <form onSubmit={handleCreateConversation}>
@@ -179,7 +180,6 @@ export const SimpleXMTPMessaging: React.FC = () => {
                 value={newRecipient}
                 onChange={(e) => {
                   setNewRecipient(e.target.value);
-                  // Check recipient capability when typing
                   if (e.target.value.trim().length > 10) {
                     checkRecipientCanMessage(e.target.value.trim());
                   } else {
@@ -236,45 +236,42 @@ export const SimpleXMTPMessaging: React.FC = () => {
             )}
           </div>
         )}
-
-        {/* Conversation List */}
         <div className="flex-1 overflow-y-auto">
-          {conversationsList.length === 0 ? (
+          {isLoadingConversations ? (
+            <div className="p-4 text-center">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto"></div>
+              <p className="text-sm text-gray-500 mt-2">Loading conversations...</p>
+            </div>
+          ) : conversations.length === 0 ? (
             <div className="p-4 text-center text-gray-500">
               <p className="text-sm">No conversations yet</p>
               <button
-                onClick={() => console.log('Refresh conversations')}
+                onClick={loadConversations}
                 className="text-blue-600 text-sm hover:underline mt-2"
               >
                 Refresh
               </button>
             </div>
           ) : (
-            conversationsList.map((conversation: any) => (
+            conversations.map((conversation) => (
               <div
-                key={conversation.id}
+                key={conversation.topic}
                 onClick={() => {
-                  setSelectedConversationId(conversation.id);
+                  setSelectedConversation(conversation);
+                  loadMessages(conversation);
                 }}
                 className={`p-3 border-b border-gray-100 cursor-pointer hover:bg-gray-50 ${
-                  selectedConversationId === conversation.id ? 'bg-blue-50 border-blue-200' : ''
+                  selectedConversation?.topic === conversation.topic ? 'bg-blue-50 border-blue-200' : ''
                 }`}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900 truncate">
-                      {'members' in conversation ? 'Group Chat' : 'DM'}
+                      {conversation.peerAddress ? 'DM' : 'Group Chat'}
                     </p>
                     <p className="text-xs text-gray-500 truncate">
-                      {conversation.id.slice(0, 20)}...
+                      {conversation.peerAddress || conversation.topic.slice(0, 20)}...
                     </p>
-                  </div>
-                  <div className="flex-shrink-0">
-                    {messages.length > 0 && (
-                      <span className="bg-blue-600 text-white text-xs px-2 py-1 rounded-full">
-                        {messages.length}
-                      </span>
-                    )}
                   </div>
                 </div>
               </div>
@@ -282,43 +279,40 @@ export const SimpleXMTPMessaging: React.FC = () => {
           )}
         </div>
       </div>
-
-      {/* Chat Area */}
       <div className="flex-1 flex flex-col">
-        {selectedConversationId && (
+        {selectedConversation && (
           <>
-            {/* Chat Header */}
             <div className="p-4 border-b border-gray-200 bg-gray-50">
               <h3 className="font-semibold text-gray-800">
                 Direct Message
               </h3>
-              <p className="text-xs text-gray-500">{selectedConversationId}</p>
+              <p className="text-xs text-gray-500">{selectedConversation.peerAddress}</p>
             </div>
-
-            {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              {messages.length === 0 ? (
+              {isLoadingMessages ? (
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto"></div>
+                  <p className="text-sm text-gray-500 mt-2">Loading messages...</p>
+                </div>
+              ) : messages.length === 0 ? (
                 <div className="text-center text-gray-500 py-8">
                   <p>No messages yet</p>
                   <p className="text-sm">Send a message to start the conversation</p>
                 </div>
               ) : (
                 messages.map((message, index) => {
-                  // Ensure content is properly handled to avoid React render errors
-                  const messageContent = message.fallback || String(message.content || '');
+                  const messageContent = message.content || String(message.content || '');
                   const messageId = message.id || `msg-${index}`;
                   const sentAt = message.sentAt ? new Date(message.sentAt) : new Date();
-                  
+                  const isOwnMessage = message.senderAddress === (client as any)?.address;
                   return (
                     <div
                       key={messageId}
-                      className={`flex ${
-                        message.senderInboxId === client?.inboxId ? 'justify-end' : 'justify-start'
-                      }`}
+                      className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
                     >
                       <div
                         className={`max-w-xs lg:max-w-md px-3 py-2 rounded-lg ${
-                          message.senderInboxId === client?.inboxId
+                          isOwnMessage
                             ? 'bg-blue-600 text-white'
                             : 'bg-gray-200 text-gray-800'
                         }`}
@@ -326,7 +320,7 @@ export const SimpleXMTPMessaging: React.FC = () => {
                         <p className="text-sm">{messageContent}</p>
                         <p
                           className={`text-xs mt-1 ${
-                            message.senderInboxId === client?.inboxId
+                            isOwnMessage
                               ? 'text-blue-100'
                               : 'text-gray-500'
                           }`}
@@ -339,8 +333,6 @@ export const SimpleXMTPMessaging: React.FC = () => {
                 })
               )}
             </div>
-
-            {/* Message Input */}
             <div className="p-4 border-t border-gray-200">
               <form onSubmit={handleSendMessage} className="flex gap-2">
                 <input
