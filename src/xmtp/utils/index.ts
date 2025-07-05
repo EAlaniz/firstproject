@@ -13,7 +13,6 @@ import { ErrorHandler, XMTPBaseError } from '../errors';
 // Stream Implementation
 export class AsyncStreamImpl<T> implements AsyncStream<T> {
   private stopped = false;
-  private controller?: ReadableStreamDefaultController<T>;
   private reader?: ReadableStreamDefaultReader<T>;
 
   constructor(private source: ReadableStream<T> | AsyncIterable<T>) {}
@@ -156,30 +155,30 @@ export class ContentTypeUtils {
 // Consent Utilities
 export class ConsentUtils {
   static isAllowed(state: ConsentState): boolean {
-    return state === 'Allowed';
+    return state === ConsentState.Allowed;
   }
 
   static isDenied(state: ConsentState): boolean {
-    return state === 'Denied';
+    return state === ConsentState.Denied;
   }
 
   static isUnknown(state: ConsentState): boolean {
-    return state === 'Unknown';
+    return state === ConsentState.Unknown;
   }
 
   static fromString(value: string): ConsentState {
     switch (value.toLowerCase()) {
       case 'allowed':
-        return 'Allowed';
+        return ConsentState.Allowed;
       case 'denied':
-        return 'Denied';
+        return ConsentState.Denied;
       default:
-        return 'Unknown';
+        return ConsentState.Unknown;
     }
   }
 
   static toString(state: ConsentState): string {
-    return state.toLowerCase();
+    return state.toString().toLowerCase();
   }
 }
 
@@ -209,7 +208,7 @@ export class SignerUtils {
     chainId?: bigint;
     blockNumber?: bigint;
   }> {
-    const identifier = signer.getIdentifier();
+    const identifier = await signer.getIdentifier();
     const type = signer.type;
     
     let chainId: bigint | undefined;
@@ -262,7 +261,6 @@ export class InstallationUtils {
 // Network Utilities
 export class NetworkUtils {
   private static readonly DEFAULT_TIMEOUT = 30000; // 30 seconds
-  private static readonly MAX_RETRIES = 3;
 
   static async withTimeout<T>(
     promise: Promise<T>,
@@ -278,7 +276,7 @@ export class NetworkUtils {
 
   static async checkConnectivity(url: string): Promise<boolean> {
     try {
-      const response = await fetch(url, { 
+      await fetch(url, { 
         method: 'HEAD', 
         mode: 'no-cors',
         cache: 'no-cache'
