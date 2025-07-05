@@ -1,4 +1,4 @@
-import React, { createContext, useEffect, useState, useCallback, useMemo } from 'react';
+import React, { createContext, useEffect, useState, useCallback, useMemo, useContext } from 'react';
 import type { WalletClient } from 'viem';
 import { Client, Conversations } from '../xmtp';
 import { createAutoSigner, validateSigner } from '../xmtp';
@@ -152,5 +152,21 @@ export const SimpleXMTPProvider: React.FC<XMTPProviderProps> = ({ children, defa
     </XMTPContext.Provider>
   );
 };
+
+export const useXMTP = (): XMTPContextValue => {
+  const context = useContext(XMTPContext);
+  if (!context) throw new Error('useXMTP must be used within a SimpleXMTPProvider');
+  return context;
+};
+
+export const useSimpleXMTP = useXMTP;
+export const useXMTPClient = (): Client | null => useXMTP().client;
+export const useXMTPInitialized = (): boolean => useXMTP().isInitialized;
+export const useXMTPConversations = (): Conversations | null => useXMTP().conversations;
+export const useXMTPMessages = (): DecodedMessage[] => useXMTP().messages;
+export const useXMTPSendMessage = () => useXMTP().sendMessage;
+export const useXMTPNewConversation = () => useXMTP().newConversation;
+export const useXMTPCanMessage = () => useXMTP().canMessage;
+export const useXMTPError = () => useXMTP().error;
 
 // Hooks moved to separate file to fix Fast Refresh warnings
