@@ -5,9 +5,7 @@ import {
   DecodedMessage, 
   Dm, 
   Group, 
-  ContentTypeId,
-  ConsentState,
-  ConsentEntityType 
+  ConsentState
 } from '@xmtp/browser-sdk';
 import { createAutoSigner } from '../utils/xmtpSigner';
 import { XMTPErrorBoundary } from '../components/XMTPErrorBoundary';
@@ -29,7 +27,7 @@ interface SimpleXMTPContextType {
   // Actions
   initialize: () => Promise<void>;
   selectConversation: (conversation: XMTPConversation) => void;
-  sendMessage: (text: string, contentType?: ContentTypeId) => Promise<void>;
+  sendMessage: (text: string, contentType?: any) => Promise<void>;
   createConversation: (recipientAddress: string) => Promise<void>;
   createGroupConversation: (participantAddresses: string[], groupName?: string) => Promise<void>;
   refreshConversations: () => Promise<void>;
@@ -114,12 +112,13 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
       });
       
       console.log(`[SimpleXMTP] Resolved ${normalizedAddress} → ${inboxId}`);
-      return inboxId;
+      return inboxId || null;
     } catch (err) {
       console.error('[SimpleXMTP] Failed to resolve address to inbox ID:', err);
       return null;
     }
   }, [client]);
+
 
   // Browser SDK V3 initialization - correct pattern for web environments
   const initialize = useCallback(async () => {
@@ -176,7 +175,7 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
       const errorMessage = err instanceof Error ? err.message : 'Initialization failed';
       
       if (errorMessage.includes('already registered 5/5 installations')) {
-        setError('Multiple XMTP installations detected. Please clear browser data and try again.');
+        setError('Installation limit reached (5/5). Please clear browser data to revoke old installations and try again.');
       } else if (errorMessage.includes('simultaneous connections')) {
         setError('XMTP is already active in another tab. Please close other tabs.');
       } else {
@@ -221,9 +220,11 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
       await xmtpClient.conversations.sync();
       
       // CORRECT Browser SDK pattern: Stream with consent filtering
-      const stream = await xmtpClient.conversations.streamAllMessages(['allowed']);
+      const stream = await xmtpClient.conversations.streamAllMessages(undefined, undefined, [ConsentState.Allowed]);
       
       for await (const message of stream) {
+        if (!message) continue;
+        
         console.log('[SimpleXMTP] New stream message:', message);
         
         // Filter own messages using inboxId
@@ -278,7 +279,7 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   // V3 Enhanced message sending with content type support
-  const sendMessage = useCallback(async (text: string, contentType?: ContentTypeId) => {
+  const sendMessage = useCallback(async (text: string, contentType?: any) => {
     if (!client || !selectedConversation) return;
     
     try {
@@ -299,7 +300,7 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
   }, [client, selectedConversation]);
 
   // V3 Enhanced group conversation creation
-  const createGroupConversation = useCallback(async (participantAddresses: string[], groupName?: string) => {
+  const createGroupConversation = useCallback(async (participantAddresses: string[], _groupName?: string) => {
     if (!client) return;
     
     try {
@@ -322,7 +323,7 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
           { identifier: normalizedAddress, identifierKind: 'Ethereum' }
         ], 'production');
         
-        if (!canMessage[0]) {
+        if (!canMessage.get(normalizedAddress)) {
           setError(`Address ${address} is not registered with XMTP`);
           return;
         }
@@ -386,7 +387,7 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
         { identifier: normalizedAddress, identifierKind: 'Ethereum' }
       ], 'production');
       
-      if (!canMessage[0]) {
+      if (!canMessage.get(normalizedAddress)) {
         setError('Recipient is not registered with XMTP');
         return;
       }
