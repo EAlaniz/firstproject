@@ -119,6 +119,50 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
     }
   }, [client]);
 
+  // Official XMTP V3 Static Installation Revocation (for users who can't log in)
+  const performStaticInstallationRevocation = useCallback(async (inboxId: string) => {
+    if (!walletClient) {
+      throw new Error('Wallet client not available for static revocation');
+    }
+
+    console.log('[SimpleXMTP] 🗑️ Performing static installation revocation...');
+    console.log(`[SimpleXMTP] Inbox ID: ${inboxId}`);
+    
+    try {
+      const signer = createAutoSigner(walletClient);
+      
+      // Step 1: Get inbox state to find installations to revoke
+      const inboxStates = await Client.inboxStateFromInboxIds([inboxId], 'production');
+      
+      if (inboxStates.length === 0) {
+        throw new Error('No inbox state found');
+      }
+      
+      // Step 2: Get all installation bytes to revoke (this will revoke ALL installations)
+      const toRevokeInstallationBytes = inboxStates[0].installations.map((i) => i.bytes);
+      
+      console.log(`[SimpleXMTP] Found ${toRevokeInstallationBytes.length} installations to revoke`);
+      
+      if (toRevokeInstallationBytes.length === 0) {
+        console.log('[SimpleXMTP] No installations found to revoke');
+        return;
+      }
+      
+      // Step 3: Official XMTP V3 Static Revocation - revoke without needing client access
+      await Client.revokeInstallations(
+        signer,
+        inboxId,
+        toRevokeInstallationBytes,
+        'production'
+      );
+      
+      console.log('[SimpleXMTP] ✅ Static installation revocation successful');
+      
+    } catch (error) {
+      console.error('[SimpleXMTP] Static revocation failed:', error);
+      throw error;
+    }
+  }, [walletClient]);
 
   // Browser SDK V3 initialization - correct pattern for web environments
   const initialize = useCallback(async () => {
@@ -175,7 +219,28 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
       const errorMessage = err instanceof Error ? err.message : 'Initialization failed';
       
       if (errorMessage.includes('already registered 5/5 installations')) {
-        setError('Installation limit reached (5/5). Please clear browser data to revoke old installations and try again.');
+        console.log('[SimpleXMTP] 🔧 Installation limit reached. Attempting static revocation...');
+        
+        // Extract inbox ID from error message
+        const inboxIdMatch = errorMessage.match(/InboxID ([a-f0-9]{64})/);
+        const inboxId = inboxIdMatch ? inboxIdMatch[1] : null;
+        
+        if (inboxId) {
+          try {
+            // Official XMTP V3 solution: Static installation revocation for users who can't log in
+            await performStaticInstallationRevocation(inboxId);
+            
+            // Retry initialization after revocation
+            console.log('[SimpleXMTP] 🔄 Retrying initialization after static revocation...');
+            setTimeout(() => initialize(), 2000);
+            return;
+          } catch (revocationError) {
+            console.error('[SimpleXMTP] Static revocation failed:', revocationError);
+            setError(`Installation limit reached (5/5). Static revocation failed: ${revocationError instanceof Error ? revocationError.message : 'Unknown error'}`);
+          }
+        } else {
+          setError('Installation limit reached (5/5). Could not extract inbox ID from error message.');
+        }
       } else if (errorMessage.includes('simultaneous connections')) {
         setError('XMTP is already active in another tab. Please close other tabs.');
       } else {
