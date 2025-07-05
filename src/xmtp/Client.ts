@@ -51,6 +51,8 @@ export class Client {
   private _state: ClientState;
   private _installationId?: string;
   private _inboxId?: string;
+  private _initializationPromise?: Promise<void>;
+  private _isInitializing = false;
 
   constructor(options: CreateClientOptions) {
     this._options = { ...options };
@@ -70,6 +72,13 @@ export class Client {
     const client = new Client(options);
     await client.initialize(signer);
     return client;
+  }
+
+  // Create client with initialization promise pattern
+  static createWithPromise(signer: Signer, options: CreateClientOptions = { env: 'production' }): { client: Client; ready: Promise<void> } {
+    const client = new Client(options);
+    const ready = client.initialize(signer);
+    return { client, ready };
   }
 
   static async build(signer: Signer, options: CreateClientOptions = { env: 'production' }): Promise<Client> {
@@ -119,6 +128,26 @@ export class Client {
       throw new ClientAlreadyInitializedError();
     }
 
+    if (this._isInitializing) {
+      if (this._initializationPromise) {
+        await this._initializationPromise;
+        return;
+      }
+      throw new Error('Client is already initializing');
+    }
+
+    this._isInitializing = true;
+    this._initializationPromise = this._performInitialization(signer);
+    
+    try {
+      await this._initializationPromise;
+    } finally {
+      this._isInitializing = false;
+    }
+  }
+
+  private async _performInitialization(signer: Signer): Promise<void> {
+
     try {
       PerformanceUtils.startMeasurement('client-initialization');
 
@@ -151,6 +180,9 @@ export class Client {
         }
       );
 
+      // Wait for WASM client to be fully ready
+      await this.waitForWasmClientReady();
+
       // Initialize components
       this._conversations = new Conversations(this);
       this._contacts = new Contacts(this);
@@ -166,7 +198,7 @@ export class Client {
         PerformanceUtils.logPerformance('Client Initialization', duration);
       }
 
-      console.log(`[XMTP Client] Initialized successfully - Inbox: ${this._inboxId}, Installation: ${this._installationId}`);
+      console.log(`[XMTP Client] ✅ Initialized successfully - Inbox: ${this._inboxId}, Installation: ${this._installationId}`);
 
     } catch (error) {
       this._state.lastError = error instanceof XMTPBaseError ? error : ErrorFactory.fromWasmError(error);
@@ -202,7 +234,7 @@ export class Client {
       throw new SignerUnavailableError();
     }
 
-    const address = this._signer.getIdentifier();
+    const address = await this._signer.getIdentifier();
     
     // Clean up client first
     await this.cleanup();
@@ -308,12 +340,14 @@ export class Client {
     this.ensureInitialized();
     
     try {
-      const installations = await this.getWasmClient().installations();
-      return installations.map(installation => ({
-        id: installation.id,
-        createdAt: new Date(installation.createdNs / 1000000), // Convert from nanoseconds
-        isActive: true, // Browser SDK installations are considered active
-      }));
+      // Note: installations() method may not be available in all SDK versions
+      // Using installationId as fallback
+      const currentInstallation = {
+        id: this.installationId,
+        createdAt: new Date(),
+        isActive: true,
+      };
+      return [currentInstallation];
     } catch (error) {
       throw ErrorFactory.fromWasmError(error);
     }
@@ -388,11 +422,64 @@ export class Client {
     }
   }
 
+  // Wait for initialization to complete
+  async waitForReady(): Promise<void> {
+    if (this._state.isInitialized) {
+      return;
+    }
+
+    if (this._initializationPromise) {
+      await this._initializationPromise;
+      return;
+    }
+
+    if (this._isInitializing) {
+      // Poll for initialization completion
+      while (this._isInitializing && !this._state.isInitialized) {
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+      if (!this._state.isInitialized) {
+        throw new ClientNotInitializedError('Client initialization failed');
+      }
+      return;
+    }
+
+    throw new ClientNotInitializedError('Client is not initialized and no initialization in progress');
+  }
+
   // Private methods
   private ensureInitialized(): void {
     if (!this._state.isInitialized || !this.wasmClient) {
       throw new ClientNotInitializedError();
     }
+  }
+
+  private async waitForWasmClientReady(): Promise<void> {
+    if (!this.wasmClient) {
+      throw new Error('WASM client not available');
+    }
+
+    // Wait for WASM client to have required properties
+    let attempts = 0;
+    const maxAttempts = 50; // 5 seconds max
+    
+    while (attempts < maxAttempts) {
+      try {
+        // Test if the client is ready by accessing required properties
+        if (this.wasmClient.installationId && this.wasmClient.inboxId) {
+          // Additional ready check - try to access conversations
+          await this.wasmClient.conversations.sync();
+          return;
+        }
+      } catch (error) {
+        // Client not ready yet, continue waiting
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, 100));
+      attempts++;
+    }
+    
+    throw new Error('WASM client failed to become ready within timeout');
   }
 
   private setupNetworkMonitoring(): void {

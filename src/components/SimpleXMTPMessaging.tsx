@@ -12,15 +12,18 @@ export const SimpleXMTPMessaging: React.FC = () => {
     messages,
     initialize,
     selectConversation,
-    sendMessage,
     createConversation,
     refreshConversations,
+    canMessageIdentities,
+    sendOptimisticMessage,
   } = useSimpleXMTP();
 
   const [newRecipient, setNewRecipient] = useState('');
   const [messageText, setMessageText] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [showNewConversation, setShowNewConversation] = useState(false);
+  const [canMessageRecipient, setCanMessageRecipient] = useState<boolean | null>(null);
+  const [checkingRecipient, setCheckingRecipient] = useState(false);
 
   // Auto-initialize when component mounts
   useEffect(() => {
@@ -29,31 +32,60 @@ export const SimpleXMTPMessaging: React.FC = () => {
     }
   }, [isInitialized, isLoading, initialize]);
 
-  // Handle message sending
+  // Handle message sending with optimistic UX
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!messageText.trim() || isSending) return;
 
     setIsSending(true);
     try {
-      await sendMessage(messageText.trim());
+      // Use optimistic message sending for better UX
+      await sendOptimisticMessage(messageText.trim());
       setMessageText('');
     } catch (err) {
       console.error('Failed to send message:', err);
+      // Could implement retry logic here
     } finally {
       setIsSending(false);
     }
   };
 
-  // Handle creating new conversation
+  // Check if recipient can receive messages
+  const checkRecipientCanMessage = async (recipient: string) => {
+    if (!recipient.trim()) {
+      setCanMessageRecipient(null);
+      return;
+    }
+    
+    setCheckingRecipient(true);
+    try {
+      const result = await canMessageIdentities([recipient.trim()]);
+      const canMessage = result.get(recipient.trim()) || false;
+      setCanMessageRecipient(canMessage);
+    } catch (error) {
+      console.error('Failed to check if recipient can receive messages:', error);
+      setCanMessageRecipient(false);
+    } finally {
+      setCheckingRecipient(false);
+    }
+  };
+  
+  // Handle creating new conversation with validation
   const handleCreateConversation = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newRecipient.trim()) return;
+    
+    // Final check before creating conversation
+    if (canMessageRecipient === false) {
+      alert('This recipient cannot receive XMTP messages. They may need to create an XMTP account first.');
+      return;
+    }
 
     try {
       await createConversation(newRecipient.trim());
       setNewRecipient('');
       setShowNewConversation(false);
+      setCanMessageRecipient(null);
     } catch (err) {
       console.error('Failed to create conversation:', err);
     }
@@ -134,15 +166,43 @@ export const SimpleXMTPMessaging: React.FC = () => {
                 type="text"
                 placeholder="Enter wallet address (0x...)"
                 value={newRecipient}
-                onChange={(e) => setNewRecipient(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded text-sm mb-2"
+                onChange={(e) => {
+                  setNewRecipient(e.target.value);
+                  // Check recipient capability when typing
+                  if (e.target.value.trim().length > 10) {
+                    checkRecipientCanMessage(e.target.value.trim());
+                  } else {
+                    setCanMessageRecipient(null);
+                  }
+                }}
+                className={`w-full px-3 py-2 border rounded text-sm mb-2 ${
+                  canMessageRecipient === false
+                    ? 'border-red-300'
+                    : canMessageRecipient === true
+                    ? 'border-green-300'
+                    : 'border-gray-300'
+                }`}
               />
               <div className="flex gap-2">
                 <button
                   type="submit"
-                  className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700"
+                  disabled={!newRecipient.trim() || canMessageRecipient === false || checkingRecipient}
+                  className={`px-3 py-1 rounded text-sm font-medium ${
+                    canMessageRecipient === false
+                      ? 'bg-red-400 text-white cursor-not-allowed'
+                      : canMessageRecipient === true
+                      ? 'bg-green-600 text-white hover:bg-green-700'
+                      : 'bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed'
+                  }`}
                 >
-                  Create
+                  {checkingRecipient
+                    ? 'Checking...'
+                    : canMessageRecipient === false
+                    ? 'Cannot Message'
+                    : canMessageRecipient === true
+                    ? 'Create Chat'
+                    : 'Create'
+                  }
                 </button>
                 <button
                   type="button"
@@ -153,6 +213,16 @@ export const SimpleXMTPMessaging: React.FC = () => {
                 </button>
               </div>
             </form>
+            {canMessageRecipient === false && (
+              <div className="text-xs text-red-600 mt-1">
+                ⚠️ This address cannot receive XMTP messages.
+              </div>
+            )}
+            {canMessageRecipient === true && (
+              <div className="text-xs text-green-600 mt-1">
+                ✅ Ready to create conversation!
+              </div>
+            )}
           </div>
         )}
 

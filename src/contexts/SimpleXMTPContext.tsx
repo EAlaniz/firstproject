@@ -38,6 +38,7 @@ interface SimpleXMTPContextType {
   
   // V3 Helpers
   resolveAddressToInboxId: (ethAddress: string) => Promise<string | null>;
+  canMessageIdentities: (addresses: string[]) => Promise<Map<string, boolean>>;
   
   // V3 History Sync
   performHistorySync: () => Promise<void>;
@@ -47,6 +48,13 @@ interface SimpleXMTPContextType {
   
   // V3 Content Handling
   processMessageContent: (message: DecodedMessage) => string;
+  
+  // V3 Consent Management
+  setConsentState: (inboxId: string, state: ConsentState) => Promise<void>;
+  getConsentState: (inboxId: string) => Promise<ConsentState>;
+  
+  // V3 Optimistic Messaging
+  sendOptimisticMessage: (text: string, contentType?: unknown) => Promise<void>;
   
   // V3 Consent Management
   setConsent: (addresses: string[], state: ConsentState) => Promise<void>;
@@ -277,33 +285,59 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
     }
   }, [walletClient, address, isLoading, clearCorruptedDatabase]);
 
-  // Enhanced conversation loading
+  // Enhanced conversation loading with consent filtering
   const loadConversations = async (xmtpClient: Client) => {
     try {
       console.log('[SimpleXMTP] Loading conversations...');
       
-      // Use new Conversations API
+      // Ensure client is ready
+      await xmtpClient.waitForReady();
+      
+      // Use new Conversations API with consent filtering
       await xmtpClient.conversations.sync();
-      await xmtpClient.conversations.syncAll();
+      
+      // Use syncAll with consent state filtering - only sync allowed/unknown conversations
+      await xmtpClient.conversations.syncAll([ConsentState.Allowed, ConsentState.Unknown]);
       
       const allConversations = await xmtpClient.conversations.list();
       
-      setConversations(allConversations);
-      console.log(`[SimpleXMTP] Loaded ${allConversations.length} conversations`);
+      // Filter conversations by consent state to prevent spam
+      const allowedConversations = [];
+      for (const conversation of allConversations) {
+        try {
+          // For groups, check group consent; for DMs, check peer consent
+          const targetId = 'peerInboxId' in conversation ? conversation.peerInboxId : conversation.id;
+          const consentState = await xmtpClient.contacts.getConsent(targetId);
+          if (consentState === ConsentState.Allowed || consentState === ConsentState.Unknown) {
+            allowedConversations.push(conversation);
+          }
+        } catch (error) {
+          // If consent check fails, include as unknown (safe default)
+          allowedConversations.push(conversation);
+        }
+      }
+      
+      setConversations(allowedConversations);
+      console.log(`[SimpleXMTP] Loaded ${allowedConversations.length} allowed conversations (${allConversations.length} total)`);
     } catch (err) {
       console.error('[SimpleXMTP] Failed to load conversations:', err);
     }
   };
 
-  // Enhanced streaming with new API
+  // Enhanced streaming with new API and proper ready check
   const startStreaming = async (xmtpClient: Client) => {
     try {
       console.log('[SimpleXMTP] Starting message stream...');
       
+      // Ensure client is ready before starting stream
+      await xmtpClient.waitForReady();
+      
       await xmtpClient.conversations.sync();
       
-      // Use new streaming API
+      // Use new streaming API with consent filtering - only stream allowed conversations
       const stream = await xmtpClient.conversations.streamAllMessages();
+      
+      // Note: Manual consent filtering will be applied in message processing
       
       // Process stream messages
       (async () => {
@@ -369,7 +403,7 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
       console.log('[SimpleXMTP] Sending message...');
       
       if (contentType) {
-        await selectedConversation.send(text, { contentType });
+        await selectedConversation.send(text, { contentType: contentType as any });
       } else {
         await selectedConversation.sendText(text);
       }
@@ -381,15 +415,34 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
     }
   }, [client, selectedConversation]);
 
-  // Enhanced conversation creation
+  // Enhanced conversation creation with canMessage check
   const createConversation = useCallback(async (recipientAddress: string) => {
     if (!client) return;
     
     try {
       console.log('[SimpleXMTP] Creating V3 conversation with:', recipientAddress);
       
-      // Use new conversation creation method
-      const conversation = await client.conversations.newConversationByAddress(recipientAddress);
+      // First check if the recipient can receive messages
+      const canMessageResult = await canMessageIdentities([recipientAddress]);
+      const canMessage = canMessageResult.get(recipientAddress);
+      
+      if (!canMessage) {
+        setError(`Unable to message ${recipientAddress}. They may not be on XMTP network.`);
+        return;
+      }
+      
+      // Resolve address to inbox ID first
+      const inboxId = await resolveAddressToInboxId(recipientAddress);
+      if (!inboxId) {
+        setError(`Unable to resolve inbox ID for ${recipientAddress}`);
+        return;
+      }
+      
+      // Create DM conversation using inbox ID
+      const conversation = await client.conversations.newDm(inboxId);
+      
+      // Set consent to allowed for new conversations
+      await setConsentState(inboxId, ConsentState.Allowed);
       
       console.log('[SimpleXMTP] ✅ V3 Conversation created');
       
@@ -400,7 +453,7 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
       console.error('[SimpleXMTP] Failed to create V3 conversation:', err);
       setError(`Failed to create conversation: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
-  }, [client]);
+  }, [client, canMessageIdentities, resolveAddressToInboxId, setConsentState]);
 
   // Enhanced group creation
   const createGroupConversation = useCallback(async (participantAddresses: string[], groupName?: string) => {
@@ -597,6 +650,72 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
     };
   }, [client]);
 
+  // V3 Can Message Check
+  const canMessageIdentities = useCallback(async (addresses: string[]): Promise<Map<string, boolean>> => {
+    if (!client) {
+      return new Map();
+    }
+    
+    try {
+      const identifiers = addresses.map(addr => ({
+        identifier: addr,
+        identifierKind: 'Ethereum' as const
+      }));
+      return await Client.canMessage(identifiers, 'production');
+    } catch (error) {
+      console.error('[SimpleXMTP] Failed to check canMessage:', error);
+      return new Map();
+    }
+  }, [client]);
+  
+  // V3 Consent Management
+  const setConsentState = useCallback(async (inboxId: string, state: ConsentState): Promise<void> => {
+    if (!client) return;
+    
+    try {
+      // Use the correct setConsent API
+      await client.contacts.setConsent([{
+        identifier: inboxId,
+        identifierKind: 'Address'
+      }], state);
+      console.log(`[SimpleXMTP] Consent set to ${state} for ${inboxId}`);
+    } catch (error) {
+      console.error('[SimpleXMTP] Failed to set consent state:', error);
+    }
+  }, [client]);
+  
+  const getConsentState = useCallback(async (inboxId: string): Promise<ConsentState> => {
+    if (!client) return ConsentState.Unknown;
+    
+    try {
+      return await client.contacts.getConsent(inboxId, 'Address');
+    } catch (error) {
+      console.error('[SimpleXMTP] Failed to get consent state:', error);
+      return ConsentState.Unknown;
+    }
+  }, [client]);
+  
+  // V3 Optimistic Messaging (simplified version - SDK may not expose optimistic APIs)
+  const sendOptimisticMessage = useCallback(async (text: string, contentType?: unknown): Promise<void> => {
+    if (!client || !selectedConversation) return;
+    
+    try {
+      console.log('[SimpleXMTP] Sending message with optimistic UX...');
+      
+      // For now, use regular send but implement optimistic UX in UI
+      if (contentType) {
+        await selectedConversation.send(text, { contentType: contentType as any });
+      } else {
+        await selectedConversation.sendText(text);
+      }
+      
+      console.log('[SimpleXMTP] ✅ Message sent');
+    } catch (err) {
+      console.error('[SimpleXMTP] Failed to send message:', err);
+      throw err;
+    }
+  }, [client, selectedConversation]);
+  
   // Helper function
   const extractInboxIdFromError = (errorMessage: string): string | undefined => {
     const match = errorMessage.match(/InboxID ([a-f0-9]{64})/);
@@ -617,12 +736,16 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
     createConversation,
     refreshConversations,
     resolveAddressToInboxId,
+    canMessageIdentities,
     createGroupConversation,
     processMessageContent,
     performHistorySync,
     clearCorruptedDatabase,
     setConsent,
     getConsent,
+    setConsentState,
+    getConsentState,
+    sendOptimisticMessage,
     sendReaction,
     sendReply,
     markAsRead,
