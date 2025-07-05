@@ -25,6 +25,7 @@ interface EnhancedConversation {
   lastMessageTime?: Date;
   unreadCount: number;
   messageCursor?: string;
+  conversationObject?: unknown; // Store the actual conversation object for direct access
 }
 
 export const SimpleXMTPMessaging: React.FC = () => {
@@ -48,6 +49,9 @@ export const SimpleXMTPMessaging: React.FC = () => {
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [localError, setError] = useState<string | null>(null);
+  
+  // Conversation object cache to handle API inconsistencies
+  const conversationCacheRef = useRef<Map<string, unknown>>(new Map());
 
   // Refs for real-time features with proper typing
   const messageStreamRef = useRef<unknown>(null);
@@ -80,6 +84,55 @@ export const SimpleXMTPMessaging: React.FC = () => {
     setError(`${context} error: ${errorMessage}`);
     return true; // Return true to indicate this should trigger retries
   }, []);
+
+  // Enhanced conversation lookup with multiple fallback methods
+  const getConversationObject = useCallback(async (conversationTopic: string, fallbackConversation?: EnhancedConversation) => {
+    if (!client) return null;
+    
+    // Method 1: Try to get from cache first
+    const cachedConversation = conversationCacheRef.current.get(conversationTopic);
+    if (cachedConversation) {
+      console.log('[XMTP] Using cached conversation object');
+      return cachedConversation;
+    }
+    
+    // Method 2: Try getConversationById
+    try {
+      const conversation = await client.conversations.getConversationById(conversationTopic);
+      if (conversation) {
+        console.log('[XMTP] Retrieved conversation via getConversationById');
+        conversationCacheRef.current.set(conversationTopic, conversation);
+        return conversation;
+      }
+    } catch (error) {
+      console.warn('[XMTP] getConversationById failed:', error);
+    }
+    
+    // Method 3: Try to find in conversation list
+    try {
+      const allConversations = await client.conversations.list();
+      const foundConversation = allConversations.find((conv: unknown) => 
+        (conv as { topic: string }).topic === conversationTopic
+      );
+      if (foundConversation) {
+        console.log('[XMTP] Retrieved conversation from list');
+        conversationCacheRef.current.set(conversationTopic, foundConversation);
+        return foundConversation;
+      }
+    } catch (error) {
+      console.warn('[XMTP] conversations.list failed:', error);
+    }
+    
+    // Method 4: Use stored conversation object if available
+    if (fallbackConversation?.conversationObject) {
+      console.log('[XMTP] Using stored conversation object');
+      conversationCacheRef.current.set(conversationTopic, fallbackConversation.conversationObject);
+      return fallbackConversation.conversationObject;
+    }
+    
+    console.error('[XMTP] Could not retrieve conversation object for topic:', conversationTopic);
+    return null;
+  }, [client]);
 
   // Move this function BEFORE startMessageStream
   const updateConversationWithMessage = useCallback((message: EnhancedMessage) => {
@@ -175,13 +228,17 @@ export const SimpleXMTPMessaging: React.FC = () => {
         try {
           console.log('[XMTP] New conversation received:', conversation);
           
-          // Add new conversation to state
+          // Add new conversation to state and cache
+          const topic = (conversation as { topic: string }).topic;
+          conversationCacheRef.current.set(topic, conversation);
+          
           const enhancedConversation: EnhancedConversation = {
-            topic: (conversation as { topic: string }).topic,
+            topic,
             peerAddress: (conversation as { peerAddress?: string }).peerAddress,
             peerInboxId: (conversation as { peerInboxId?: string }).peerInboxId,
             isGroup: !(conversation as { peerAddress?: string }).peerAddress,
             unreadCount: 0,
+            conversationObject: conversation,
           };
 
           setConversations(prev => [enhancedConversation, ...prev]);
@@ -299,8 +356,8 @@ export const SimpleXMTPMessaging: React.FC = () => {
     
     try {
       console.log('[XMTP] Loading messages...', { limit, cursor });
-      // Get the actual conversation object from the client
-      const actualConversation = await client.conversations.getConversationById(conversation.topic);
+      // Get the actual conversation object using enhanced lookup
+      const actualConversation = await getConversationObject(conversation.topic, conversation);
       if (!actualConversation) {
         throw new Error('Conversation not found');
       }
@@ -311,7 +368,7 @@ export const SimpleXMTPMessaging: React.FC = () => {
         messageOptions.cursor = BigInt(cursor);
       }
       
-      const msgs = await actualConversation.messages(messageOptions);
+      const msgs = await (actualConversation as { messages: (options: { limit: bigint; cursor?: bigint }) => Promise<unknown[]> }).messages(messageOptions);
       
       const enhancedMessages: EnhancedMessage[] = msgs.map((msg: unknown) => ({
         id: (msg as { id?: string }).id || `msg-${Date.now()}`,
@@ -360,7 +417,7 @@ export const SimpleXMTPMessaging: React.FC = () => {
       setIsLoadingMessages(false);
       setIsLoadingMoreMessages(false);
     }
-  }, [client, handleError]);
+  }, [client, handleError, getConversationObject]);
   
   // Load more messages (older messages)
   const loadMoreMessages = useCallback(async () => {
@@ -466,13 +523,17 @@ export const SimpleXMTPMessaging: React.FC = () => {
         throw new Error('Failed to create conversation');
       }
       
-      // Optimistic UI update
+      // Store conversation object in cache for immediate access
+      conversationCacheRef.current.set(conversation.topic, conversation);
+      
+      // Optimistic UI update with conversation object stored
       const newConversation: EnhancedConversation = {
         topic: conversation.topic,
         peerAddress: newRecipient.trim(),
         peerInboxId: (conversation as { peerInboxId?: string }).peerInboxId,
         isGroup: false,
         unreadCount: 0,
+        conversationObject: conversation, // Store the actual conversation object
       };
       
       setConversations(prev => [newConversation, ...prev]);
@@ -518,15 +579,15 @@ export const SimpleXMTPMessaging: React.FC = () => {
     
     try {
       console.log('[XMTP] Sending message...');
-      // Get the actual conversation object from the client
+      // Get the actual conversation object using enhanced lookup
       if (!client) {
         throw new Error('Client not available');
       }
-      const actualConversation = await client.conversations.getConversationById(selectedConversation.topic);
+      const actualConversation = await getConversationObject(selectedConversation.topic, selectedConversation);
       if (!actualConversation) {
         throw new Error('Conversation not found');
       }
-      await actualConversation.send(messageContent);
+      await (actualConversation as { send: (content: string) => Promise<void> }).send(messageContent);
       
       // Update optimistic message to sent
       setMessages(prev => 
@@ -577,13 +638,20 @@ export const SimpleXMTPMessaging: React.FC = () => {
           
           if (!isMounted) return;
           
-          const enhancedConversations = convs.map((conv: unknown) => ({
-            topic: (conv as { topic: string }).topic,
-            peerAddress: (conv as { peerAddress?: string }).peerAddress,
-            peerInboxId: (conv as { peerInboxId?: string }).peerInboxId,
-            isGroup: !(conv as { peerAddress?: string }).peerAddress,
-            unreadCount: 0,
-          }));
+          const enhancedConversations = convs.map((conv: unknown) => {
+            const topic = (conv as { topic: string }).topic;
+            // Store conversation object in cache
+            conversationCacheRef.current.set(topic, conv);
+            
+            return {
+              topic,
+              peerAddress: (conv as { peerAddress?: string }).peerAddress,
+              peerInboxId: (conv as { peerInboxId?: string }).peerInboxId,
+              isGroup: !(conv as { peerAddress?: string }).peerAddress,
+              unreadCount: 0,
+              conversationObject: conv, // Store the actual conversation object
+            };
+          });
           
           setConversations(enhancedConversations);
           setIsLoadingConversations(false);
