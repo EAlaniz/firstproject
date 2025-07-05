@@ -4,9 +4,9 @@ import type { XMTPError } from '../types';
 // Base XMTP Error
 export class XMTPBaseError extends Error implements XMTPError {
   public readonly code: string;
-  public readonly details?: any;
+  public readonly details?: unknown;
 
-  constructor(message: string, code: string, details?: any) {
+  constructor(message: string, code: string, details?: unknown) {
     super(message);
     this.name = this.constructor.name;
     this.code = code;
@@ -46,7 +46,7 @@ export class InvalidSignerError extends XMTPBaseError {
 
 // Network Errors
 export class NetworkError extends XMTPBaseError {
-  constructor(message = 'Network request failed', details?: any) {
+  constructor(message = 'Network request failed', details?: unknown) {
     super(message, 'NETWORK_ERROR', details);
   }
 }
@@ -65,7 +65,7 @@ export class TimeoutError extends XMTPBaseError {
 
 // Database Errors
 export class DatabaseError extends XMTPBaseError {
-  constructor(message = 'Database operation failed', details?: any) {
+  constructor(message = 'Database operation failed', details?: unknown) {
     super(message, 'DATABASE_ERROR', details);
   }
 }
@@ -90,7 +90,7 @@ export class ConversationNotFoundError extends XMTPBaseError {
 }
 
 export class ConversationCreationError extends XMTPBaseError {
-  constructor(message = 'Failed to create conversation', details?: any) {
+  constructor(message = 'Failed to create conversation', details?: unknown) {
     super(message, 'CONVERSATION_CREATION_ERROR', details);
   }
 }
@@ -109,19 +109,19 @@ export class MessageNotFoundError extends XMTPBaseError {
 }
 
 export class MessageSendError extends XMTPBaseError {
-  constructor(message = 'Failed to send message', details?: any) {
+  constructor(message = 'Failed to send message', details?: unknown) {
     super(message, 'MESSAGE_SEND_ERROR', details);
   }
 }
 
 export class MessageDecodeError extends XMTPBaseError {
-  constructor(message = 'Failed to decode message', details?: any) {
+  constructor(message = 'Failed to decode message', details?: unknown) {
     super(message, 'MESSAGE_DECODE_ERROR', details);
   }
 }
 
 export class MessageEncodeError extends XMTPBaseError {
-  constructor(message = 'Failed to encode message', details?: any) {
+  constructor(message = 'Failed to encode message', details?: unknown) {
     super(message, 'MESSAGE_ENCODE_ERROR', details);
   }
 }
@@ -134,7 +134,7 @@ export class UnsupportedContentTypeError extends XMTPBaseError {
 }
 
 export class ContentTypeRegistrationError extends XMTPBaseError {
-  constructor(message = 'Failed to register content type', details?: any) {
+  constructor(message = 'Failed to register content type', details?: unknown) {
     super(message, 'CONTENT_TYPE_REGISTRATION_ERROR', details);
   }
 }
@@ -153,7 +153,7 @@ export class GroupPermissionError extends XMTPBaseError {
 }
 
 export class GroupMemberError extends XMTPBaseError {
-  constructor(message = 'Group member operation failed', details?: any) {
+  constructor(message = 'Group member operation failed', details?: unknown) {
     super(message, 'GROUP_MEMBER_ERROR', details);
   }
 }
@@ -170,14 +170,14 @@ export class InstallationLimitError extends XMTPBaseError {
 }
 
 export class InstallationRevocationError extends XMTPBaseError {
-  constructor(message = 'Failed to revoke installation', details?: any) {
+  constructor(message = 'Failed to revoke installation', details?: unknown) {
     super(message, 'INSTALLATION_REVOCATION_ERROR', details);
   }
 }
 
 // Consent Errors
 export class ConsentError extends XMTPBaseError {
-  constructor(message = 'Consent operation failed', details?: any) {
+  constructor(message = 'Consent operation failed', details?: unknown) {
     super(message, 'CONSENT_ERROR', details);
   }
 }
@@ -190,7 +190,7 @@ export class ConsentNotFoundError extends XMTPBaseError {
 
 // Streaming Errors
 export class StreamError extends XMTPBaseError {
-  constructor(message = 'Stream error occurred', details?: any) {
+  constructor(message = 'Stream error occurred', details?: unknown) {
     super(message, 'STREAM_ERROR', details);
   }
 }
@@ -203,7 +203,7 @@ export class StreamClosedError extends XMTPBaseError {
 
 // Validation Errors
 export class ValidationError extends XMTPBaseError {
-  constructor(message = 'Validation failed', details?: any) {
+  constructor(message = 'Validation failed', details?: unknown) {
     super(message, 'VALIDATION_ERROR', details);
   }
 }
@@ -240,7 +240,7 @@ export class MultipleTabsError extends XMTPBaseError {
 }
 
 export class WASMPanicError extends XMTPBaseError {
-  constructor(message = 'WASM panic occurred', details?: any) {
+  constructor(message = 'WASM panic occurred', details?: unknown) {
     super(message, 'WASM_PANIC', details);
   }
 }

@@ -119,7 +119,7 @@ export class Group extends Conversation {
         const canMessage = await this.client.constructor.canMessage([{
           identifier: normalizedAddress,
           identifierKind: 'Ethereum',
-        }], this.client.environment as any);
+        }], this.client.environment as 'dev' | 'production' | 'local');
 
         if (!canMessage.get(normalizedAddress)) {
           throw new GroupMemberError(

@@ -1,7 +1,6 @@
 // XMTP Conversation Base Class - Mirror of official Browser SDK
 import type {
   ConversationType,
-  DeliveryStatus,
   Dm as WasmDm,
   Group as WasmGroup,
 } from '@xmtp/browser-sdk';
@@ -12,7 +11,6 @@ import type {
   MessageListOptions,
   AsyncStream,
   StreamCallback,
-  ContentTypeId,
   ConversationMetadata,
 } from './types';
 import type { Client } from './Client';
@@ -47,7 +45,7 @@ export abstract class Conversation {
   }
 
   get createdAt(): Date {
-    return new Date(this.wasmConversation.createdNs / 1000000); // Convert from nanoseconds
+    return new Date((this.wasmConversation as { createdNs: number }).createdNs / 1000000); // Convert from nanoseconds
   }
 
   get conversationType(): ConversationType {
@@ -73,7 +71,7 @@ export abstract class Conversation {
   }
 
   // Message operations
-  async send<T = any>(
+  async send<T = unknown>(
     content: T,
     options: SendOptions = {}
   ): Promise<string> {
@@ -226,7 +224,7 @@ export abstract class Conversation {
   }
 
   // Message processing with content decoding
-  protected processMessage(wasmMessage: any): DecodedMessage {
+  protected processMessage(wasmMessage: unknown): DecodedMessage {
     try {
       // Try to decode the message content
       const codec = this.client.codecFor(wasmMessage.contentType);
@@ -248,7 +246,7 @@ export abstract class Conversation {
         id: wasmMessage.id,
         conversationId: this.id,
         senderInboxId: wasmMessage.senderInboxId,
-        sentAt: new Date(wasmMessage.sentAtNs / 1000000), // Convert from nanoseconds
+        sentAt: new Date((wasmMessage as { sentAtNs: number }).sentAtNs / 1000000), // Convert from nanoseconds
         contentType: wasmMessage.contentType,
         content: decodedContent,
         fallback: wasmMessage.fallback,

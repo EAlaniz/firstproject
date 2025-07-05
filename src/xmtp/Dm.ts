@@ -2,7 +2,7 @@
 import type { Dm as WasmDm } from '@xmtp/browser-sdk';
 import type { Client } from './Client';
 import { Conversation } from './Conversation';
-import { ErrorFactory } from './errors';
+// Remove unused import
 
 export class Dm extends Conversation {
   protected wasmDm: WasmDm;

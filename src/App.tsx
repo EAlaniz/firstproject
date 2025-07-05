@@ -24,7 +24,6 @@ function AppContent() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<'dashboard' | 'messages'>('dashboard');
-  const [showXMTPMessaging, setShowXMTPMessaging] = useState(false);
   const [currentSteps, setCurrentSteps] = useState(7240);
   const [dailyGoal, setDailyGoal] = useState(10000);
   const [currentStreak] = useState(12);
@@ -136,7 +135,6 @@ function AppContent() {
 
     if (xmtpClient) {
       // XMTP already initialized, just show the messaging interface
-      setShowXMTPMessaging(true);
       return;
     }
 
@@ -463,10 +461,9 @@ function AppContent() {
                 <button
                   onClick={() => {
                     if (xmtpClient) {
-                      setShowXMTPMessaging(true);
-                    } else {
-                      handleXMTPInitialization();
+                      return;
                     }
+                    handleXMTPInitialization();
                   }}
                   disabled={isInitializing}
                   className={`p-4 sm:p-6 border-2 rounded-xl sm:rounded-2xl transition-colors text-left group relative ${

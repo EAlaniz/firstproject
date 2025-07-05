@@ -1,60 +1,14 @@
-// XMTP Browser SDK - Complete Implementation Mirror
-// Main exports matching official XMTP Browser SDK structure
+// XMTP V3 Browser SDK - Simplified Interface
+// Mirror of official @xmtp/browser-sdk with enhanced error handling and utilities
 
-// Re-export WASM types from official SDK
-export {
-  ConsentState,
-  ConversationType,
-  DeliveryStatus,
-  GroupPermissionLevel,
-  Installation,
-  InboxState,
-  MessageKind,
-} from '@xmtp/browser-sdk';
-
-// Core Classes
+// Core exports - V3 SDK compatible
 export { Client } from './Client';
 export { Conversations } from './Conversations';
-export { Conversation } from './Conversation';
-export { Dm } from './Dm';
-export { Group } from './Group';
 export { Contacts } from './Contacts';
 
-// Types
-export type {
-  Signer,
-  ClientOptions,
-  CreateClientOptions,
-  ContentTypeCodec,
-  ContentTypeId,
-  DecodedMessage,
-  SendOptions,
-  ConversationMetadata,
-  GroupMember,
-  AsyncStream,
-  StreamCallback,
-  StreamOptions,
-  MessageListOptions,
-  ListOptions,
-  ConsentEntry,
-  ConsentListOptions,
-  InstallationInfo,
-  NetworkStatus,
-  XMTPError,
-  Awaitable,
-  Optional,
-  RequiredFields,
-} from './types';
-
-// Content Types
-export {
+// Content types
+export { 
   ContentTypes,
-  TextContent,
-  ReactionContent,
-  ReplyContent,
-  ReadReceiptContent,
-  AttachmentContent,
-  RemoteAttachmentContent,
   TextCodec,
   ReactionCodec,
   ReplyCodec,
@@ -68,72 +22,134 @@ export {
   parseContentType,
 } from './content-types';
 
-// Errors
+// Content type interfaces
+export type {
+  TextContent,
+  ReactionContent,
+  ReplyContent,
+  ReadReceiptContent,
+  AttachmentContent,
+  RemoteAttachmentContent,
+} from './content-types';
+
+// Error handling
 export {
   XMTPBaseError,
   ClientNotInitializedError,
   ClientAlreadyInitializedError,
   SignerUnavailableError,
-  InvalidSignerError,
-  NetworkError,
-  ConnectionError,
-  TimeoutError,
-  DatabaseError,
-  DatabaseCorruptionError,
-  DatabaseLockError,
-  ConversationNotFoundError,
-  ConversationCreationError,
-  InvalidConversationError,
-  MessageNotFoundError,
-  MessageSendError,
-  MessageDecodeError,
-  MessageEncodeError,
-  UnsupportedContentTypeError,
-  ContentTypeRegistrationError,
-  GroupNotFoundError,
-  GroupPermissionError,
-  GroupMemberError,
   InstallationLimitError,
-  InstallationRevocationError,
-  ConsentError,
-  ConsentNotFoundError,
-  StreamError,
-  StreamClosedError,
+  MessageSendError,
+  MessageNotFoundError,
+  UnsupportedContentTypeError,
+  MessageEncodeError,
+  MessageDecodeError,
   ValidationError,
-  InvalidAddressError,
-  InvalidInboxIdError,
-  BrowserNotSupportedError,
-  OPFSNotSupportedError,
-  MultipleTabsError,
-  WASMPanicError,
+  NetworkError,
+  DatabaseError,
   ErrorFactory,
   ErrorHandler,
-  isXMTPError,
-  isNetworkError,
-  isDatabaseError,
-  isInstallationLimitError,
-  isDatabaseCorruptionError,
-  isMultipleTabsError,
-  isWASMPanicError,
 } from './errors';
 
 // Utilities
 export {
+  createAutoSigner,
+  validateSigner,
+  getSignerInfo,
+  clearXMTPIdentity,
+  clearXMTPIdentityWithClient,
+} from '../utils/xmtpSigner';
+
+// Types - V3 SDK compatible
+export type {
+  // Core types
+  Signer,
+  Identifier,
+  ClientOptions,
+  CreateClientOptions,
+  
+  // Content types
+  ContentTypeCodec,
+  ContentTypeId,
+  
+  // Message types
+  DecodedMessage,
+  SendOptions,
+  
+  // Conversation types
+  ConversationMetadata,
+  GroupMember,
+  
+  // Streaming types
+  StreamOptions,
+  StreamCallback,
   AsyncStream,
+  
+  // Pagination types
+  ListOptions,
+  MessageListOptions,
+  
+  // Consent types
+  ConsentEntry,
+  ConsentListOptions,
+  
+  // Network types
+  NetworkStatus,
+  
+  // Error types
+  XMTPError,
+  
+  // Installation types
+  InstallationInfo,
+  
+  // Subscription types
   SubscriptionManager,
-  AddressValidator,
-  ContentTypeUtils,
-  ConsentUtils,
-  SignerUtils,
-  InstallationUtils,
-  NetworkUtils,
-  DatabaseUtils,
-  PerformanceUtils,
-  BrowserUtils,
-} from './utils';
+  
+  // Database types
+  DatabaseOptions,
+  
+  // Utility types
+  Awaitable,
+  Optional,
+  RequiredFields,
+} from './types';
 
-// Type alias for conversation union
-export type { XMTPConversation } from './Conversations';
+// Re-export official SDK types for compatibility
+export type {
+  ConsentState,
+  ConversationType,
+  DeliveryStatus,
+  PermissionLevel,
+  Installation,
+  InboxState,
+  MessageKind,
+  IdentifierKind,
+} from '@xmtp/browser-sdk';
 
-// Default export
-export { Client as default } from './Client';
+// Import for default export
+import { Client } from './Client';
+import { Conversations } from './Conversations';
+import { Contacts } from './Contacts';
+import { ContentTypes } from './content-types';
+import {
+  createAutoSigner,
+  validateSigner,
+  getSignerInfo,
+  clearXMTPIdentity,
+  clearXMTPIdentityWithClient,
+} from '../utils/xmtpSigner';
+
+// Default export for convenience
+const XMTP = {
+  Client,
+  Conversations,
+  Contacts,
+  ContentTypes,
+  createAutoSigner,
+  validateSigner,
+  getSignerInfo,
+  clearXMTPIdentity,
+  clearXMTPIdentityWithClient,
+};
+
+export default XMTP;

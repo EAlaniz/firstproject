@@ -1,24 +1,19 @@
 // XMTP Browser SDK Types - Mirror of official SDK
-import type { 
-  Client as WasmClient,
+import type {
   ConsentState,
-  ConversationType,
   DeliveryStatus,
-  GroupPermissionLevel,
-  Installation,
-  InboxState,
+  PermissionLevel,
   MessageKind,
+  IdentifierKind,
 } from '@xmtp/browser-sdk';
 
 // Re-export WASM types
-export {
+export type {
   ConsentState,
-  ConversationType, 
   DeliveryStatus,
-  GroupPermissionLevel,
-  Installation,
-  InboxState,
+  PermissionLevel,
   MessageKind,
+  IdentifierKind,
 } from '@xmtp/browser-sdk';
 
 // Client Types
@@ -36,17 +31,23 @@ export interface CreateClientOptions extends ClientOptions {
   loggingLevel?: 'off' | 'error' | 'warn' | 'info' | 'debug' | 'trace';
 }
 
-// Signer Interface - Compatible with XMTP Browser SDK
+// Signer Interface - Compatible with XMTP V3 Browser SDK
 export interface Signer {
-  getIdentifier(): string | Promise<string>;
+  getIdentifier(): Identifier | Promise<Identifier>;
   signMessage(message: string): Promise<Uint8Array>;
   getChainId?(): Promise<bigint>;
   getBlockNumber?(): Promise<bigint>;
   type: 'EOA' | 'SCW';
 }
 
+// Identifier Interface - V3 SDK requirement
+export interface Identifier {
+  identifier: string;
+  identifierKind: IdentifierKind;
+}
+
 // Content Types
-export interface ContentTypeCodec<T = any> {
+export interface ContentTypeCodec<T = unknown> {
   contentType: ContentTypeId;
   encode(content: T): Uint8Array;
   decode(bytes: Uint8Array): T;
@@ -61,7 +62,7 @@ export interface ContentTypeId {
 }
 
 // Message Types
-export interface DecodedMessage<T = any> {
+export interface DecodedMessage<T = unknown> {
   id: string;
   conversationId: string;
   senderInboxId: string;
@@ -90,7 +91,7 @@ export interface ConversationMetadata {
 export interface GroupMember {
   inboxId: string;
   accountAddresses: string[];
-  permissionLevel: GroupPermissionLevel;
+  permissionLevel: PermissionLevel;
   joinedAt?: Date;
 }
 
@@ -123,13 +124,13 @@ export interface MessageListOptions extends ListOptions {
 // Consent Types
 export interface ConsentEntry {
   identifier: string;
-  identifierKind: 'Ethereum' | 'Address';
+  identifierKind: IdentifierKind;
   permissionType: ConsentState;
 }
 
 export interface ConsentListOptions {
   identifier?: string;
-  identifierKind?: 'Ethereum' | 'Address';
+  identifierKind?: IdentifierKind;
 }
 
 // Network Types
@@ -142,7 +143,7 @@ export interface NetworkStatus {
 // Error Types
 export interface XMTPError extends Error {
   code: string;
-  details?: any;
+  details?: unknown;
 }
 
 // Installation Types

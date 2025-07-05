@@ -60,7 +60,7 @@ export interface ReactionContent {
 
 export interface ReplyContent {
   reference: string; // Message ID being replied to
-  content: any; // The actual reply content
+  content: unknown; // The actual reply content
   contentType: ContentTypeId;
 }
 

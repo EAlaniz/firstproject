@@ -4,6 +4,7 @@ import type { Signer, Identifier } from '@xmtp/browser-sdk';
 /**
  * Create V3 Browser SDK compliant XMTP signer
  * ✅ Uses getIdentifier() (current v3.0.3 interface)
+ * ✅ Returns Identifier object (V3 SDK requirement)
  * ✅ Returns BigInt for getChainId() when SCW
  * ✅ Includes getBlockNumber() method for SCW
  * ✅ Removes deprecated getAddress() method
@@ -25,7 +26,7 @@ export const createAutoSigner = (walletClient: WalletClient): Signer => {
   // XMTP V3 Browser SDK compliant signer pattern
   const baseSigner = {
     type: 'EOA' as const,
-    getIdentifier: () => accountIdentifier, // Current v3.0.3 uses getIdentifier()
+    getIdentifier: () => accountIdentifier, // ✅ Returns Identifier object
     signMessage: async (message: string): Promise<Uint8Array> => {
       try {
         console.log('🔐 XMTP requesting signature for message:', message);
@@ -185,17 +186,18 @@ export const clearXMTPIdentityWithClient = async () => {
     // Use XMTP's built-in method to clear local data
     // Note: deleteLocal might not be available in all versions, fallback to manual clearing
     try {
-      if (typeof (Client as any).deleteLocal === 'function') {
-        await (Client as any).deleteLocal();
+      const clientWithDeleteLocal = Client as { deleteLocal?: () => Promise<void> };
+      if (typeof clientWithDeleteLocal.deleteLocal === 'function') {
+        await clientWithDeleteLocal.deleteLocal();
         console.log('✅ XMTP identity cleared using built-in method');
       } else {
         console.log('⚠️ deleteLocal not available, using manual clearing');
         await clearXMTPIdentity();
       }
-    } catch (clientError) {
-      console.log('⚠️ Built-in method failed, using manual clearing');
-      await clearXMTPIdentity();
-    }
+          } catch {
+        console.log('⚠️ Built-in method failed, using manual clearing');
+        await clearXMTPIdentity();
+      }
     
     return true;
   } catch (error) {

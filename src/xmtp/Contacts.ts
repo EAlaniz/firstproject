@@ -8,10 +8,7 @@ import type {
 } from './types';
 import type { Client } from './Client';
 import {
-  ErrorFactory,
   ConsentError,
-  ConsentNotFoundError,
-  ClientNotInitializedError,
 } from './errors';
 import {
   AddressValidator,
@@ -267,8 +264,6 @@ export class Contacts {
   // Streaming consent updates
   async streamConsentUpdates(callback?: StreamCallback<ConsentEntry>): Promise<AsyncStream<ConsentEntry>> {
     try {
-      const wasmClient = this.client.getWasmClient();
-      
       // Create a readable stream for consent updates
       const stream = new ReadableStream<ConsentEntry>({
         start(controller) {
