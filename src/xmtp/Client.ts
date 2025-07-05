@@ -74,6 +74,8 @@ export class Client {
     return client;
   }
 
+
+
   // Static utility methods from official SDK
   static async canMessage(
     identifiers: Array<{ identifier: string; identifierKind: IdentifierKind }>,
@@ -98,8 +100,15 @@ export class Client {
     }
   }
 
-  // Initialization
+  // Initialize client with signer (for new clients)
   async initialize(signer: Signer): Promise<void> {
+    if (this._state.isInitialized) {
+      throw new ClientAlreadyInitializedError();
+    }
+    await this._performInitialization(signer);
+  }
+
+  private async _performInitialization(signer: Signer): Promise<void> {
     if (this._state.isInitialized) {
       throw new ClientAlreadyInitializedError();
     }
@@ -113,7 +122,7 @@ export class Client {
     }
 
     this._isInitializing = true;
-    this._initializationPromise = this._performInitialization(signer);
+    this._initializationPromise = this._performInitializationCore(signer);
     
     try {
       await this._initializationPromise;
@@ -122,7 +131,7 @@ export class Client {
     }
   }
 
-  private async _performInitialization(signer: Signer): Promise<void> {
+  private async _performInitializationCore(signer: Signer): Promise<void> {
     try {
       PerformanceUtils.startMeasurement('client-initialization');
 
@@ -182,6 +191,8 @@ export class Client {
       throw this._state.lastError;
     }
   }
+
+
 
   // Cleanup and reset
   async cleanup(): Promise<void> {

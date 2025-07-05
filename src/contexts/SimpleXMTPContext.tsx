@@ -46,14 +46,21 @@ export const SimpleXMTPProvider: React.FC<XMTPProviderProps> = ({ children, defa
     if (isInitialized || isConnecting) return;
     setIsConnecting(true);
     setError(null);
+    
     try {
       const signer = createAutoSigner(walletClient);
       const isValid = await validateSigner(signer);
       if (!isValid) throw new Error('Invalid signer');
+      
+      // Create XMTP client - this automatically handles persistence through IndexedDB
+      // The XMTP V3 browser-SDK will automatically detect existing installations
+      // and reuse them if available, or create new ones if needed
       const xmtpClient = await Client.create(signer as Signer, { ...defaultOptions, ...options });
+      
       setClient(xmtpClient);
       setIsInitialized(true);
       setConversations(xmtpClient.conversations);
+      console.log(`[XMTP] Client ready with inbox: ${xmtpClient.inboxId}, installation: ${xmtpClient.installationId}`);
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Failed to initialize XMTP'));
       setIsInitialized(false);
