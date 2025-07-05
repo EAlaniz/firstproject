@@ -43,15 +43,30 @@ export const SimpleXMTPMessaging: React.FC = () => {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [localError, setError] = useState<string | null>(null);
 
-  // Refs for real-time features
+  // Refs for real-time features with proper typing
   const messageStreamRef = useRef<unknown>(null);
   const conversationStreamRef = useRef<unknown>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  
+  // Stream management state
+  const [isStreamingMessages, setIsStreamingMessages] = useState(false);
+  const [isStreamingConversations, setIsStreamingConversations] = useState(false);
+  const streamRetryCountRef = useRef(0);
+  const maxRetries = 3;
 
   // Enhanced error handling with retry logic
   const handleError = useCallback((error: unknown, context: string) => {
     const errorMessage = error instanceof Error ? error.message : String(error);
+    
+    // Check for specific XMTP errors that we can handle gracefully
+    if (errorMessage.includes('group with welcome id') || 
+        errorMessage.includes('already processed') ||
+        errorMessage.includes('already in group')) {
+      console.warn(`[XMTP] ${context} warning (handled gracefully):`, errorMessage);
+      return; // Don't treat these as errors, just warnings
+    }
+    
     console.error(`[XMTP] ${context} error:`, error);
     setError(`${context} error: ${errorMessage}`);
   }, []);
@@ -73,71 +88,118 @@ export const SimpleXMTPMessaging: React.FC = () => {
     );
   }, [selectedConversation]);
 
-  // Then the streaming functions
+  // Enhanced message streaming with proper error handling
   const startMessageStream = useCallback(async () => {
-    if (!client || !isOnline) return;
+    if (!client || !isOnline || isStreamingMessages) return;
 
     try {
       console.log('[XMTP] Starting real-time message stream...');
+      setIsStreamingMessages(true);
+      
       const stream = await client.conversations.streamAllMessages();
-      messageStreamRef.current = (stream as unknown) as AsyncIterableIterator<unknown>;
+      messageStreamRef.current = stream as unknown;
 
-      for await (const message of (stream as unknown) as AsyncIterableIterator<unknown>) {
-        console.log('[XMTP] New message received:', message);
-        
-        // Add new message to state
-        const enhancedMessage: EnhancedMessage = {
-          id: (message as { id?: string }).id || `msg-${Date.now()}`,
-          content: String((message as { content: unknown }).content || ''),
-          senderAddress: (message as { senderAddress: string }).senderAddress,
-          sentAt: (message as { sentAt?: Date }).sentAt ? new Date((message as { sentAt: Date }).sentAt) : new Date(),
-          status: 'delivered',
-        };
+      for await (const message of stream as unknown as AsyncIterableIterator<unknown>) {
+        try {
+          console.log('[XMTP] New message received:', message);
+          
+          // Add new message to state
+          const enhancedMessage: EnhancedMessage = {
+            id: (message as { id?: string }).id || `msg-${Date.now()}`,
+            content: String((message as { content: unknown }).content || ''),
+            senderAddress: (message as { senderAddress: string }).senderAddress,
+            sentAt: (message as { sentAt?: Date }).sentAt ? new Date((message as { sentAt: Date }).sentAt) : new Date(),
+            status: 'delivered',
+          };
 
-        setMessages(prev => [...prev, enhancedMessage]);
-        
-        // Update conversation list with latest message
-        updateConversationWithMessage(enhancedMessage);
+          setMessages(prev => [...prev, enhancedMessage]);
+          
+          // Update conversation list with latest message
+          updateConversationWithMessage(enhancedMessage);
+        } catch (messageError) {
+          // Handle individual message processing errors gracefully
+          console.warn('[XMTP] Error processing individual message:', messageError);
+        }
       }
     } catch (error) {
-      console.error('[XMTP] Message stream error:', error);
       handleError(error, 'message stream');
+      
+      // Implement retry logic for stream errors
+      if (streamRetryCountRef.current < maxRetries) {
+        streamRetryCountRef.current++;
+        console.log(`[XMTP] Retrying message stream (attempt ${streamRetryCountRef.current}/${maxRetries})...`);
+        setTimeout(() => {
+          setIsStreamingMessages(false);
+          startMessageStream();
+        }, 2000 * streamRetryCountRef.current); // Exponential backoff
+      } else {
+        console.error('[XMTP] Max retries reached for message stream');
+        streamRetryCountRef.current = 0;
+      }
+    } finally {
+      setIsStreamingMessages(false);
     }
-  }, [client, isOnline, handleError, updateConversationWithMessage]);
+  }, [client, isOnline, isStreamingMessages, handleError, updateConversationWithMessage]);
 
-  // Real-time conversation streaming
+  // Enhanced conversation streaming with proper error handling
   const startConversationStream = useCallback(async () => {
-    if (!client || !isOnline) return;
+    if (!client || !isOnline || isStreamingConversations) return;
 
     try {
       console.log('[XMTP] Starting real-time conversation stream...');
+      setIsStreamingConversations(true);
+      
       const stream = await client.conversations.stream();
-      conversationStreamRef.current = stream;
+      conversationStreamRef.current = stream as unknown;
 
-      for await (const conversation of stream) {
-        console.log('[XMTP] New conversation received:', conversation);
-        
-        // Add new conversation to state
-        const enhancedConversation: EnhancedConversation = {
-          topic: conversation.topic,
-          peerAddress: conversation.peerAddress,
-          isGroup: !conversation.peerAddress,
-          unreadCount: 0,
-        };
+      for await (const conversation of stream as unknown as AsyncIterableIterator<unknown>) {
+        try {
+          console.log('[XMTP] New conversation received:', conversation);
+          
+          // Add new conversation to state
+          const enhancedConversation: EnhancedConversation = {
+            topic: (conversation as { topic: string }).topic,
+            peerAddress: (conversation as { peerAddress?: string }).peerAddress,
+            isGroup: !(conversation as { peerAddress?: string }).peerAddress,
+            unreadCount: 0,
+          };
 
-        setConversations(prev => [enhancedConversation, ...prev]);
+          setConversations(prev => [enhancedConversation, ...prev]);
+        } catch (conversationError) {
+          // Handle individual conversation processing errors gracefully
+          console.warn('[XMTP] Error processing individual conversation:', conversationError);
+        }
       }
     } catch (error) {
       handleError(error, 'conversation stream');
+      
+      // Implement retry logic for stream errors
+      if (streamRetryCountRef.current < maxRetries) {
+        streamRetryCountRef.current++;
+        console.log(`[XMTP] Retrying conversation stream (attempt ${streamRetryCountRef.current}/${maxRetries})...`);
+        setTimeout(() => {
+          setIsStreamingConversations(false);
+          startConversationStream();
+        }, 2000 * streamRetryCountRef.current); // Exponential backoff
+      } else {
+        console.error('[XMTP] Max retries reached for conversation stream');
+        streamRetryCountRef.current = 0;
+      }
+    } finally {
+      setIsStreamingConversations(false);
     }
-  }, [client, isOnline, handleError]);
+  }, [client, isOnline, isStreamingConversations, handleError]);
 
-  // Stop streams
+  // Enhanced stream cleanup
   const stopMessageStream = useCallback(() => {
     if (messageStreamRef.current) {
       try {
-        messageStreamRef.current.return?.();
+        const stream = messageStreamRef.current as { return?: () => void };
+        if (typeof stream.return === 'function') {
+          stream.return();
+        }
         messageStreamRef.current = null;
+        setIsStreamingMessages(false);
         console.log('[XMTP] Message stream stopped');
       } catch (error) {
         console.error('[XMTP] Error stopping message stream:', error);
@@ -148,8 +210,12 @@ export const SimpleXMTPMessaging: React.FC = () => {
   const stopConversationStream = useCallback(() => {
     if (conversationStreamRef.current) {
       try {
-        conversationStreamRef.current.return?.();
+        const stream = conversationStreamRef.current as { return?: () => void };
+        if (typeof stream.return === 'function') {
+          stream.return();
+        }
         conversationStreamRef.current = null;
+        setIsStreamingConversations(false);
         console.log('[XMTP] Conversation stream stopped');
       } catch (error) {
         console.error('[XMTP] Error stopping conversation stream:', error);
@@ -157,15 +223,19 @@ export const SimpleXMTPMessaging: React.FC = () => {
     }
   }, []);
 
-  // Network connectivity detection (moved below all streaming function declarations)
+  // Network connectivity detection with enhanced reconnection logic
   useEffect(() => {
     const handleOnline = () => {
       setIsOnline(true);
       console.log('[XMTP] Network connection restored');
+      streamRetryCountRef.current = 0; // Reset retry count on reconnection
+      
       // Reconnect streams when back online
-      if (client && isOnline) {
-        startMessageStream();
-        startConversationStream();
+      if (client && isInitialized) {
+        setTimeout(() => {
+          startMessageStream();
+          startConversationStream();
+        }, 1000); // Small delay to ensure connection is stable
       }
     };
 
@@ -184,7 +254,7 @@ export const SimpleXMTPMessaging: React.FC = () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, [client, isOnline, startMessageStream, startConversationStream, stopMessageStream, stopConversationStream]);
+  }, [client, isInitialized, startMessageStream, startConversationStream, stopMessageStream, stopConversationStream]);
 
   // Enhanced conversation loading with error handling
   const loadConversations = useCallback(async () => {
@@ -212,15 +282,20 @@ export const SimpleXMTPMessaging: React.FC = () => {
     }
   }, [client, handleError]);
 
-  // Enhanced message loading with pagination
+  // Enhanced message loading with pagination and error handling
   const loadMessages = useCallback(async (conversation: EnhancedConversation, limit = 50) => {
-    if (!conversation) return;
+    if (!conversation || !client) return;
     
     setIsLoadingMessages(true);
     
     try {
       console.log('[XMTP] Loading messages...');
-      const msgs = await conversation.messages({ limit });
+      // Get the actual conversation object from the client
+      const actualConversation = await client.conversations.getConversationById(conversation.topic);
+      if (!actualConversation) {
+        throw new Error('Conversation not found');
+      }
+      const msgs = await actualConversation.messages({ limit: BigInt(limit) });
       
       const enhancedMessages: EnhancedMessage[] = msgs.map((msg: unknown) => ({
         id: (msg as { id?: string }).id || `msg-${Date.now()}`,
@@ -242,7 +317,7 @@ export const SimpleXMTPMessaging: React.FC = () => {
     } finally {
       setIsLoadingMessages(false);
     }
-  }, [handleError]);
+  }, [client, handleError]);
 
   // Enhanced recipient checking with better error handling
   const checkRecipientCanMessage = async (recipient: string) => {
@@ -295,7 +370,7 @@ export const SimpleXMTPMessaging: React.FC = () => {
       };
       
       setConversations(prev => [newConversation, ...prev]);
-      setSelectedConversation(conversation);
+      setSelectedConversation(newConversation);
       setNewRecipient('');
       setShowNewConversation(false);
       setCanMessageRecipient(null);
@@ -320,7 +395,7 @@ export const SimpleXMTPMessaging: React.FC = () => {
     const optimisticMessage: EnhancedMessage = {
       id: `opt-${Date.now()}`,
       content: messageContent,
-      senderAddress: client?.address || '',
+      senderAddress: client?.inboxId || '',
       sentAt: new Date(),
       status: 'sending',
       isOptimistic: true,
@@ -336,7 +411,15 @@ export const SimpleXMTPMessaging: React.FC = () => {
     
     try {
       console.log('[XMTP] Sending message...');
-      await selectedConversation.send(messageContent);
+      // Get the actual conversation object from the client
+      if (!client) {
+        throw new Error('Client not available');
+      }
+      const actualConversation = await client.conversations.getConversationById(selectedConversation.topic);
+      if (!actualConversation) {
+        throw new Error('Conversation not found');
+      }
+      await actualConversation.send(messageContent);
       
       // Update optimistic message to sent
       setMessages(prev => 
@@ -370,12 +453,22 @@ export const SimpleXMTPMessaging: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Fix the useEffect dependencies
+  // Enhanced stream initialization with proper cleanup
   useEffect(() => {
     if (client && isInitialized && isOnline) {
       loadConversations();
-      startMessageStream();
-      startConversationStream();
+      
+      // Start streams with a small delay to ensure client is ready
+      const streamTimeout = setTimeout(() => {
+        startMessageStream();
+        startConversationStream();
+      }, 500);
+      
+      return () => {
+        clearTimeout(streamTimeout);
+        stopMessageStream();
+        stopConversationStream();
+      };
     }
     
     return () => {
@@ -411,6 +504,7 @@ export const SimpleXMTPMessaging: React.FC = () => {
             <button
               onClick={() => {
                 setError(null);
+                streamRetryCountRef.current = 0;
                 window.location.reload();
               }}
               className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
@@ -430,7 +524,7 @@ export const SimpleXMTPMessaging: React.FC = () => {
   }
 
   // Enhanced not initialized state
-  if (!isOnline) {
+  if (!isInitialized) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
@@ -455,6 +549,10 @@ export const SimpleXMTPMessaging: React.FC = () => {
               <h2 className="font-semibold text-gray-800">Messages</h2>
               <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500' : 'bg-red-500'}`} 
                    title={isOnline ? 'Online' : 'Offline'} />
+              {(isStreamingMessages || isStreamingConversations) && (
+                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" 
+                     title="Streaming active" />
+              )}
             </div>
             <button
               onClick={() => setShowNewConversation(!showNewConversation)}
@@ -467,29 +565,23 @@ export const SimpleXMTPMessaging: React.FC = () => {
 
         {/* Enhanced New Conversation Form */}
         {showNewConversation && (
-          <div className="p-4 border-b border-gray-200 bg-blue-50">
-            <form onSubmit={handleCreateConversation}>
-              <input
-                ref={inputRef}
-                type="text"
-                placeholder="Enter wallet address (0x...)"
-                value={newRecipient}
-                onChange={(e) => {
-                  setNewRecipient(e.target.value);
-                  if (e.target.value.trim().length > 10) {
-                    checkRecipientCanMessage(e.target.value.trim());
-                  } else {
-                    setCanMessageRecipient(null);
-                  }
-                }}
-                className={`w-full px-3 py-2 border rounded text-sm mb-2 ${
-                  canMessageRecipient === false
-                    ? 'border-red-300'
-                    : canMessageRecipient === true
-                    ? 'border-green-300'
-                    : 'border-gray-300'
-                }`}
-              />
+          <div className="p-4 border-b border-gray-200 bg-gray-50">
+            <form onSubmit={handleCreateConversation} className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Recipient Address
+                </label>
+                <input
+                  type="text"
+                  value={newRecipient}
+                  onChange={(e) => {
+                    setNewRecipient(e.target.value);
+                    checkRecipientCanMessage(e.target.value);
+                  }}
+                  placeholder="0x..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
               <div className="flex gap-2">
                 <button
                   type="submit"
@@ -547,12 +639,7 @@ export const SimpleXMTPMessaging: React.FC = () => {
           ) : conversations.length === 0 ? (
             <div className="p-4 text-center text-gray-500">
               <p className="text-sm">No conversations yet</p>
-              <button
-                onClick={loadConversations}
-                className="text-blue-600 text-sm hover:underline mt-2"
-              >
-                Refresh
-              </button>
+              <p className="text-xs mt-1">Start a new conversation to begin messaging</p>
             </div>
           ) : (
             conversations.map((conversation) => (
@@ -562,7 +649,7 @@ export const SimpleXMTPMessaging: React.FC = () => {
                   setSelectedConversation(conversation);
                   loadMessages(conversation);
                 }}
-                className={`p-3 border-b border-gray-100 cursor-pointer hover:bg-gray-50 ${
+                className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
                   selectedConversation?.topic === conversation.topic ? 'bg-blue-50 border-blue-200' : ''
                 }`}
               >
@@ -607,65 +694,55 @@ export const SimpleXMTPMessaging: React.FC = () => {
                 </div>
                 <div className="flex items-center space-x-2">
                   <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500' : 'bg-red-500'}`} />
+                  {isStreamingMessages && (
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                  )}
                 </div>
               </div>
             </div>
 
             {/* Enhanced Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {isLoadingMessages ? (
                 <div className="text-center">
                   <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto"></div>
                   <p className="text-sm text-gray-500 mt-2">Loading messages...</p>
                 </div>
               ) : messages.length === 0 ? (
-                <div className="text-center text-gray-500 py-8">
-                  <p>No messages yet</p>
-                  <p className="text-sm">Send a message to start the conversation</p>
+                <div className="text-center text-gray-500">
+                  <p className="text-sm">No messages yet</p>
+                  <p className="text-xs mt-1">Send a message to start the conversation</p>
                 </div>
               ) : (
-                messages.map((message) => {
-                  const isOwnMessage = message.senderAddress === client?.address;
-                  return (
+                messages.map((message) => (
+                  <div
+                    key={message.id}
+                    className={`flex ${message.senderAddress === client?.inboxId ? 'justify-end' : 'justify-start'}`}
+                  >
                     <div
-                      key={message.id}
-                      className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
+                      className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                        message.senderAddress === client?.inboxId
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-200 text-gray-900'
+                      } ${message.isOptimistic ? 'opacity-75' : ''}`}
                     >
-                      <div
-                        className={`max-w-xs lg:max-w-md px-3 py-2 rounded-lg relative ${
-                          isOwnMessage
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-gray-200 text-gray-800'
-                        } ${message.isOptimistic ? 'opacity-70' : ''}`}
-                      >
-                        <p className="text-sm">{message.content}</p>
-                        <div className={`flex items-center justify-between mt-1 ${
-                          isOwnMessage ? 'text-blue-100' : 'text-gray-500'
-                        }`}>
-                          <p className="text-xs">
-                            {message.sentAt.toLocaleTimeString()}
-                          </p>
-                          {isOwnMessage && (
-                            <div className="flex items-center space-x-1">
-                              {message.status === 'sending' && (
-                                <div className="animate-spin rounded-full h-3 w-3 border-b border-current"></div>
-                              )}
-                              {message.status === 'sent' && (
-                                <span className="text-xs">✓</span>
-                              )}
-                              {message.status === 'delivered' && (
-                                <span className="text-xs">✓✓</span>
-                              )}
-                              {message.status === 'failed' && (
-                                <span className="text-xs text-red-400">✗</span>
-                              )}
-                            </div>
-                          )}
-                        </div>
+                      <p className="text-sm">{message.content}</p>
+                      <div className="flex items-center justify-between mt-1">
+                        <span className="text-xs opacity-75">
+                          {message.sentAt.toLocaleTimeString()}
+                        </span>
+                        {message.senderAddress === client?.inboxId && (
+                          <span className="text-xs ml-2">
+                            {message.status === 'sending' && '⏳'}
+                            {message.status === 'sent' && '✓'}
+                            {message.status === 'delivered' && '✓✓'}
+                            {message.status === 'failed' && '❌'}
+                          </span>
+                        )}
                       </div>
                     </div>
-                  );
-                })
+                  </div>
+                ))
               )}
               <div ref={messagesEndRef} />
             </div>
@@ -674,28 +751,34 @@ export const SimpleXMTPMessaging: React.FC = () => {
             <div className="p-4 border-t border-gray-200">
               <form onSubmit={handleSendMessage} className="flex gap-2">
                 <input
+                  ref={inputRef}
                   type="text"
-                  placeholder="Type a message..."
                   value={messageText}
                   onChange={(e) => setMessageText(e.target.value)}
-                  disabled={isSending || !isOnline}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+                  placeholder="Type a message..."
+                  disabled={isSending}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
                 />
                 <button
                   type="submit"
-                  disabled={!messageText.trim() || isSending || !isOnline}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  disabled={!messageText.trim() || isSending}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
-                  {isSending ? '...' : 'Send'}
+                  {isSending ? 'Sending...' : 'Send'}
                 </button>
               </form>
-              {!isOnline && (
-                <p className="text-xs text-red-500 mt-2">
-                  ⚠️ You're offline. Messages will be sent when connection is restored.
-                </p>
-              )}
             </div>
           </>
+        )}
+
+        {/* Enhanced Empty State */}
+        {!selectedConversation && (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center text-gray-500">
+              <h3 className="text-lg font-semibold mb-2">Select a Conversation</h3>
+              <p className="text-sm">Choose a conversation from the list to start messaging</p>
+            </div>
+          </div>
         )}
       </div>
     </div>
