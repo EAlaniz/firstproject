@@ -5,17 +5,15 @@ export const SimpleXMTPMessaging: React.FC = () => {
   const {
     client,
     isInitialized,
-    isLoading,
+    isConnecting,
     error,
     conversations,
-    selectedConversation,
     messages,
     initialize,
-    selectConversation,
-    createConversation,
-    refreshConversations,
-    canMessageIdentities,
-    sendOptimisticMessage,
+    newConversation,
+    canMessage,
+    sendMessage,
+    loadMessages,
   } = useSimpleXMTP();
 
   const [newRecipient, setNewRecipient] = useState('');
@@ -24,27 +22,29 @@ export const SimpleXMTPMessaging: React.FC = () => {
   const [showNewConversation, setShowNewConversation] = useState(false);
   const [canMessageRecipient, setCanMessageRecipient] = useState<boolean | null>(null);
   const [checkingRecipient, setCheckingRecipient] = useState(false);
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
 
   // Auto-initialize when component mounts
   useEffect(() => {
-    if (!isInitialized && !isLoading) {
-      initialize();
+    if (!isInitialized && !isConnecting) {
+      // Note: initialize requires a wallet client, so we can't auto-initialize here
+      console.log('XMTP not initialized - user needs to connect wallet first');
     }
-  }, [isInitialized, isLoading, initialize]);
+  }, [isInitialized, isConnecting]);
 
-  // Handle message sending with optimistic UX
+  // Handle message sending
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!messageText.trim() || isSending) return;
+    if (!messageText.trim() || isSending || !selectedConversationId) return;
 
     setIsSending(true);
     try {
-      // Use optimistic message sending for better UX
-      await sendOptimisticMessage(messageText.trim());
+      await sendMessage(selectedConversationId, messageText.trim());
       setMessageText('');
+      // Reload messages to show the new message
+      await loadMessages(selectedConversationId);
     } catch (err) {
       console.error('Failed to send message:', err);
-      // Could implement retry logic here
     } finally {
       setIsSending(false);
     }
@@ -59,9 +59,8 @@ export const SimpleXMTPMessaging: React.FC = () => {
     
     setCheckingRecipient(true);
     try {
-      const result = await canMessageIdentities([recipient.trim()]);
-      const canMessage = result.get(recipient.trim()) || false;
-      setCanMessageRecipient(canMessage);
+      const canMessageResult = await canMessage(recipient.trim());
+      setCanMessageRecipient(canMessageResult);
     } catch (error) {
       console.error('Failed to check if recipient can receive messages:', error);
       setCanMessageRecipient(false);
@@ -82,7 +81,7 @@ export const SimpleXMTPMessaging: React.FC = () => {
     }
 
     try {
-      await createConversation(newRecipient.trim());
+      await newConversation(newRecipient.trim());
       setNewRecipient('');
       setShowNewConversation(false);
       setCanMessageRecipient(null);
@@ -92,7 +91,7 @@ export const SimpleXMTPMessaging: React.FC = () => {
   };
 
   // Loading state
-  if (isLoading) {
+  if (isConnecting) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
@@ -112,9 +111,9 @@ export const SimpleXMTPMessaging: React.FC = () => {
             <span className="text-red-500 text-xl mr-2">⚠️</span>
             <h3 className="text-red-800 font-semibold">XMTP Error</h3>
           </div>
-          <p className="text-red-700 text-sm mb-4">{error}</p>
+          <p className="text-red-700 text-sm mb-4">{error.message}</p>
           <button
-            onClick={initialize}
+            onClick={() => window.location.reload()}
             className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
           >
             Retry
@@ -130,16 +129,28 @@ export const SimpleXMTPMessaging: React.FC = () => {
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <h3 className="text-lg font-semibold mb-4">XMTP Not Initialized</h3>
-          <button
-            onClick={initialize}
-            className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700"
-          >
-            Initialize XMTP
-          </button>
+          <p className="text-sm text-gray-600 mb-4">Connect your wallet to start messaging</p>
         </div>
       </div>
     );
   }
+
+  // Get conversations list
+  const [conversationsList, setConversationsList] = useState<any[]>([]);
+  
+  useEffect(() => {
+    const loadConversations = async () => {
+      if (conversations) {
+        try {
+          const convs = await conversations.listConversations();
+          setConversationsList(convs);
+        } catch (err) {
+          console.error('Failed to load conversations:', err);
+        }
+      }
+    };
+    loadConversations();
+  }, [conversations]);
 
   return (
     <div className="flex h-full bg-white">
@@ -228,23 +239,25 @@ export const SimpleXMTPMessaging: React.FC = () => {
 
         {/* Conversation List */}
         <div className="flex-1 overflow-y-auto">
-          {conversations.length === 0 ? (
+          {conversationsList.length === 0 ? (
             <div className="p-4 text-center text-gray-500">
               <p className="text-sm">No conversations yet</p>
               <button
-                onClick={refreshConversations}
+                onClick={() => console.log('Refresh conversations')}
                 className="text-blue-600 text-sm hover:underline mt-2"
               >
                 Refresh
               </button>
             </div>
           ) : (
-            conversations.map((conversation) => (
+            conversationsList.map((conversation: any) => (
               <div
                 key={conversation.id}
-                onClick={() => selectConversation(conversation)}
+                onClick={() => {
+                  setSelectedConversationId(conversation.id);
+                }}
                 className={`p-3 border-b border-gray-100 cursor-pointer hover:bg-gray-50 ${
-                  selectedConversation?.id === conversation.id ? 'bg-blue-50 border-blue-200' : ''
+                  selectedConversationId === conversation.id ? 'bg-blue-50 border-blue-200' : ''
                 }`}
               >
                 <div className="flex items-center justify-between">
@@ -257,9 +270,9 @@ export const SimpleXMTPMessaging: React.FC = () => {
                     </p>
                   </div>
                   <div className="flex-shrink-0">
-                    {messages[conversation.id] && (
+                    {messages.length > 0 && (
                       <span className="bg-blue-600 text-white text-xs px-2 py-1 rounded-full">
-                        {messages[conversation.id].length}
+                        {messages.length}
                       </span>
                     )}
                   </div>
@@ -272,25 +285,25 @@ export const SimpleXMTPMessaging: React.FC = () => {
 
       {/* Chat Area */}
       <div className="flex-1 flex flex-col">
-        {selectedConversation ? (
+        {selectedConversationId && (
           <>
             {/* Chat Header */}
             <div className="p-4 border-b border-gray-200 bg-gray-50">
               <h3 className="font-semibold text-gray-800">
-                {'members' in selectedConversation ? 'Group Chat' : 'Direct Message'}
+                Direct Message
               </h3>
-              <p className="text-xs text-gray-500">{selectedConversation.id}</p>
+              <p className="text-xs text-gray-500">{selectedConversationId}</p>
             </div>
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              {messages[selectedConversation.id]?.length === 0 ? (
+              {messages.length === 0 ? (
                 <div className="text-center text-gray-500 py-8">
                   <p>No messages yet</p>
                   <p className="text-sm">Send a message to start the conversation</p>
                 </div>
               ) : (
-                messages[selectedConversation.id]?.map((message, index) => {
+                messages.map((message, index) => {
                   // Ensure content is properly handled to avoid React render errors
                   const messageContent = message.fallback || String(message.content || '');
                   const messageId = message.id || `msg-${index}`;
@@ -348,14 +361,6 @@ export const SimpleXMTPMessaging: React.FC = () => {
               </form>
             </div>
           </>
-        ) : (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center text-gray-500">
-              <div className="text-4xl mb-4">💬</div>
-              <h3 className="text-lg font-semibold mb-2">Select a conversation</h3>
-              <p className="text-sm">Choose a conversation from the list to start messaging</p>
-            </div>
-          </div>
         )}
       </div>
     </div>
