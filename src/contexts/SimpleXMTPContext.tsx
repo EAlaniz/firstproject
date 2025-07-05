@@ -121,7 +121,7 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
     }
   }, [client]);
 
-  // Working XMTP V3 initialization pattern (from proven working code)
+  // Browser SDK V3 initialization - correct pattern for web environments
   const initialize = useCallback(async () => {
     if (!walletClient || !address || isLoading) return;
     
@@ -129,45 +129,59 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
     setError(null);
     
     try {
-      console.log('[SimpleXMTP] Initializing XMTP client...');
+      console.log('[SimpleXMTP] Initializing XMTP Browser SDK client...');
       
-      // CRITICAL: V3 requires database encryption key (proven working pattern)
-      const getOrCreateEncryptionKey = async (): Promise<Uint8Array> => {
-        const keyName = `xmtp-db-key-${address}`;
-        const stored = localStorage.getItem(keyName);
-        if (stored) {
-          return new Uint8Array(JSON.parse(stored));
+      // Browser SDK pattern: Enforce single tab access
+      const tabId = sessionStorage.getItem('xmtp-tab-id');
+      if (tabId) {
+        setError('XMTP is already running in another tab. Please close other tabs first.');
+        setIsLoading(false);
+        return;
+      }
+      
+      const newTabId = `${Date.now()}-${Math.random()}`;
+      sessionStorage.setItem('xmtp-tab-id', newTabId);
+      
+      // Cleanup tab ID on unload
+      const cleanup = () => {
+        const currentTabId = sessionStorage.getItem('xmtp-tab-id');
+        if (currentTabId === newTabId) {
+          sessionStorage.removeItem('xmtp-tab-id');
         }
-        
-        const key = crypto.getRandomValues(new Uint8Array(32));
-        localStorage.setItem(keyName, JSON.stringify(Array.from(key)));
-        console.log('[SimpleXMTP] ✅ V3 encryption key generated for address:', address);
-        return key;
       };
+      window.addEventListener('beforeunload', cleanup);
       
       const signer = createAutoSigner(walletClient);
-      const dbEncryptionKey = await getOrCreateEncryptionKey();
       
-      // Working V3 pattern: Client creation with encryption key
+      // CORRECT Browser SDK pattern: NO dbEncryptionKey
       const xmtpClient = await Client.create(signer, { 
-        env: 'production',
-        dbEncryptionKey // REQUIRED for V3 production
+        env: 'production'
+        // NOTE: Browser SDK does NOT use dbEncryptionKey
+        // Database is unencrypted due to technical limitations in web environments
       });
       
       setClient(xmtpClient);
       setIsInitialized(true);
       
-      // Load initial conversations with working pattern
+      // Load initial conversations
       await loadConversations(xmtpClient);
       
-      // Start streaming with working pattern
+      // Start streaming with proper Browser SDK pattern
       startStreaming(xmtpClient);
       
-      console.log('[SimpleXMTP] ✅ Initialization complete');
+      console.log('[SimpleXMTP] ✅ Browser SDK initialization complete');
       
     } catch (err) {
-      console.error('[SimpleXMTP] Initialization failed:', err);
-      setError(err instanceof Error ? err.message : 'Initialization failed');
+      console.error('[SimpleXMTP] Browser SDK initialization failed:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Initialization failed';
+      
+      if (errorMessage.includes('already registered 5/5 installations')) {
+        setError('Multiple XMTP installations detected. Please clear browser data and try again.');
+      } else if (errorMessage.includes('simultaneous connections')) {
+        setError('XMTP is already active in another tab. Please close other tabs.');
+      } else {
+        setError(errorMessage);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -198,29 +212,26 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-  // Working streaming pattern (from proven working code)
+  // Browser SDK V3 streaming - correct pattern with consent filtering
   const startStreaming = async (xmtpClient: Client) => {
     try {
-      console.log('[SimpleXMTP] Starting enhanced message stream...');
+      console.log('[SimpleXMTP] Starting Browser SDK message stream...');
       
-      // Working pattern: Sync before streaming
+      // Browser SDK pattern: Sync before streaming
       await xmtpClient.conversations.sync();
       
-      // Working pattern: Stream with consent filtering and config
-      const stream = await xmtpClient.conversations.streamAllMessages();
+      // CORRECT Browser SDK pattern: Stream with consent filtering
+      const stream = await xmtpClient.conversations.streamAllMessages(['allowed']);
       
       for await (const message of stream) {
-        console.log('[SimpleXMTP] Enhanced stream message:', message);
+        console.log('[SimpleXMTP] New stream message:', message);
         
-        // Working pattern: Filter own messages using inboxId
+        // Filter own messages using inboxId
         if (message.senderInboxId === xmtpClient.inboxId) {
           continue;
         }
         
-        // Working pattern: Content handling with fallback
-        const messageContent = message.fallback || String(message.content || '');
-        
-        // Working pattern: Update messages state
+        // Update messages state
         setMessages(prev => ({
           ...prev,
           [message.conversationId]: [
@@ -229,20 +240,14 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
           ]
         }));
         
-        // Working pattern: Enhanced new conversation detection
+        // Handle new conversation detection
         setConversations(prev => {
           const currentConversationIds = prev.map(c => c.id);
           if (!currentConversationIds.includes(message.conversationId)) {
             console.log('[SimpleXMTP] 🆕 NEW INCOMING CONVERSATION detected:', message.conversationId);
-            console.log('[SimpleXMTP] Message details:', {
-              from: message.senderInboxId,
-              content: String(messageContent).substring(0, 50),
-              timestamp: new Date()
-            });
             
-            // Working pattern: Immediate discovery for new conversations
+            // Trigger conversation refresh
             setTimeout(() => {
-              console.log('[SimpleXMTP] 🔄 Triggering conversation discovery for new message...');
               loadConversations(xmtpClient);
             }, 500);
           }
@@ -250,15 +255,24 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
         });
       }
     } catch (err) {
-      console.error('[SimpleXMTP] Enhanced streaming error:', err);
+      console.error('[SimpleXMTP] Browser SDK streaming error:', err);
       
-      // Working pattern: Enhanced error handling
-      if (err.message && err.message.includes('group with welcome id')) {
-        console.error('[SimpleXMTP] 🚨 Welcome message error detected:', err.message);
-        setError('Welcome message error detected. This is a known V3 issue.');
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      
+      // Browser SDK specific error handling
+      if (errorMessage.includes('group with welcome id')) {
+        console.error('[SimpleXMTP] 🚨 Database inconsistency detected:', errorMessage);
+        setError('Database inconsistency detected. Please clear browser data and re-initialize.');
+        return; // Don't retry - Browser SDK database is likely corrupted
       }
       
-      // Working pattern: Retry with backoff
+      if (errorMessage.includes('simultaneous connections')) {
+        setError('Multiple tabs detected. Browser SDK only supports single tab access.');
+        return;
+      }
+      
+      // Limited retry for other errors
+      console.log('[SimpleXMTP] Retrying streaming in 5 seconds...');
       setTimeout(() => startStreaming(xmtpClient), 5000);
     }
   };
@@ -450,9 +464,14 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-  // Reset on wallet change
+  // Browser SDK cleanup handling
   useEffect(() => {
     if (address && client) {
+      console.log('[SimpleXMTP] Wallet address changed, resetting XMTP state');
+      
+      // Clear tab ID to allow reinitialization
+      sessionStorage.removeItem('xmtp-tab-id');
+      
       // Reset state when wallet changes
       setClient(null);
       setIsInitialized(false);
@@ -462,6 +481,26 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
       setError(null);
     }
   }, [address]);
+  
+  // Browser SDK cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (client) {
+        console.log('[SimpleXMTP] Cleaning up Browser SDK resources on unmount');
+        
+        // Clear tab ID to allow reinitialization
+        sessionStorage.removeItem('xmtp-tab-id');
+        
+        // Reset all state
+        setClient(null);
+        setIsInitialized(false);
+        setConversations([]);
+        setSelectedConversation(null);
+        setMessages({});
+        setError(null);
+      }
+    };
+  }, [client]);
 
   const value: SimpleXMTPContextType = {
     client,

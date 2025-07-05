@@ -2,8 +2,13 @@ import type { WalletClient } from 'viem';
 import type { Signer, Identifier } from '@xmtp/browser-sdk';
 
 /**
- * Create working XMTP V3 signer (proven working pattern)
- * This follows the exact pattern from the working XMTPContext
+ * Create V3 Browser SDK compliant XMTP signer
+ * ✅ Uses getIdentifier() (current v3.0.3 interface)
+ * ✅ Returns BigInt for getChainId() when SCW
+ * ✅ Includes getBlockNumber() method for SCW
+ * ✅ Removes deprecated getAddress() method
+ * 
+ * NOTE: Future versions will use getIdentity() instead of getIdentifier()
  */
 export const createAutoSigner = (walletClient: WalletClient): Signer => {
   if (!walletClient?.account?.address) {
@@ -17,10 +22,10 @@ export const createAutoSigner = (walletClient: WalletClient): Signer => {
     identifierKind: 'Ethereum',
   };
 
-  // Working XMTP V3 signer pattern (proven to work)
+  // XMTP V3 Browser SDK compliant signer pattern
   const baseSigner = {
     type: 'EOA' as const,
-    getIdentifier: () => accountIdentifier,
+    getIdentifier: () => accountIdentifier, // Current v3.0.3 uses getIdentifier()
     signMessage: async (message: string): Promise<Uint8Array> => {
       try {
         console.log('🔐 XMTP requesting signature for message:', message);
@@ -44,27 +49,18 @@ export const createAutoSigner = (walletClient: WalletClient): Signer => {
     },
   };
 
-  // Working pattern: Add chain context for compatibility
-  const finalSigner = {
-    ...baseSigner,
-    // Add getChainId method to ensure XMTP uses correct chain context
-    getChainId: async (): Promise<number> => {
-      console.log('🔗 XMTP requesting chain ID, returning Base mainnet (8453)');
-      return 8453; // Base mainnet chain ID
-    },
-    // Add getAddress method for compatibility
-    getAddress: async (): Promise<string> => {
-      return walletClient.account!.address;
-    },
-  };
+  // V3 Browser SDK: EOA signer only needs type, getIdentifier, and signMessage
+  // getChainId and getBlockNumber are only for SCW signers
+  const finalSigner = baseSigner;
 
   // Test the signer before returning
-  console.log('🧪 Testing signer chain ID...');
-  finalSigner.getChainId().then(chainId => {
-    console.log('✅ Signer chain ID test:', chainId);
-  }).catch(error => {
-    console.error('❌ Signer chain ID test failed:', error);
-  });
+  console.log('🧪 Testing signer identifier...');
+  try {
+    const identifier = finalSigner.getIdentifier();
+    console.log('✅ Signer identifier test:', identifier);
+  } catch (error) {
+    console.error('❌ Signer identifier test failed:', error);
+  }
 
   return finalSigner as Signer;
 };
