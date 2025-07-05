@@ -167,31 +167,31 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
     }
   }, [walletClient]);
 
-  // Official XMTP V3 History Sync - recover previous conversations after installation revocation
+  // XMTP V3 Browser SDK proven sync pattern - using working methods from codebase
   const performHistorySync = useCallback(async () => {
     if (!client || !address) {
-      console.error('[SimpleXMTP] Cannot perform history sync: client or address not available');
+      console.error('[SimpleXMTP] Cannot perform sync: client or address not available');
       return;
     }
 
     try {
-      console.log('[SimpleXMTP] 🔄 Starting XMTP V3 History Sync...');
+      console.log('[SimpleXMTP] 🔄 Starting XMTP V3 sync...');
       setIsLoading(true);
       
-      // V3 Pattern: Sync history from previous installations
-      // This recovers conversations and messages from other installations/devices
-      await client.conversations.syncHistory();
+      // Proven working pattern: Use sync methods that exist in Browser SDK
+      await client.conversations.sync();
+      await client.conversations.syncAll();
       
-      console.log('[SimpleXMTP] ✅ History sync completed successfully');
+      console.log('[SimpleXMTP] ✅ Sync completed successfully');
       
-      // Reload conversations after history sync
+      // Reload conversations after sync
       await loadConversations(client);
       
-      console.log('[SimpleXMTP] 🔄 Conversations reloaded after history sync');
+      console.log('[SimpleXMTP] 🔄 Conversations reloaded after sync');
       
     } catch (error) {
-      console.error('[SimpleXMTP] History sync failed:', error);
-      setError(`History sync failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error('[SimpleXMTP] Sync failed:', error);
+      setError(`Sync failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsLoading(false);
     }
@@ -224,20 +224,8 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
       // Load initial conversations
       await loadConversations(xmtpClient);
       
-      // V3 Pattern: Perform history sync after successful initialization
-      // This recovers conversations from previous installations
-      console.log('[SimpleXMTP] 🔄 Performing automatic history sync...');
-      try {
-        await xmtpClient.conversations.syncHistory();
-        console.log('[SimpleXMTP] ✅ History sync completed');
-        
-        // Reload conversations after history sync
-        await loadConversations(xmtpClient);
-        console.log('[SimpleXMTP] 🔄 Conversations reloaded after history sync');
-      } catch (syncError) {
-        console.warn('[SimpleXMTP] History sync failed (non-critical):', syncError);
-        // Continue initialization even if history sync fails
-      }
+      // Proven working pattern: Additional sync after initialization (already done in loadConversations)
+      // The comprehensive sync in loadConversations already handles this properly
       
       // Start streaming with proper Browser SDK pattern
       startStreaming(xmtpClient);
