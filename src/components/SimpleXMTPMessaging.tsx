@@ -140,6 +140,44 @@ export const SimpleXMTPMessaging: React.FC = () => {
     return null;
   }, [client]);
 
+  // Force refresh conversations (for debugging/testing)
+  const refreshConversations = useCallback(async () => {
+    if (!client) return;
+    
+    console.log('[XMTP] Force refreshing conversations...');
+    setIsLoadingConversations(true);
+    
+    try {
+      const convs = await client.conversations.list();
+      console.log(`[XMTP] Force refresh found ${convs.length} conversations`);
+      
+      const enhancedConversations = convs.map((conv: unknown) => {
+        const topic = (conv as { topic: string }).topic;
+        const peerAddress = (conv as { peerAddress?: string }).peerAddress;
+        const peerInboxId = (conv as { peerInboxId?: string }).peerInboxId;
+        
+        // Store conversation object in cache
+        conversationCacheRef.current.set(topic, conv);
+        
+        return {
+          topic,
+          peerAddress,
+          peerInboxId,
+          isGroup: !peerAddress,
+          unreadCount: 0,
+          conversationObject: conv,
+        };
+      });
+      
+      setConversations(enhancedConversations);
+      console.log('[XMTP] Force refresh completed');
+    } catch (error) {
+      console.error('[XMTP] Force refresh failed:', error);
+    } finally {
+      setIsLoadingConversations(false);
+    }
+  }, [client]);
+
   // Helper function to format conversation names
   const getConversationName = useCallback((conversation: EnhancedConversation) => {
     if (conversation.isGroup) {
@@ -295,7 +333,16 @@ export const SimpleXMTPMessaging: React.FC = () => {
             conversationObject: conversation,
           };
 
-          setConversations(prev => [enhancedConversation, ...prev]);
+          setConversations(prev => {
+            console.log(`[XMTP] Adding new conversation from stream:`, {
+              topic: enhancedConversation.topic,
+              peerAddress: enhancedConversation.peerAddress,
+              peerInboxId: enhancedConversation.peerInboxId,
+              isGroup: enhancedConversation.isGroup,
+              totalConversations: prev.length + 1
+            });
+            return [enhancedConversation, ...prev];
+          });
         } catch (conversationError) {
           // Handle individual conversation processing errors gracefully
           const shouldRetry = handleError(conversationError, 'process conversation');
@@ -597,6 +644,13 @@ export const SimpleXMTPMessaging: React.FC = () => {
       setCanMessageRecipient(null);
       
       console.log('[XMTP] Conversation created successfully');
+      
+      // Force refresh conversations to ensure visibility
+      setTimeout(() => {
+        if (refreshConversations) {
+          refreshConversations();
+        }
+      }, 1000);
     } catch (error) {
       handleError(error, 'create conversation');
       alert('Failed to create conversation. Please try again.');
@@ -733,6 +787,17 @@ export const SimpleXMTPMessaging: React.FC = () => {
           setConversations(enhancedConversations);
           setIsLoadingConversations(false);
           console.log(`[XMTP] Loaded ${enhancedConversations.length} conversations`);
+          
+          // Debug conversation details
+          enhancedConversations.forEach((conv, index) => {
+            console.log(`[XMTP] Conversation ${index + 1}:`, {
+              topic: conv.topic,
+              peerAddress: conv.peerAddress,
+              peerInboxId: conv.peerInboxId,
+              isGroup: conv.isGroup,
+              hasConversationObject: !!conv.conversationObject
+            });
+          });
         } catch (error) {
           if (isMounted) {
             setIsLoadingConversations(false);
@@ -854,6 +919,13 @@ export const SimpleXMTPMessaging: React.FC = () => {
                 title="Debug XMTP Info"
               >
                 ℹ️
+              </button>
+              <button
+                onClick={refreshConversations}
+                className="text-xs bg-blue-200 px-2 py-1 rounded hover:bg-blue-300"
+                title="Refresh Conversations"
+              >
+                🔄
               </button>
             </div>
             <button
