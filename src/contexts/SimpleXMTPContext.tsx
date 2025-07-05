@@ -174,25 +174,7 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
     try {
       console.log('[SimpleXMTP] Initializing XMTP Browser SDK client...');
       
-      // Browser SDK pattern: Enforce single tab access
-      const tabId = sessionStorage.getItem('xmtp-tab-id');
-      if (tabId) {
-        setError('XMTP is already running in another tab. Please close other tabs first.');
-        setIsLoading(false);
-        return;
-      }
-      
-      const newTabId = `${Date.now()}-${Math.random()}`;
-      sessionStorage.setItem('xmtp-tab-id', newTabId);
-      
-      // Cleanup tab ID on unload
-      const cleanup = () => {
-        const currentTabId = sessionStorage.getItem('xmtp-tab-id');
-        if (currentTabId === newTabId) {
-          sessionStorage.removeItem('xmtp-tab-id');
-        }
-      };
-      window.addEventListener('beforeunload', cleanup);
+      // Browser SDK handles OPFS database access limitations internally
       
       const signer = createAutoSigner(walletClient);
       
@@ -535,9 +517,6 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
     if (address && client) {
       console.log('[SimpleXMTP] Wallet address changed, resetting XMTP state');
       
-      // Clear tab ID to allow reinitialization
-      sessionStorage.removeItem('xmtp-tab-id');
-      
       // Reset state when wallet changes
       setClient(null);
       setIsInitialized(false);
@@ -553,9 +532,6 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
     return () => {
       if (client) {
         console.log('[SimpleXMTP] Cleaning up Browser SDK resources on unmount');
-        
-        // Clear tab ID to allow reinitialization
-        sessionStorage.removeItem('xmtp-tab-id');
         
         // Reset all state
         setClient(null);
