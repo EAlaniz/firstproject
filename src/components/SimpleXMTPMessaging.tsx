@@ -140,6 +140,42 @@ export const SimpleXMTPMessaging: React.FC = () => {
     return null;
   }, [client]);
 
+  // Helper function to format conversation names
+  const getConversationName = useCallback((conversation: EnhancedConversation) => {
+    if (conversation.isGroup) {
+      return 'Group Chat';
+    }
+    
+    // For DMs, show the peer address in a user-friendly format
+    if (conversation.peerAddress) {
+      return `${conversation.peerAddress.slice(0, 6)}...${conversation.peerAddress.slice(-4)}`;
+    }
+    
+    if (conversation.peerInboxId) {
+      return `Inbox: ${conversation.peerInboxId.slice(0, 8)}...`;
+    }
+    
+    // Fallback to topic
+    return `Chat: ${conversation.topic.slice(0, 8)}...`;
+  }, []);
+
+  // Helper function to get conversation subtitle
+  const getConversationSubtitle = useCallback((conversation: EnhancedConversation) => {
+    if (conversation.isGroup) {
+      return 'Group conversation';
+    }
+    
+    if (conversation.peerAddress) {
+      return `Address: ${conversation.peerAddress}`;
+    }
+    
+    if (conversation.peerInboxId) {
+      return `Inbox ID: ${conversation.peerInboxId}`;
+    }
+    
+    return `Topic: ${conversation.topic}`;
+  }, []);
+
   // Move this function BEFORE startMessageStream
   const updateConversationWithMessage = useCallback((message: EnhancedMessage) => {
     setConversations(prev => 
@@ -245,13 +281,16 @@ export const SimpleXMTPMessaging: React.FC = () => {
           
           // Add new conversation to state and cache
           const topic = (conversation as { topic: string }).topic;
+          const peerAddress = (conversation as { peerAddress?: string }).peerAddress;
+          const peerInboxId = (conversation as { peerInboxId?: string }).peerInboxId;
+          
           conversationCacheRef.current.set(topic, conversation);
           
           const enhancedConversation: EnhancedConversation = {
             topic,
-            peerAddress: (conversation as { peerAddress?: string }).peerAddress,
-            peerInboxId: (conversation as { peerInboxId?: string }).peerInboxId,
-            isGroup: !(conversation as { peerAddress?: string }).peerAddress,
+            peerAddress,
+            peerInboxId,
+            isGroup: !peerAddress, // If no peerAddress, it's likely a group
             unreadCount: 0,
             conversationObject: conversation,
           };
@@ -675,14 +714,17 @@ export const SimpleXMTPMessaging: React.FC = () => {
           
           const enhancedConversations = convs.map((conv: unknown) => {
             const topic = (conv as { topic: string }).topic;
+            const peerAddress = (conv as { peerAddress?: string }).peerAddress;
+            const peerInboxId = (conv as { peerInboxId?: string }).peerInboxId;
+            
             // Store conversation object in cache
             conversationCacheRef.current.set(topic, conv);
             
             return {
               topic,
-              peerAddress: (conv as { peerAddress?: string }).peerAddress,
-              peerInboxId: (conv as { peerInboxId?: string }).peerInboxId,
-              isGroup: !(conv as { peerAddress?: string }).peerAddress,
+              peerAddress,
+              peerInboxId,
+              isGroup: !peerAddress, // If no peerAddress, it's likely a group
               unreadCount: 0,
               conversationObject: conv, // Store the actual conversation object
             };
@@ -916,10 +958,10 @@ export const SimpleXMTPMessaging: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900 truncate">
-                      {conversation.isGroup ? 'Group Chat' : 'DM'}
+                      {getConversationName(conversation)}
                     </p>
-                    <p className="text-xs text-gray-500 truncate">
-                      {conversation.peerInboxId || conversation.peerAddress || conversation.topic.slice(0, 20)}...
+                    <p className="text-xs text-gray-500 truncate" title={getConversationSubtitle(conversation)}>
+                      {getConversationSubtitle(conversation)}
                     </p>
                     {conversation.lastMessage && (
                       <p className="text-xs text-gray-400 truncate mt-1">
@@ -948,10 +990,10 @@ export const SimpleXMTPMessaging: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="font-semibold text-gray-800">
-                    {selectedConversation.isGroup ? 'Group Chat' : 'Direct Message'}
+                    {getConversationName(selectedConversation)}
                   </h3>
-                  <p className="text-xs text-gray-500">
-                    {selectedConversation.peerInboxId || selectedConversation.peerAddress}
+                  <p className="text-xs text-gray-500" title={getConversationSubtitle(selectedConversation)}>
+                    {getConversationSubtitle(selectedConversation)}
                   </p>
                 </div>
                 <div className="flex items-center space-x-2">
