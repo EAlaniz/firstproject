@@ -56,7 +56,7 @@ function AppContent() {
   const {
     client: xmtpClient,
     initialize: initializeClient,
-    isLoading: isInitializing
+    isConnecting: isInitializing
   } = useSimpleXMTP();
 
   // Debug modal state
@@ -163,7 +163,7 @@ function AppContent() {
       console.log('🔄 Starting XMTP initialization process...');
       console.log('🔄 XMTP is requesting your signature to enable messaging...');
       
-      await initializeClient();
+      await initializeClient(walletClient);
       console.log('✅ XMTP initialized successfully');
       setSuccess('XMTP messaging enabled successfully!');
       setActiveView('messages');
