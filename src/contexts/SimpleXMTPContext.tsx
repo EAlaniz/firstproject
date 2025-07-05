@@ -61,8 +61,8 @@ export const SimpleXMTPProvider: React.FC<XMTPProviderProps> = ({ children }) =>
     try {
       console.log('[XMTP] Disconnecting client...');
       // Use the correct cleanup method from the official SDK
-      if (typeof (client as any).close === 'function') {
-        await (client as any).close();
+      if (typeof ((client as unknown) as { close?: () => Promise<void> }).close === 'function') {
+        await ((client as unknown) as { close: () => Promise<void> }).close();
       }
       console.log('[XMTP] ✅ Client disconnected successfully');
     } catch (err) {

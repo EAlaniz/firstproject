@@ -5,7 +5,7 @@ import { EnhancedWalletConnector } from './components/EnhancedWalletConnector';
 import Modal from './components/Modal';
 import { SimpleXMTPMessaging } from './components/SimpleXMTPMessaging';
 import { useSimpleXMTP, SimpleXMTPProvider } from './contexts/SimpleXMTPContext';
-import { useXMTPClient, useXMTPInitialized } from './contexts/useXMTPHooks';
+import { useXMTPClient } from './contexts/useXMTPHooks';
 import { Activity, Trophy, Circle, MessageCircle, Menu, X, User, ExternalLink, Settings, Lock, LogOut } from 'lucide-react';
 // Import the Farcaster Frame SDK for mini app splash screen control
 import { sdk } from '@farcaster/frame-sdk';
