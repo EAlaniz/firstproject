@@ -7,7 +7,7 @@ export function setupCoinbaseWalletFix() {
   if (typeof window !== 'undefined' && window.ethereum) {
     const originalRequest = window.ethereum.request;
     
-    window.ethereum.request = async (args: any) => {
+    window.ethereum.request = async (args: { method: string; params?: unknown[] }) => {
       // Force Base network for chain-related requests
       if (args.method === 'eth_chainId') {
         console.log('🔧 Coinbase Wallet fix: Forcing Base chain ID');
@@ -16,7 +16,7 @@ export function setupCoinbaseWalletFix() {
       
       if (args.method === 'wallet_switchEthereumChain') {
         // Ensure we're switching to Base
-        if (args.params?.[0]?.chainId !== '0x2105') {
+        if (args.params && args.params[0] && (args.params[0] as { chainId?: string }).chainId !== '0x2105') {
           console.warn('⚠️ Attempting to switch to non-Base network, forcing Base');
           args.params[0] = { chainId: '0x2105' };
         }
@@ -39,13 +39,13 @@ export function setupCoinbaseWalletFix() {
  */
 export function setupCoinbaseWalletSDKFix() {
   // If Coinbase Wallet SDK is loaded, configure it for Base
-  if (typeof window !== 'undefined' && (window as any).CoinbaseWalletSDK) {
+  if (typeof window !== 'undefined' && (window as unknown as { CoinbaseWalletSDK?: unknown }).CoinbaseWalletSDK) {
     try {
-      const CoinbaseWalletSDK = (window as any).CoinbaseWalletSDK;
+      const CoinbaseWalletSDK = (window as unknown as { CoinbaseWalletSDK: unknown }).CoinbaseWalletSDK;
       
       // Override the default configuration to include Base
       const originalConstructor = CoinbaseWalletSDK;
-      (window as any).CoinbaseWalletSDK = function(options: any) {
+      (window as unknown as { CoinbaseWalletSDK: unknown }).CoinbaseWalletSDK = function(options: { rpc?: Record<string, string> }) {
         const enhancedOptions = {
           ...options,
           rpc: {

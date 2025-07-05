@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useSimpleXMTP } from '../contexts/SimpleXMTPContext';
-import type { DecodedMessage } from '@xmtp/browser-sdk';
 
 export const SimpleXMTPMessaging: React.FC = () => {
   const {

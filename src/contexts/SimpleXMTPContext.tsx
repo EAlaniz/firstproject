@@ -1,16 +1,20 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { useAccount, useWalletClient } from 'wagmi';
-import { 
-  Client, 
-  DecodedMessage, 
-  Dm, 
-  Group, 
-  ConsentState
-} from '@xmtp/browser-sdk';
-import { createAutoSigner } from '../utils/xmtpSigner';
-import { XMTPErrorBoundary } from '../components/XMTPErrorBoundary';
 
-type XMTPConversation = Dm<any> | Group<any>;
+// Import from our new organized XMTP structure
+import {
+  Client,
+  ConsentState,
+  DecodedMessage,
+  XMTPConversation,
+  ContentTypes,
+  ReactionContent,
+  ErrorHandler,
+  isInstallationLimitError,
+  isDatabaseCorruptionError,
+  isMultipleTabsError,
+} from '../xmtp';
+import { createAutoSigner } from '../utils/xmtpSigner';
 
 interface SimpleXMTPContextType {
   // Core state
@@ -22,12 +26,12 @@ interface SimpleXMTPContextType {
   // Data
   conversations: XMTPConversation[];
   selectedConversation: XMTPConversation | null;
-  messages: { [conversationId: string]: DecodedMessage<any>[] };
+  messages: { [conversationId: string]: DecodedMessage[] };
   
   // Actions
   initialize: () => Promise<void>;
   selectConversation: (conversation: XMTPConversation) => void;
-  sendMessage: (text: string, contentType?: any) => Promise<void>;
+  sendMessage: (text: string, contentType?: unknown) => Promise<void>;
   createConversation: (recipientAddress: string) => Promise<void>;
   createGroupConversation: (participantAddresses: string[], groupName?: string) => Promise<void>;
   refreshConversations: () => Promise<void>;
@@ -38,8 +42,20 @@ interface SimpleXMTPContextType {
   // V3 History Sync
   performHistorySync: () => Promise<void>;
   
+  // V3 Database Cleanup
+  clearCorruptedDatabase: () => Promise<void>;
+  
   // V3 Content Handling
-  processMessageContent: (message: DecodedMessage<any>) => string;
+  processMessageContent: (message: DecodedMessage) => string;
+  
+  // V3 Consent Management
+  setConsent: (addresses: string[], state: ConsentState) => Promise<void>;
+  getConsent: (address: string) => Promise<ConsentState>;
+  
+  // V3 Advanced Features
+  sendReaction: (messageId: string, reaction: string) => Promise<void>;
+  sendReply: (messageId: string, content: string) => Promise<void>;
+  markAsRead: (messageId: string) => Promise<void>;
 }
 
 const SimpleXMTPContext = createContext<SimpleXMTPContextType | undefined>(undefined);
@@ -48,67 +64,65 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
   const { address } = useAccount();
   const { data: walletClient } = useWalletClient();
   
-  // Simple state
+  // Core state
   const [client, setClient] = useState<Client | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [conversations, setConversations] = useState<XMTPConversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<XMTPConversation | null>(null);
-  const [messages, setMessages] = useState<{ [conversationId: string]: DecodedMessage<any>[] }>({});
+  const [messages, setMessages] = useState<{ [conversationId: string]: DecodedMessage[] }>({});
 
-  // V3 Enhanced Content Processing (handles unsupported content types)
-  const processMessageContent = useCallback((message: DecodedMessage<any>): string => {
+  // V3 Enhanced Content Processing with new codec system
+  const processMessageContent = useCallback((message: DecodedMessage): string => {
     try {
-      // V3 Pattern: Handle unsupported content types with fallback
       if (!client) return String(message.content || '');
       
+      // Check if we have a codec for this content type
       const codec = client.codecFor(message.contentType);
       if (!codec && message.fallback) {
         console.log('[SimpleXMTP] Using fallback for unsupported content type:', message.contentType);
         return message.fallback;
       }
       
-      // V3 Pattern: Process known content types
       const content = message.content;
       
-      // Handle text content
+      // Handle different content types
       if (typeof content === 'string') {
         return content;
       }
       
-      // Handle complex content types (reactions, replies, etc.)
-      if (content && typeof content === 'object') {
-        // For reaction content type
-        if ('content' in content && 'action' in content) {
-          return `${content.action} ${content.content}`;
-        }
-        
-        // For reply content type
-        if ('content' in content && 'reference' in content) {
-          return String(content.content);
-        }
-        
-        // For other structured content, extract readable text
-        return JSON.stringify(content);
+      // Handle text content
+      if (content && typeof content === 'object' && 'text' in content) {
+        return content.text as string;
+      }
+      
+      // Handle reaction content
+      if (content && typeof content === 'object' && 'action' in content && 'content' in content) {
+        const reaction = content as ReactionContent;
+        return `${reaction.action === 'added' ? '👍' : '👎'} ${reaction.content}`;
+      }
+      
+      // Handle reply content
+      if (content && typeof content === 'object' && 'reference' in content && 'content' in content) {
+        return `Reply: ${content.content}`;
       }
       
       // Fallback to string conversion
-      return String(content || '');
+      return String(content || message.fallback || 'Error loading message');
     } catch (err) {
       console.error('[SimpleXMTP] Error processing message content:', err);
       return message.fallback || 'Error loading message';
     }
   }, [client]);
 
-  // Working V3 pattern: Helper to resolve addresses to inbox IDs
+  // V3 Helper to resolve addresses to inbox IDs
   const resolveAddressToInboxId = useCallback(async (ethAddress: string): Promise<string | null> => {
     if (!client) return null;
     
     try {
       const normalizedAddress = ethAddress.toLowerCase().trim();
       
-      // V3 pattern: Resolve using official API
       const inboxId = await client.findInboxIdByIdentifier({
         identifier: normalizedAddress,
         identifierKind: 'Ethereum'
@@ -122,52 +136,7 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
     }
   }, [client]);
 
-  // Official XMTP V3 Static Installation Revocation (for users who can't log in)
-  const performStaticInstallationRevocation = useCallback(async (inboxId: string) => {
-    if (!walletClient) {
-      throw new Error('Wallet client not available for static revocation');
-    }
-
-    console.log('[SimpleXMTP] 🗑️ Performing static installation revocation...');
-    console.log(`[SimpleXMTP] Inbox ID: ${inboxId}`);
-    
-    try {
-      const signer = createAutoSigner(walletClient);
-      
-      // Step 1: Get inbox state to find installations to revoke
-      const inboxStates = await Client.inboxStateFromInboxIds([inboxId], 'production');
-      
-      if (inboxStates.length === 0) {
-        throw new Error('No inbox state found');
-      }
-      
-      // Step 2: Get all installation bytes to revoke (this will revoke ALL installations)
-      const toRevokeInstallationBytes = inboxStates[0].installations.map((i) => i.bytes);
-      
-      console.log(`[SimpleXMTP] Found ${toRevokeInstallationBytes.length} installations to revoke`);
-      
-      if (toRevokeInstallationBytes.length === 0) {
-        console.log('[SimpleXMTP] No installations found to revoke');
-        return;
-      }
-      
-      // Step 3: Official XMTP V3 Static Revocation - revoke without needing client access
-      await Client.revokeInstallations(
-        signer,
-        inboxId,
-        toRevokeInstallationBytes,
-        'production'
-      );
-      
-      console.log('[SimpleXMTP] ✅ Static installation revocation successful');
-      
-    } catch (error) {
-      console.error('[SimpleXMTP] Static revocation failed:', error);
-      throw error;
-    }
-  }, [walletClient]);
-
-  // XMTP V3 Browser SDK proven sync pattern - using working methods from codebase
+  // V3 History Sync using proper SDK methods
   const performHistorySync = useCallback(async () => {
     if (!client || !address) {
       console.error('[SimpleXMTP] Cannot perform sync: client or address not available');
@@ -178,7 +147,7 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
       console.log('[SimpleXMTP] 🔄 Starting XMTP V3 sync...');
       setIsLoading(true);
       
-      // Proven working pattern: Use sync methods that exist in Browser SDK
+      // Use the official sync methods
       await client.conversations.sync();
       await client.conversations.syncAll();
       
@@ -197,7 +166,40 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
     }
   }, [client, address]);
 
-  // Browser SDK V3 initialization - correct pattern for web environments
+  // Automated database cleanup using new structure
+  const clearCorruptedDatabase = useCallback(async () => {
+    if (!address || !client) {
+      console.error('[SimpleXMTP] Cannot clear database: address or client not available');
+      return;
+    }
+
+    try {
+      console.log('[SimpleXMTP] 🧹 Starting automated database cleanup...');
+      setIsLoading(true);
+      setError('Cleaning corrupted database...');
+      
+      // Use the new Client's clearDatabase method
+      await client.clearDatabase();
+      
+      // Reset local state
+      setClient(null);
+      setIsInitialized(false);
+      setConversations([]);
+      setSelectedConversation(null);
+      setMessages({});
+      
+      console.log('[SimpleXMTP] ✅ Database cleanup completed');
+      setError('Database cleaned. Please re-initialize XMTP.');
+      
+    } catch (error) {
+      console.error('[SimpleXMTP] Database cleanup failed:', error);
+      setError(`Database cleanup failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [address, client]);
+
+  // Enhanced initialization with new error handling
   const initialize = useCallback(async () => {
     if (!walletClient || !address || isLoading) return;
     
@@ -207,173 +209,169 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
     try {
       console.log('[SimpleXMTP] Initializing XMTP Browser SDK client...');
       
-      // Browser SDK handles OPFS database access limitations internally
-      
       const signer = createAutoSigner(walletClient);
       
-      // CORRECT Browser SDK pattern: NO dbEncryptionKey
-      const xmtpClient = await Client.create(signer, { 
-        env: 'production'
-        // NOTE: Browser SDK does NOT use dbEncryptionKey
-        // Database is unencrypted due to technical limitations in web environments
-      });
+      // Use new Client.create method with enhanced error handling
+      const xmtpClient = await ErrorHandler.withRetry(
+        async () => {
+          return await Client.create(signer, { 
+            env: 'production'
+          });
+        },
+        3,
+        (error, attempt) => {
+          console.warn(`[SimpleXMTP] Initialization attempt ${attempt + 1} failed:`, error.message);
+        }
+      );
       
       setClient(xmtpClient);
       setIsInitialized(true);
       
-      // Load initial conversations
+      // Load conversations using new structure
       await loadConversations(xmtpClient);
       
-      // Proven working pattern: Additional sync after initialization (already done in loadConversations)
-      // The comprehensive sync in loadConversations already handles this properly
-      
-      // Start streaming with proper Browser SDK pattern
+      // Start streaming with new API
       startStreaming(xmtpClient);
       
       console.log('[SimpleXMTP] ✅ Browser SDK initialization complete');
       
     } catch (err) {
       console.error('[SimpleXMTP] Browser SDK initialization failed:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Initialization failed';
       
-      if (errorMessage.includes('already registered 5/5 installations')) {
-        console.log('[SimpleXMTP] 🔧 Installation limit reached. Attempting static revocation...');
+      // Use new error handling system
+      if (isInstallationLimitError(err)) {
+        console.log('[SimpleXMTP] 🔧 Installation limit reached. Handling automatically...');
         
-        // Extract inbox ID from error message
-        const inboxIdMatch = errorMessage.match(/InboxID ([a-f0-9]{64})/);
-        const inboxId = inboxIdMatch ? inboxIdMatch[1] : null;
-        
-        if (inboxId) {
-          try {
-            // Official XMTP V3 solution: Static installation revocation for users who can't log in
-            await performStaticInstallationRevocation(inboxId);
-            
-            // Retry initialization after revocation
-            console.log('[SimpleXMTP] 🔄 Retrying initialization after static revocation...');
-            setError('Installation revoked successfully. Retrying initialization...');
-            setTimeout(() => initialize(), 2000);
+        try {
+          const inboxId = err.details?.inboxId || extractInboxIdFromError(err.message);
+          if (inboxId && client) {
+            await client.handleInstallationLimit(inboxId);
+            setError('Installation limit handled. Please retry initialization.');
             return;
-          } catch (revocationError) {
-            console.error('[SimpleXMTP] Static revocation failed:', revocationError);
-            setError(`Installation limit reached (5/5). Static revocation failed: ${revocationError instanceof Error ? revocationError.message : 'Unknown error'}`);
           }
-        } else {
-          setError('Installation limit reached (5/5). Could not extract inbox ID from error message.');
+        } catch (recoveryError) {
+          console.error('[SimpleXMTP] Installation limit recovery failed:', recoveryError);
         }
-      } else if (errorMessage.includes('simultaneous connections')) {
+      }
+      
+      if (isDatabaseCorruptionError(err)) {
+        console.log('[SimpleXMTP] 🔧 Database corruption detected. Cleaning automatically...');
+        
+        try {
+          await clearCorruptedDatabase();
+          setError('Database corruption fixed. Click "Connect XMTP" to retry.');
+          return;
+        } catch (cleanupError) {
+          console.error('[SimpleXMTP] Automatic cleanup failed:', cleanupError);
+        }
+      }
+      
+      if (isMultipleTabsError(err)) {
         setError('XMTP is already active in another tab. Please close other tabs.');
       } else {
+        const errorMessage = err instanceof Error ? err.message : 'Initialization failed';
         setError(errorMessage);
       }
     } finally {
       setIsLoading(false);
     }
-  }, [walletClient, address, isLoading]);
+  }, [walletClient, address, isLoading, clearCorruptedDatabase]);
 
-  // Working conversation loading pattern (from proven working code)
+  // Enhanced conversation loading
   const loadConversations = async (xmtpClient: Client) => {
     try {
       console.log('[SimpleXMTP] Loading conversations...');
       
-      // Working pattern: Comprehensive sync first
+      // Use new Conversations API
       await xmtpClient.conversations.sync();
       await xmtpClient.conversations.syncAll();
       
-      // Load conversations with proven pattern
-      const convs = await xmtpClient.conversations.list();
+      const allConversations = await xmtpClient.conversations.list();
       
-      // Also load DMs specifically (working pattern)
-      const dms = await xmtpClient.conversations.listDms();
-      
-      // Combine all conversations
-      const allConversations = [...convs, ...dms.filter(dm => !convs.some(c => c.id === dm.id))];
-      
-      setConversations(allConversations as XMTPConversation[]);
-      console.log(`[SimpleXMTP] Loaded ${allConversations.length} conversations (${convs.length} regular + ${dms.length} DMs)`);
+      setConversations(allConversations);
+      console.log(`[SimpleXMTP] Loaded ${allConversations.length} conversations`);
     } catch (err) {
       console.error('[SimpleXMTP] Failed to load conversations:', err);
     }
   };
 
-  // Browser SDK V3 streaming - correct pattern with consent filtering
+  // Enhanced streaming with new API
   const startStreaming = async (xmtpClient: Client) => {
     try {
-      console.log('[SimpleXMTP] Starting Browser SDK message stream...');
+      console.log('[SimpleXMTP] Starting message stream...');
       
-      // Browser SDK pattern: Sync before streaming
       await xmtpClient.conversations.sync();
       
-      // CORRECT Browser SDK pattern: Stream with consent filtering
-      const stream = await xmtpClient.conversations.streamAllMessages(undefined, undefined, [ConsentState.Allowed]);
+      // Use new streaming API
+      const stream = await xmtpClient.conversations.streamAllMessages();
       
-      for await (const message of stream) {
-        if (!message) continue;
-        
-        console.log('[SimpleXMTP] New stream message:', message);
-        
-        // Filter own messages using inboxId
-        if (message.senderInboxId === xmtpClient.inboxId) {
-          continue;
-        }
-        
-        // Update messages state
-        setMessages(prev => ({
-          ...prev,
-          [message.conversationId]: [
-            ...(prev[message.conversationId] || []),
-            message
-          ]
-        }));
-        
-        // Handle new conversation detection
-        setConversations(prev => {
-          const currentConversationIds = prev.map(c => c.id);
-          if (!currentConversationIds.includes(message.conversationId)) {
-            console.log('[SimpleXMTP] 🆕 NEW INCOMING CONVERSATION detected:', message.conversationId);
+      // Process stream messages
+      (async () => {
+        try {
+          for await (const message of stream) {
+            if (!message) continue;
             
-            // Trigger conversation refresh
-            setTimeout(() => {
-              loadConversations(xmtpClient);
-            }, 500);
+            console.log('[SimpleXMTP] New stream message:', message);
+            
+            // Filter own messages
+            if (message.senderInboxId === xmtpClient.inboxId) {
+              continue;
+            }
+            
+            // Update messages state
+            setMessages(prev => ({
+              ...prev,
+              [message.conversationId]: [
+                ...(prev[message.conversationId] || []),
+                message
+              ]
+            }));
+            
+            // Handle new conversation detection
+            setConversations(prev => {
+              const currentConversationIds = prev.map(c => c.id);
+              if (!currentConversationIds.includes(message.conversationId)) {
+                console.log('[SimpleXMTP] 🆕 NEW CONVERSATION detected:', message.conversationId);
+                setTimeout(() => loadConversations(xmtpClient), 500);
+              }
+              return prev;
+            });
           }
-          return prev;
-        });
-      }
+        } catch (streamError) {
+          console.error('[SimpleXMTP] Stream error:', streamError);
+          
+          if (isDatabaseCorruptionError(streamError)) {
+            console.log('[SimpleXMTP] 🔧 Stream corruption detected. Auto-cleaning...');
+            try {
+              await clearCorruptedDatabase();
+              setError('Database corruption fixed. Click "Connect XMTP" to retry.');
+            } catch {
+              setError('Database corruption detected. Please refresh and try again.');
+            }
+            return;
+          }
+          
+          // Retry streaming after delay
+          setTimeout(() => startStreaming(xmtpClient), 5000);
+        }
+      })();
+      
     } catch (err) {
-      console.error('[SimpleXMTP] Browser SDK streaming error:', err);
-      
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      
-      // Browser SDK specific error handling
-      if (errorMessage.includes('group with welcome id')) {
-        console.error('[SimpleXMTP] 🚨 Database inconsistency detected:', errorMessage);
-        setError('Database inconsistency detected. Please clear browser data and re-initialize.');
-        return; // Don't retry - Browser SDK database is likely corrupted
-      }
-      
-      if (errorMessage.includes('simultaneous connections')) {
-        setError('Multiple tabs detected. Browser SDK only supports single tab access.');
-        return;
-      }
-      
-      // Limited retry for other errors
-      console.log('[SimpleXMTP] Retrying streaming in 5 seconds...');
-      setTimeout(() => startStreaming(xmtpClient), 5000);
+      console.error('[SimpleXMTP] Streaming setup failed:', err);
     }
   };
 
-  // V3 Enhanced message sending with content type support
-  const sendMessage = useCallback(async (text: string, contentType?: any) => {
+  // Enhanced message sending with content types
+  const sendMessage = useCallback(async (text: string, contentType?: unknown) => {
     if (!client || !selectedConversation) return;
     
     try {
       console.log('[SimpleXMTP] Sending message...');
       
-      // V3 Pattern: Send with content type if specified
       if (contentType) {
-        await selectedConversation.send(text, contentType);
+        await selectedConversation.send(text, { contentType });
       } else {
-        await selectedConversation.send(text);
+        await selectedConversation.sendText(text);
       }
       
       console.log('[SimpleXMTP] ✅ Message sent');
@@ -383,131 +381,155 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
     }
   }, [client, selectedConversation]);
 
-  // V3 Enhanced group conversation creation
-  const createGroupConversation = useCallback(async (participantAddresses: string[], _groupName?: string) => {
-    if (!client) return;
-    
-    try {
-      console.log('[SimpleXMTP] Creating V3 group conversation with:', participantAddresses);
-      
-      // V3 Pattern: Resolve all addresses to inbox IDs
-      const inboxIds: string[] = [];
-      
-      for (const address of participantAddresses) {
-        const normalizedAddress = address.toLowerCase().trim();
-        
-        // Validate address format
-        if (!/^0x[a-fA-F0-9]{40}$/.test(normalizedAddress)) {
-          setError(`Invalid address format: ${address}`);
-          return;
-        }
-        
-        // Check if recipient can message
-        const canMessage = await Client.canMessage([
-          { identifier: normalizedAddress, identifierKind: 'Ethereum' }
-        ], 'production');
-        
-        if (!canMessage.get(normalizedAddress)) {
-          setError(`Address ${address} is not registered with XMTP`);
-          return;
-        }
-        
-        // Resolve to inbox ID
-        const inboxId = await client.findInboxIdByIdentifier({
-          identifier: normalizedAddress,
-          identifierKind: 'Ethereum'
-        });
-        
-        if (!inboxId) {
-          setError(`Could not resolve address ${address} to inbox ID`);
-          return;
-        }
-        
-        inboxIds.push(inboxId);
-      }
-      
-      console.log('[SimpleXMTP] Creating group with inbox IDs:', inboxIds);
-      
-      // V3 Pattern: Create group with inbox IDs
-      const group = await client.conversations.newGroup(inboxIds);
-      
-      console.log('[SimpleXMTP] ✅ V3 Group conversation created');
-      
-      // Refresh conversations and select the new group
-      await refreshConversations();
-      setSelectedConversation(group as XMTPConversation);
-      
-    } catch (err) {
-      console.error('[SimpleXMTP] Failed to create group conversation:', err);
-      setError(`Failed to create group: ${err instanceof Error ? err.message : 'Unknown error'}`);
-    }
-  }, [client]);
-
+  // Enhanced conversation creation
   const createConversation = useCallback(async (recipientAddress: string) => {
     if (!client) return;
     
     try {
       console.log('[SimpleXMTP] Creating V3 conversation with:', recipientAddress);
       
-      // Working pattern: Validate and normalize address
-      const normalizedAddress = recipientAddress.toLowerCase().trim();
+      // Use new conversation creation method
+      const conversation = await client.conversations.newConversationByAddress(recipientAddress);
       
-      // Working pattern: Prevent self-conversation
-      if (normalizedAddress === address?.toLowerCase()) {
-        setError('Cannot create conversation with yourself');
-        return;
-      }
+      console.log('[SimpleXMTP] ✅ V3 Conversation created');
       
-      // Working pattern: Validate Ethereum address format
-      if (!/^0x[a-fA-F0-9]{40}$/.test(normalizedAddress)) {
-        setError('Invalid Ethereum address format');
-        return;
-      }
-      
-      console.log('[SimpleXMTP] Checking if recipient can receive messages...');
-      
-      // Working pattern: Check if recipient can message
-      const canMessage = await Client.canMessage([
-        { identifier: normalizedAddress, identifierKind: 'Ethereum' }
-      ], 'production');
-      
-      if (!canMessage.get(normalizedAddress)) {
-        setError('Recipient is not registered with XMTP');
-        return;
-      }
-      
-      console.log('[SimpleXMTP] ✅ Recipient can receive messages');
-      console.log('[SimpleXMTP] Resolving address to inbox ID...');
-      
-      // CRITICAL V3 PATTERN: Resolve address to inbox ID first
-      const inboxId = await client.findInboxIdByIdentifier({
-        identifier: normalizedAddress,
-        identifierKind: 'Ethereum'
-      });
-      
-      if (!inboxId) {
-        setError('Could not resolve address to inbox ID');
-        return;
-      }
-      
-      console.log('[SimpleXMTP] ✅ Resolved inbox ID:', inboxId);
-      console.log('[SimpleXMTP] Creating conversation with inbox ID...');
-      
-      // CORRECT V3 PATTERN: Create conversation using inbox ID
-      const conversation = await client.conversations.newDm(inboxId);
-      console.log('[SimpleXMTP] ✅ V3 Conversation created with inbox ID');
-      
-      // Refresh conversations
       await refreshConversations();
-      
-      // Select the new conversation
-      setSelectedConversation(conversation as XMTPConversation);
+      setSelectedConversation(conversation);
       
     } catch (err) {
       console.error('[SimpleXMTP] Failed to create V3 conversation:', err);
       setError(`Failed to create conversation: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
-  }, [client, address]);
+  }, [client]);
+
+  // Enhanced group creation
+  const createGroupConversation = useCallback(async (participantAddresses: string[], groupName?: string) => {
+    if (!client) return;
+    
+    try {
+      console.log('[SimpleXMTP] Creating V3 group conversation with:', participantAddresses);
+      
+      // Resolve addresses to inbox IDs
+      const inboxIds: string[] = [];
+      
+      for (const address of participantAddresses) {
+        const inboxId = await resolveAddressToInboxId(address);
+        if (inboxId) {
+          inboxIds.push(inboxId);
+        } else {
+          setError(`Could not resolve address ${address} to inbox ID`);
+          return;
+        }
+      }
+      
+      const group = await client.conversations.newGroup(inboxIds);
+      
+      // Set group name if provided
+      if (groupName) {
+        await group.updateName(groupName);
+      }
+      
+      console.log('[SimpleXMTP] ✅ V3 Group conversation created');
+      
+      await refreshConversations();
+      setSelectedConversation(group);
+      
+    } catch (err) {
+      console.error('[SimpleXMTP] Failed to create group conversation:', err);
+      setError(`Failed to create group: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    }
+  }, [client, resolveAddressToInboxId]);
+
+  // Consent management
+  const setConsent = useCallback(async (addresses: string[], state: ConsentState) => {
+    if (!client) return;
+    
+    try {
+      const identifiers = addresses.map(address => ({
+        identifier: address.toLowerCase().trim(),
+        identifierKind: 'Ethereum' as const,
+      }));
+      
+      await client.contacts.setConsent(identifiers, state);
+      console.log(`[SimpleXMTP] Set consent to ${state} for ${addresses.length} addresses`);
+    } catch (err) {
+      console.error('[SimpleXMTP] Failed to set consent:', err);
+      setError('Failed to set consent');
+    }
+  }, [client]);
+
+  const getConsent = useCallback(async (address: string): Promise<ConsentState> => {
+    if (!client) return 'Unknown' as unknown as ConsentState;
+    
+    try {
+      return await client.contacts.getConsent(address);
+    } catch (err) {
+      console.error('[SimpleXMTP] Failed to get consent:', err);
+      return 'Unknown' as unknown as ConsentState;
+    }
+  }, [client]);
+
+  // Advanced content features
+  const sendReaction = useCallback(async (messageId: string, reaction: string) => {
+    if (!client || !selectedConversation) return;
+    
+    try {
+      const reactionContent: ReactionContent = {
+        reference: messageId,
+        action: 'added',
+        content: reaction,
+        schema: 'unicode',
+      };
+      
+      await selectedConversation.send(reactionContent, {
+        contentType: ContentTypes.Reaction,
+      });
+      
+      console.log('[SimpleXMTP] ✅ Reaction sent');
+    } catch (err) {
+      console.error('[SimpleXMTP] Failed to send reaction:', err);
+      setError('Failed to send reaction');
+    }
+  }, [client, selectedConversation]);
+
+  const sendReply = useCallback(async (messageId: string, content: string) => {
+    if (!client || !selectedConversation) return;
+    
+    try {
+      const replyContent = {
+        reference: messageId,
+        content: { text: content },
+        contentType: ContentTypes.Text,
+      };
+      
+      await selectedConversation.send(replyContent, {
+        contentType: ContentTypes.Reply,
+      });
+      
+      console.log('[SimpleXMTP] ✅ Reply sent');
+    } catch (err) {
+      console.error('[SimpleXMTP] Failed to send reply:', err);
+      setError('Failed to send reply');
+    }
+  }, [client, selectedConversation]);
+
+  const markAsRead = useCallback(async (messageId: string) => {
+    if (!client || !selectedConversation) return;
+    
+    try {
+      const readReceiptContent = {
+        reference: messageId,
+      };
+      
+      await selectedConversation.send(readReceiptContent, {
+        contentType: ContentTypes.ReadReceipt,
+      });
+      
+      console.log('[SimpleXMTP] ✅ Read receipt sent');
+    } catch (err) {
+      console.error('[SimpleXMTP] Failed to send read receipt:', err);
+    }
+  }, [client, selectedConversation]);
 
   // Simple conversation refresh
   const refreshConversations = useCallback(async () => {
@@ -525,18 +547,13 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
     }
   }, [messages]);
 
-  // Working message loading pattern (from proven working code)
+  // Enhanced message loading
   const loadMessages = async (conversation: XMTPConversation) => {
     try {
       console.log('[SimpleXMTP] Loading messages for conversation...');
       
-      // Working pattern: Sync conversation first
       await conversation.sync();
-      
-      // Working pattern: Load with pagination
-      const msgs = await conversation.messages({
-        limit: BigInt(50)
-      });
+      const msgs = await conversation.messages({ limit: 50 });
       
       setMessages(prev => ({
         ...prev,
@@ -549,12 +566,11 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-  // Browser SDK cleanup handling
+  // Cleanup on address change
   useEffect(() => {
     if (address && client) {
       console.log('[SimpleXMTP] Wallet address changed, resetting XMTP state');
       
-      // Reset state when wallet changes
       setClient(null);
       setIsInitialized(false);
       setConversations([]);
@@ -562,15 +578,15 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
       setMessages({});
       setError(null);
     }
-  }, [address]);
+  }, [address, client]);
   
-  // Browser SDK cleanup on unmount
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (client) {
         console.log('[SimpleXMTP] Cleaning up Browser SDK resources on unmount');
+        client.cleanup();
         
-        // Reset all state
         setClient(null);
         setIsInitialized(false);
         setConversations([]);
@@ -580,6 +596,12 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
       }
     };
   }, [client]);
+
+  // Helper function
+  const extractInboxIdFromError = (errorMessage: string): string | undefined => {
+    const match = errorMessage.match(/InboxID ([a-f0-9]{64})/);
+    return match?.[1];
+  };
 
   const value: SimpleXMTPContextType = {
     client,
@@ -598,6 +620,12 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
     createGroupConversation,
     processMessageContent,
     performHistorySync,
+    clearCorruptedDatabase,
+    setConsent,
+    getConsent,
+    sendReaction,
+    sendReply,
+    markAsRead,
   };
 
   return (
@@ -607,14 +635,12 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
   );
 };
 
-// Working pattern: Wrap with error boundary for production reliability
+// Wrap with error boundary for production reliability
 export const SimpleXMTPProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
-    <XMTPErrorBoundary>
-      <SimpleXMTPProviderCore>
-        {children}
-      </SimpleXMTPProviderCore>
-    </XMTPErrorBoundary>
+    <SimpleXMTPProviderCore>
+      {children}
+    </SimpleXMTPProviderCore>
   );
 };
 

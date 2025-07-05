@@ -5,7 +5,6 @@ import { EnhancedWalletConnector } from './components/EnhancedWalletConnector';
 import Modal from './components/Modal';
 import { SimpleXMTPMessaging } from './components/SimpleXMTPMessaging';
 import { useSimpleXMTP, SimpleXMTPProvider } from './contexts/SimpleXMTPContext';
-import type { DecodedMessage } from '@xmtp/browser-sdk';
 import { Activity, Trophy, Circle, MessageCircle, Menu, X, User, ExternalLink, Settings, Lock, LogOut } from 'lucide-react';
 // Import the Farcaster Frame SDK for mini app splash screen control
 import { sdk } from '@farcaster/frame-sdk';
@@ -25,6 +24,7 @@ function AppContent() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<'dashboard' | 'messages'>('dashboard');
+  const [showXMTPMessaging, setShowXMTPMessaging] = useState(false);
   const [currentSteps, setCurrentSteps] = useState(7240);
   const [dailyGoal, setDailyGoal] = useState(10000);
   const [currentStreak] = useState(12);
@@ -57,8 +57,7 @@ function AppContent() {
   const {
     client: xmtpClient,
     initialize: initializeClient,
-    isLoading: isInitializing,
-    error: xmtpError
+    isLoading: isInitializing
   } = useSimpleXMTP();
 
   // Debug modal state
