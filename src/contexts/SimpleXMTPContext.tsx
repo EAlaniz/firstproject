@@ -35,6 +35,9 @@ interface SimpleXMTPContextType {
   // V3 Helpers
   resolveAddressToInboxId: (ethAddress: string) => Promise<string | null>;
   
+  // V3 History Sync
+  performHistorySync: () => Promise<void>;
+  
   // V3 Content Handling
   processMessageContent: (message: DecodedMessage<any>) => string;
 }
@@ -164,6 +167,36 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
     }
   }, [walletClient]);
 
+  // Official XMTP V3 History Sync - recover previous conversations after installation revocation
+  const performHistorySync = useCallback(async () => {
+    if (!client || !address) {
+      console.error('[SimpleXMTP] Cannot perform history sync: client or address not available');
+      return;
+    }
+
+    try {
+      console.log('[SimpleXMTP] 🔄 Starting XMTP V3 History Sync...');
+      setIsLoading(true);
+      
+      // V3 Pattern: Sync history from previous installations
+      // This recovers conversations and messages from other installations/devices
+      await client.conversations.syncHistory();
+      
+      console.log('[SimpleXMTP] ✅ History sync completed successfully');
+      
+      // Reload conversations after history sync
+      await loadConversations(client);
+      
+      console.log('[SimpleXMTP] 🔄 Conversations reloaded after history sync');
+      
+    } catch (error) {
+      console.error('[SimpleXMTP] History sync failed:', error);
+      setError(`History sync failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [client, address]);
+
   // Browser SDK V3 initialization - correct pattern for web environments
   const initialize = useCallback(async () => {
     if (!walletClient || !address || isLoading) return;
@@ -191,6 +224,21 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
       // Load initial conversations
       await loadConversations(xmtpClient);
       
+      // V3 Pattern: Perform history sync after successful initialization
+      // This recovers conversations from previous installations
+      console.log('[SimpleXMTP] 🔄 Performing automatic history sync...');
+      try {
+        await xmtpClient.conversations.syncHistory();
+        console.log('[SimpleXMTP] ✅ History sync completed');
+        
+        // Reload conversations after history sync
+        await loadConversations(xmtpClient);
+        console.log('[SimpleXMTP] 🔄 Conversations reloaded after history sync');
+      } catch (syncError) {
+        console.warn('[SimpleXMTP] History sync failed (non-critical):', syncError);
+        // Continue initialization even if history sync fails
+      }
+      
       // Start streaming with proper Browser SDK pattern
       startStreaming(xmtpClient);
       
@@ -214,6 +262,7 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
             
             // Retry initialization after revocation
             console.log('[SimpleXMTP] 🔄 Retrying initialization after static revocation...');
+            setError('Installation revoked successfully. Retrying initialization...');
             setTimeout(() => initialize(), 2000);
             return;
           } catch (revocationError) {
@@ -560,6 +609,7 @@ const SimpleXMTPProviderCore: React.FC<{ children: React.ReactNode }> = ({ child
     resolveAddressToInboxId,
     createGroupConversation,
     processMessageContent,
+    performHistorySync,
   };
 
   return (
