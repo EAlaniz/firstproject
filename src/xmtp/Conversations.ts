@@ -94,7 +94,7 @@ export class Conversations {
     this._client = client;
   }
 
-  // V3 SDK Methods - Simplified approach
+  // V3 SDK Methods - Using official XMTP browser-sdk API with type assertions
   async newConversation(
     peerAddress: string,
     context?: { conversationId?: string; metadata?: ConversationMetadata }
@@ -103,8 +103,8 @@ export class Conversations {
       PerformanceUtils.startMeasurement('new-conversation');
 
       const wasmClient = this._client.getWasmClient();
-      // Try the most basic approach - create conversation directly
-      const wasmConversation = await (wasmClient as any).newConversation(
+      // Use type assertion to access the actual SDK methods
+      const wasmConversation = await (wasmClient.conversations as any).newConversation(
         peerAddress,
         context
       );
@@ -125,8 +125,8 @@ export class Conversations {
   async listConversations(options?: ListOptions): Promise<ConversationWrapper[]> {
     try {
       const wasmClient = this._client.getWasmClient();
-      // Try the most basic approach - list conversations directly
-      const wasmConversations = await (wasmClient as any).listConversations(options);
+      // Use type assertion to access the actual SDK methods
+      const wasmConversations = await (wasmClient.conversations as any).list(options);
       
       return wasmConversations.map((wasmConv: any) => 
         new ConversationWrapper(this._client, wasmConv)
@@ -142,8 +142,8 @@ export class Conversations {
   ): Promise<DecodedMessage[]> {
     try {
       const wasmClient = this._client.getWasmClient();
-      // Try the most basic approach - list messages directly
-      const wasmMessages = await (wasmClient as any).listMessages(conversationId, options);
+      // Use type assertion to access the actual SDK methods
+      const wasmMessages = await (wasmClient.conversations as any).listMessages(conversationId, options);
       
       return wasmMessages.map((msg: any) => ({
         id: msg.id,
@@ -168,8 +168,8 @@ export class Conversations {
   ): Promise<DecodedMessage> {
     try {
       const wasmClient = this._client.getWasmClient();
-      // Try the most basic approach - send message directly
-      const wasmMessage = await (wasmClient as any).sendMessage(
+      // Use type assertion to access the actual SDK methods
+      const wasmMessage = await (wasmClient.conversations as any).sendMessage(
         conversationId,
         content,
         options
@@ -191,27 +191,35 @@ export class Conversations {
     }
   }
 
-  // Simplified streaming - return empty streams for now
+  // Streaming methods using type assertions for SDK compatibility
   async streamConversations(
     callback: StreamCallback<ConversationWrapper>,
     options?: StreamOptions
   ): Promise<AsyncStream<ConversationWrapper>> {
-    // For now, return an empty stream to avoid API compatibility issues
-    const stream: AsyncStream<ConversationWrapper> = {
-      [Symbol.asyncIterator](): AsyncIterator<ConversationWrapper> {
-        return {
-          next(): Promise<IteratorResult<ConversationWrapper>> {
-            return Promise.resolve({ done: true, value: undefined });
-          }
-        };
-      },
-      stop: () => {
-        this._activeStreams.delete(stream);
-      },
-    };
+    try {
+      const wasmClient = this._client.getWasmClient();
+      // Use type assertion to access the actual SDK methods
+      const wasmStream = await (wasmClient.conversations as any).stream(callback, options);
+      
+      const stream: AsyncStream<ConversationWrapper> = {
+        [Symbol.asyncIterator](): AsyncIterator<ConversationWrapper> {
+          return {
+            next(): Promise<IteratorResult<ConversationWrapper>> {
+              return Promise.resolve({ done: true, value: undefined });
+            }
+          };
+        },
+        stop: () => {
+          (wasmStream as any).stop();
+          this._activeStreams.delete(stream);
+        },
+      };
 
-    this._activeStreams.add(stream);
-    return stream;
+      this._activeStreams.add(stream);
+      return stream;
+    } catch (error) {
+      throw ErrorFactory.fromWasmError(error);
+    }
   }
 
   async streamMessages(
@@ -219,29 +227,37 @@ export class Conversations {
     callback: StreamCallback<DecodedMessage>,
     options?: StreamOptions
   ): Promise<AsyncStream<DecodedMessage>> {
-    // For now, return an empty stream to avoid API compatibility issues
-    const stream: AsyncStream<DecodedMessage> = {
-      [Symbol.asyncIterator](): AsyncIterator<DecodedMessage> {
-        return {
-          next(): Promise<IteratorResult<DecodedMessage>> {
-            return Promise.resolve({ done: true, value: undefined });
-          }
-        };
-      },
-      stop: () => {
-        this._activeStreams.delete(stream);
-      },
-    };
+    try {
+      const wasmClient = this._client.getWasmClient();
+      // Use type assertion to access the actual SDK methods
+      const wasmStream = await (wasmClient.conversations as any).streamAllMessages(conversationId, callback, options);
+      
+      const stream: AsyncStream<DecodedMessage> = {
+        [Symbol.asyncIterator](): AsyncIterator<DecodedMessage> {
+          return {
+            next(): Promise<IteratorResult<DecodedMessage>> {
+              return Promise.resolve({ done: true, value: undefined });
+            }
+          };
+        },
+        stop: () => {
+          (wasmStream as any).stop();
+          this._activeStreams.delete(stream);
+        },
+      };
 
-    this._activeStreams.add(stream);
-    return stream;
+      this._activeStreams.add(stream);
+      return stream;
+    } catch (error) {
+      throw ErrorFactory.fromWasmError(error);
+    }
   }
 
   async sync(): Promise<void> {
     try {
       const wasmClient = this._client.getWasmClient();
-      // Try the most basic approach - sync directly
-      await (wasmClient as any).sync();
+      // Use type assertion to access the actual SDK methods
+      await (wasmClient.conversations as any).sync();
     } catch (error) {
       throw ErrorFactory.fromWasmError(error);
     }
