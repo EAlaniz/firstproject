@@ -160,13 +160,44 @@ export const useXMTP = (): XMTPContextValue => {
 };
 
 export const useSimpleXMTP = useXMTP;
-export const useXMTPClient = (): Client | null => useXMTP().client;
-export const useXMTPInitialized = (): boolean => useXMTP().isInitialized;
-export const useXMTPConversations = (): Conversations | null => useXMTP().conversations;
-export const useXMTPMessages = (): DecodedMessage[] => useXMTP().messages;
-export const useXMTPSendMessage = () => useXMTP().sendMessage;
-export const useXMTPNewConversation = () => useXMTP().newConversation;
-export const useXMTPCanMessage = () => useXMTP().canMessage;
-export const useXMTPError = () => useXMTP().error;
 
-// Hooks moved to separate file to fix Fast Refresh warnings
+export const useXMTPClient = (): Client | null => {
+  const context = useXMTP();
+  return context.client;
+};
+
+export const useXMTPInitialized = (): boolean => {
+  const context = useXMTP();
+  return context.isInitialized;
+};
+
+export const useXMTPConversations = (): Conversations | null => {
+  const context = useXMTP();
+  return context.conversations;
+};
+
+export const useXMTPMessages = (): DecodedMessage[] => {
+  const context = useXMTP();
+  return context.messages;
+};
+
+export const useXMTPSendMessage = () => {
+  const context = useXMTP();
+  return context.sendMessage;
+};
+
+export const useXMTPNewConversation = () => {
+  const context = useXMTP();
+  return context.newConversation;
+};
+
+export const useXMTPCanMessage = () => {
+  const context = useXMTP();
+  return context.canMessage;
+};
+
+export const useXMTPError = () => {
+  const context = useXMTP();
+  return context.error;
+};
+
