@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { Client } from '@xmtp/browser-sdk';
 import type { WalletClient } from 'viem';
 import { createAutoSigner } from '../utils/xmtpSigner';
@@ -29,6 +29,7 @@ export const SimpleXMTPProvider: React.FC<XMTPProviderProps> = ({ children }) =>
 
   // Initialize XMTP client using official V3 pattern
   const initialize = useCallback(async (walletClient: WalletClient) => {
+    // Use refs to avoid dependency loops
     if (client || isConnecting) return;
     
     setIsConnecting(true);
@@ -52,38 +53,62 @@ export const SimpleXMTPProvider: React.FC<XMTPProviderProps> = ({ children }) =>
     } finally {
       setIsConnecting(false);
     }
-  }, [client, isConnecting]);
+  }, []); // Remove client and isConnecting from deps to prevent loops
 
   // Disconnect using official pattern
   const disconnect = useCallback(async () => {
-    if (!client) return;
-    
-    try {
-      console.log('[XMTP] Disconnecting client...');
-      // Use the correct cleanup method from the official SDK
-      if (typeof ((client as unknown) as { close?: () => Promise<void> }).close === 'function') {
-        await ((client as unknown) as { close: () => Promise<void> }).close();
-      }
-      console.log('[XMTP] ✅ Client disconnected successfully');
-    } catch (err) {
-      console.error('[XMTP] ❌ Disconnect failed:', err);
-    } finally {
-      setClient(null);
-      setError(null);
-    }
-  }, [client]);
+    // Get current client state directly to avoid dependency loop
+    setClient(currentClient => {
+      if (!currentClient) return null;
+      
+      // Perform cleanup asynchronously
+      (async () => {
+        try {
+          console.log('[XMTP] Disconnecting client...');
+          // Use the correct cleanup method from the official SDK
+          if (typeof ((currentClient as unknown) as { close?: () => Promise<void> }).close === 'function') {
+            await ((currentClient as unknown) as { close: () => Promise<void> }).close();
+          }
+          console.log('[XMTP] ✅ Client disconnected successfully');
+        } catch (err) {
+          console.error('[XMTP] ❌ Disconnect failed:', err);
+        }
+      })();
+      
+      return null;
+    });
+    setError(null);
+  }, []); // Remove client dependency to prevent loops
 
   // Clear error
   const clearError = useCallback(() => setError(null), []);
 
-  // Cleanup on unmount
+  // Cleanup on unmount - use ref to avoid dependency loop
+  const clientRef = useRef<Client | null>(null);
+  
+  // Update ref when client changes
+  useEffect(() => {
+    clientRef.current = client;
+  }, [client]);
+  
+  // Cleanup on unmount without dependencies
   useEffect(() => {
     return () => {
-      if (client) {
-        disconnect();
+      const currentClient = clientRef.current;
+      if (currentClient) {
+        // Cleanup without triggering state updates
+        (async () => {
+          try {
+            if (typeof ((currentClient as unknown) as { close?: () => Promise<void> }).close === 'function') {
+              await ((currentClient as unknown) as { close: () => Promise<void> }).close();
+            }
+          } catch (err) {
+            console.error('[XMTP] Cleanup error:', err);
+          }
+        })();
       }
     };
-  }, [client, disconnect]);
+  }, []); // No dependencies to prevent loops
 
   const contextValue: XMTPContextValue = {
     client,

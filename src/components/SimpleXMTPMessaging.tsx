@@ -8,19 +8,23 @@ interface EnhancedMessage {
   id: string;
   content: string;
   senderAddress: string;
+  senderInboxId: string;
   sentAt: Date;
   status: 'sending' | 'sent' | 'delivered' | 'failed';
   isOptimistic?: boolean;
+  cursor?: string;
 }
 
 // Enhanced conversation interface
 interface EnhancedConversation {
   topic: string;
   peerAddress?: string;
+  peerInboxId?: string;
   isGroup: boolean;
   lastMessage?: string;
   lastMessageTime?: Date;
   unreadCount: number;
+  messageCursor?: string;
 }
 
 export const SimpleXMTPMessaging: React.FC = () => {
@@ -40,6 +44,8 @@ export const SimpleXMTPMessaging: React.FC = () => {
   const [checkingRecipient, setCheckingRecipient] = useState(false);
   const [isLoadingConversations, setIsLoadingConversations] = useState(false);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const [isLoadingMoreMessages, setIsLoadingMoreMessages] = useState(false);
+  const [hasMoreMessages, setHasMoreMessages] = useState(true);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [localError, setError] = useState<string | null>(null);
 
@@ -108,8 +114,10 @@ export const SimpleXMTPMessaging: React.FC = () => {
             id: (message as { id?: string }).id || `msg-${Date.now()}`,
             content: String((message as { content: unknown }).content || ''),
             senderAddress: (message as { senderAddress: string }).senderAddress,
+            senderInboxId: (message as { senderInboxId?: string }).senderInboxId || (message as { senderAddress: string }).senderAddress,
             sentAt: (message as { sentAt?: Date }).sentAt ? new Date((message as { sentAt: Date }).sentAt) : new Date(),
             status: 'delivered',
+            cursor: (message as { cursor?: string }).cursor,
           };
 
           setMessages(prev => [...prev, enhancedMessage]);
@@ -160,6 +168,7 @@ export const SimpleXMTPMessaging: React.FC = () => {
           const enhancedConversation: EnhancedConversation = {
             topic: (conversation as { topic: string }).topic,
             peerAddress: (conversation as { peerAddress?: string }).peerAddress,
+            peerInboxId: (conversation as { peerInboxId?: string }).peerInboxId,
             isGroup: !(conversation as { peerAddress?: string }).peerAddress,
             unreadCount: 0,
           };
@@ -256,70 +265,96 @@ export const SimpleXMTPMessaging: React.FC = () => {
     };
   }, [client, isInitialized, startMessageStream, startConversationStream, stopMessageStream, stopConversationStream]);
 
-  // Enhanced conversation loading with error handling
-  const loadConversations = useCallback(async () => {
-    if (!client) return;
-    
-    setIsLoadingConversations(true);
-    
-    try {
-      console.log('[XMTP] Loading conversations...');
-      const convs = await client.conversations.list();
-      
-      const enhancedConversations: EnhancedConversation[] = convs.map((conv: unknown) => ({
-        topic: (conv as { topic: string }).topic,
-        peerAddress: (conv as { peerAddress?: string }).peerAddress,
-        isGroup: !(conv as { peerAddress?: string }).peerAddress,
-        unreadCount: 0,
-      }));
-      
-      setConversations(enhancedConversations);
-      console.log(`[XMTP] Loaded ${enhancedConversations.length} conversations`);
-    } catch (error) {
-      handleError(error, 'load conversations');
-    } finally {
-      setIsLoadingConversations(false);
-    }
-  }, [client, handleError]);
+  // Remove the separate loadConversations function since it's now inlined to prevent dependency loops
 
-  // Enhanced message loading with pagination and error handling
-  const loadMessages = useCallback(async (conversation: EnhancedConversation, limit = 50) => {
+  // Enhanced message loading with cursor-based pagination and error handling
+  const loadMessages = useCallback(async (conversation: EnhancedConversation, limit = 50, cursor?: string) => {
     if (!conversation || !client) return;
     
-    setIsLoadingMessages(true);
+    const isLoadingMore = !!cursor;
+    if (isLoadingMore) {
+      setIsLoadingMoreMessages(true);
+    } else {
+      setIsLoadingMessages(true);
+      setHasMoreMessages(true);
+    }
     
     try {
-      console.log('[XMTP] Loading messages...');
+      console.log('[XMTP] Loading messages...', { limit, cursor });
       // Get the actual conversation object from the client
       const actualConversation = await client.conversations.getConversationById(conversation.topic);
       if (!actualConversation) {
         throw new Error('Conversation not found');
       }
-      const msgs = await actualConversation.messages({ limit: BigInt(limit) });
+      
+      // Build message options with cursor support
+      const messageOptions: { limit: bigint; cursor?: bigint } = { limit: BigInt(limit) };
+      if (cursor) {
+        messageOptions.cursor = BigInt(cursor);
+      }
+      
+      const msgs = await actualConversation.messages(messageOptions);
       
       const enhancedMessages: EnhancedMessage[] = msgs.map((msg: unknown) => ({
         id: (msg as { id?: string }).id || `msg-${Date.now()}`,
         content: String((msg as { content: unknown }).content || ''),
         senderAddress: (msg as { senderAddress: string }).senderAddress,
+        senderInboxId: (msg as { senderInboxId?: string }).senderInboxId || (msg as { senderAddress: string }).senderAddress,
         sentAt: (msg as { sentAt?: Date }).sentAt ? new Date((msg as { sentAt: Date }).sentAt) : new Date(),
         status: 'delivered' as const,
+        cursor: (msg as { cursor?: string }).cursor,
       }));
       
-      setMessages(enhancedMessages);
+      if (isLoadingMore) {
+        // Append older messages to the beginning
+        setMessages(prev => [...enhancedMessages, ...prev]);
+      } else {
+        // Replace all messages
+        setMessages(enhancedMessages);
+      }
+      
+      // Update cursor for pagination
+      if (enhancedMessages.length > 0) {
+        const oldestMessage = enhancedMessages[0];
+        setConversations(prev => 
+          prev.map(conv => 
+            conv.topic === conversation.topic 
+              ? { ...conv, messageCursor: oldestMessage.cursor }
+              : conv
+          )
+        );
+      }
+      
+      // Check if there are more messages
+      setHasMoreMessages(enhancedMessages.length === limit);
+      
       console.log(`[XMTP] Loaded ${enhancedMessages.length} messages`);
       
-      // Auto-scroll to bottom
-      setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-      }, 100);
+      // Auto-scroll to bottom only for initial load
+      if (!isLoadingMore) {
+        setTimeout(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+      }
     } catch (error) {
       handleError(error, 'load messages');
     } finally {
       setIsLoadingMessages(false);
+      setIsLoadingMoreMessages(false);
     }
   }, [client, handleError]);
+  
+  // Load more messages (older messages)
+  const loadMoreMessages = useCallback(async () => {
+    if (!selectedConversation || !client || isLoadingMoreMessages || !hasMoreMessages) return;
+    
+    const cursor = conversations.find(c => c.topic === selectedConversation.topic)?.messageCursor;
+    if (!cursor) return;
+    
+    await loadMessages(selectedConversation, 50, cursor);
+  }, [selectedConversation, client, isLoadingMoreMessages, hasMoreMessages, conversations, loadMessages]);
 
-  // Enhanced recipient checking with better error handling
+  // Enhanced recipient checking with better error handling and inboxId support
   const checkRecipientCanMessage = async (recipient: string) => {
     if (!recipient.trim() || !client) {
       setCanMessageRecipient(null);
@@ -330,8 +365,13 @@ export const SimpleXMTPMessaging: React.FC = () => {
     
     try {
       console.log('[XMTP] Checking if recipient can receive messages...');
+      
+      // For V3, we primarily use Ethereum addresses for canMessage checks
+      // InboxId validation will be handled by the conversation creation process
+      const identifierKind = 'Ethereum';
+      
       const canMessageMap = await Client.canMessage(
-        [{ identifier: recipient.trim(), identifierKind: 'Ethereum' }],
+        [{ identifier: recipient.trim(), identifierKind }],
         'production'
       );
       const canMessage = canMessageMap.get(recipient.trim()) ?? false;
@@ -345,7 +385,7 @@ export const SimpleXMTPMessaging: React.FC = () => {
     }
   };
 
-  // Enhanced conversation creation with optimistic UI
+  // Enhanced conversation creation with optimistic UI and inboxId support
   const handleCreateConversation = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newRecipient.trim() || !client) return;
@@ -359,12 +399,36 @@ export const SimpleXMTPMessaging: React.FC = () => {
     
     try {
       console.log('[XMTP] Creating new conversation...');
-      const conversation = await client.conversations.newConversation(newRecipient.trim());
+      // Use the appropriate method for creating conversations in V3
+      // Cast to unknown first then to our expected interface to handle API variations
+      const conversations = client.conversations as unknown as {
+        newDm?: (address: string) => Promise<{ topic: string; peerInboxId?: string }>;
+        findOrCreateDm?: (address: string) => Promise<{ topic: string; peerInboxId?: string }>;
+        newConversation?: (address: string) => Promise<{ topic: string; peerInboxId?: string }>;
+      };
+      
+      let conversation: { topic: string; peerInboxId?: string } | undefined;
+      
+      // Try different methods for creating conversations
+      if (conversations.newDm) {
+        conversation = await conversations.newDm(newRecipient.trim());
+      } else if (conversations.findOrCreateDm) {
+        conversation = await conversations.findOrCreateDm(newRecipient.trim());
+      } else if (conversations.newConversation) {
+        conversation = await conversations.newConversation(newRecipient.trim());
+      } else {
+        throw new Error('No conversation creation method available');
+      }
+      
+      if (!conversation) {
+        throw new Error('Failed to create conversation');
+      }
       
       // Optimistic UI update
       const newConversation: EnhancedConversation = {
         topic: conversation.topic,
         peerAddress: newRecipient.trim(),
+        peerInboxId: (conversation as { peerInboxId?: string }).peerInboxId,
         isGroup: false,
         unreadCount: 0,
       };
@@ -396,6 +460,7 @@ export const SimpleXMTPMessaging: React.FC = () => {
       id: `opt-${Date.now()}`,
       content: messageContent,
       senderAddress: client?.inboxId || '',
+      senderInboxId: client?.inboxId || '',
       sentAt: new Date(),
       status: 'sending',
       isOptimistic: true,
@@ -453,29 +518,60 @@ export const SimpleXMTPMessaging: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Enhanced stream initialization with proper cleanup
+  // Enhanced stream initialization with proper cleanup and race condition handling
   useEffect(() => {
-    if (client && isInitialized && isOnline) {
-      loadConversations();
+    let isMounted = true;
+    let streamTimeout: NodeJS.Timeout | undefined;
+    
+    if (client && isInitialized && isOnline && isMounted) {
+      // Load conversations without dependency issues
+      setIsLoadingConversations(true);
+      (async () => {
+        if (!client || !isMounted) return;
+        
+        try {
+          console.log('[XMTP] Loading conversations...');
+          const convs = await client.conversations.list();
+          
+          if (!isMounted) return;
+          
+          const enhancedConversations = convs.map((conv: unknown) => ({
+            topic: (conv as { topic: string }).topic,
+            peerAddress: (conv as { peerAddress?: string }).peerAddress,
+            peerInboxId: (conv as { peerInboxId?: string }).peerInboxId,
+            isGroup: !(conv as { peerAddress?: string }).peerAddress,
+            unreadCount: 0,
+          }));
+          
+          setConversations(enhancedConversations);
+          setIsLoadingConversations(false);
+          console.log(`[XMTP] Loaded ${enhancedConversations.length} conversations`);
+        } catch (error) {
+          if (isMounted) {
+            setIsLoadingConversations(false);
+            handleError(error, 'load conversations');
+          }
+        }
+      })();
       
       // Start streams with a small delay to ensure client is ready
-      const streamTimeout = setTimeout(() => {
-        startMessageStream();
-        startConversationStream();
+      streamTimeout = setTimeout(() => {
+        if (isMounted) {
+          startMessageStream();
+          startConversationStream();
+        }
       }, 500);
-      
-      return () => {
-        clearTimeout(streamTimeout);
-        stopMessageStream();
-        stopConversationStream();
-      };
     }
     
     return () => {
+      isMounted = false;
+      if (streamTimeout) {
+        clearTimeout(streamTimeout);
+      }
       stopMessageStream();
       stopConversationStream();
     };
-  }, [client, isInitialized, isOnline, loadConversations, startMessageStream, startConversationStream, stopMessageStream, stopConversationStream]);
+  }, [client, isInitialized, isOnline]); // Minimal dependencies to prevent loops
 
   // Enhanced loading state
   if (isConnecting) {
@@ -578,7 +674,7 @@ export const SimpleXMTPMessaging: React.FC = () => {
                     setNewRecipient(e.target.value);
                     checkRecipientCanMessage(e.target.value);
                   }}
-                  placeholder="0x..."
+                  placeholder="0x... or inbox_..."
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -659,7 +755,7 @@ export const SimpleXMTPMessaging: React.FC = () => {
                       {conversation.isGroup ? 'Group Chat' : 'DM'}
                     </p>
                     <p className="text-xs text-gray-500 truncate">
-                      {conversation.peerAddress || conversation.topic.slice(0, 20)}...
+                      {conversation.peerInboxId || conversation.peerAddress || conversation.topic.slice(0, 20)}...
                     </p>
                     {conversation.lastMessage && (
                       <p className="text-xs text-gray-400 truncate mt-1">
@@ -690,7 +786,9 @@ export const SimpleXMTPMessaging: React.FC = () => {
                   <h3 className="font-semibold text-gray-800">
                     {selectedConversation.isGroup ? 'Group Chat' : 'Direct Message'}
                   </h3>
-                  <p className="text-xs text-gray-500">{selectedConversation.peerAddress}</p>
+                  <p className="text-xs text-gray-500">
+                    {selectedConversation.peerInboxId || selectedConversation.peerAddress}
+                  </p>
                 </div>
                 <div className="flex items-center space-x-2">
                   <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500' : 'bg-red-500'}`} />
@@ -703,6 +801,19 @@ export const SimpleXMTPMessaging: React.FC = () => {
 
             {/* Enhanced Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {/* Load More Messages Button */}
+              {hasMoreMessages && !isLoadingMessages && messages.length > 0 && (
+                <div className="text-center">
+                  <button
+                    onClick={loadMoreMessages}
+                    disabled={isLoadingMoreMessages}
+                    className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isLoadingMoreMessages ? 'Loading...' : 'Load More Messages'}
+                  </button>
+                </div>
+              )}
+              
               {isLoadingMessages ? (
                 <div className="text-center">
                   <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto"></div>
@@ -717,11 +828,11 @@ export const SimpleXMTPMessaging: React.FC = () => {
                 messages.map((message) => (
                   <div
                     key={message.id}
-                    className={`flex ${message.senderAddress === client?.inboxId ? 'justify-end' : 'justify-start'}`}
+                    className={`flex ${message.senderInboxId === client?.inboxId ? 'justify-end' : 'justify-start'}`}
                   >
                     <div
                       className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                        message.senderAddress === client?.inboxId
+                        message.senderInboxId === client?.inboxId
                           ? 'bg-blue-600 text-white'
                           : 'bg-gray-200 text-gray-900'
                       } ${message.isOptimistic ? 'opacity-75' : ''}`}
@@ -731,7 +842,7 @@ export const SimpleXMTPMessaging: React.FC = () => {
                         <span className="text-xs opacity-75">
                           {message.sentAt.toLocaleTimeString()}
                         </span>
-                        {message.senderAddress === client?.inboxId && (
+                        {message.senderInboxId === client?.inboxId && (
                           <span className="text-xs ml-2">
                             {message.status === 'sending' && '⏳'}
                             {message.status === 'sent' && '✓'}
