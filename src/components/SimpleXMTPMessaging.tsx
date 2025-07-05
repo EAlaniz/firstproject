@@ -65,9 +65,15 @@ export const SimpleXMTPMessaging: React.FC = () => {
   const streamRetryCountRef = useRef(0);
   const maxRetries = 3;
 
-  // Enhanced error handling with retry logic
+  // Enhanced error handling with retry logic and success detection
   const handleError = useCallback((error: unknown, context: string) => {
     const errorMessage = error instanceof Error ? error.message : String(error);
+    
+    // Check for successful sync operations that are incorrectly thrown as errors
+    if (errorMessage.includes('synced') && errorMessage.includes('succeeded')) {
+      console.log(`[XMTP] ${context} completed successfully (sync operation):`, errorMessage);
+      return false; // This is actually a success, not an error
+    }
     
     // Check for specific XMTP errors that we can handle gracefully
     if (errorMessage.includes('group with welcome id') || 
@@ -177,7 +183,16 @@ export const SimpleXMTPMessaging: React.FC = () => {
             cursor: (message as { cursor?: string }).cursor,
           };
 
-          setMessages(prev => [...prev, enhancedMessage]);
+          setMessages(prev => {
+            // Check if message already exists to prevent duplicates
+            const exists = prev.some(msg => msg.id === enhancedMessage.id);
+            if (exists) {
+              console.log('[XMTP] Duplicate message received, skipping:', enhancedMessage.id);
+              return prev;
+            }
+            console.log('[XMTP] New message received:', enhancedMessage.content);
+            return [...prev, enhancedMessage];
+          });
           
           // Update conversation list with latest message
           updateConversationWithMessage(enhancedMessage);
@@ -600,17 +615,37 @@ export const SimpleXMTPMessaging: React.FC = () => {
       
       console.log('[XMTP] Message sent successfully');
     } catch (error) {
-      // Update optimistic message to failed
-      setMessages(prev => 
-        prev.map(msg => 
-          msg.id === optimisticMessage.id 
-            ? { ...msg, status: 'failed', isOptimistic: false }
-            : msg
-        )
-      );
+      const errorMessage = error instanceof Error ? error.message : String(error);
       
-      handleError(error, 'send message');
-      alert('Failed to send message. Please try again.');
+      // Check if this is actually a successful sync operation
+      if (errorMessage.includes('synced') && errorMessage.includes('succeeded')) {
+        console.log('[XMTP] Message sent successfully (sync completed):', errorMessage);
+        // Update optimistic message to sent since this is actually success
+        setMessages(prev => 
+          prev.map(msg => 
+            msg.id === optimisticMessage.id 
+              ? { ...msg, status: 'sent', isOptimistic: false }
+              : msg
+          )
+        );
+      } else {
+        // This is an actual error
+        console.error('[XMTP] Message send failed:', error);
+        // Update optimistic message to failed
+        setMessages(prev => 
+          prev.map(msg => 
+            msg.id === optimisticMessage.id 
+              ? { ...msg, status: 'failed', isOptimistic: false }
+              : msg
+          )
+        );
+        
+        // Only show error alert for actual failures
+        const shouldShowError = handleError(error, 'send message');
+        if (shouldShowError) {
+          alert('Failed to send message. Please try again.');
+        }
+      }
     } finally {
       setIsSending(false);
     }
