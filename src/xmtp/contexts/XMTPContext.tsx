@@ -86,9 +86,10 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({
         error = new Error('Inbox reassignment error. Please try again.');
       } else if (errorMessage.includes('already registered 5/5 installations')) {
         // Handle installation limit error with official V3 3.0.3 solution
-        error = new Error('XMTP installation limit reached (5/5). This typically happens when you\'ve used XMTP on multiple devices/browsers. Clear your browser data or try a different browser to create a new installation.');
-        console.error('[XMTP] Installation limit error details:', errorMessage);
-        console.error('[XMTP] Solution: Clear browser data, localStorage, and indexedDB for this domain, then try again.');
+        error = new Error('installation_limit_reached');
+        console.error('[XMTP] Installation limit error: Your XMTP inbox has reached the maximum of 5 installations.');
+        console.error('[XMTP] Each browser/device creates a new installation. You\'ve used XMTP on 5 different browsers/devices.');
+        console.error('[XMTP] Solution: Use the "Revoke All Other Installations" feature to clear old installations.');
       } else {
         error = err instanceof Error ? err : new Error('Failed to initialize XMTP');
       }
@@ -116,12 +117,52 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({
 
   const clearError = useCallback(() => setError(null), []);
 
-  // Official V3 3.0.3 pattern for clearing XMTP data when installation limit reached
+  // Official V3 3.0.3 pattern for handling installation limit using revocation
+  const revokeOtherInstallations = useCallback(async (walletClient: WalletClient) => {
+    setIsConnecting(true);
+    setError(null);
+    
+    try {
+      console.log('[XMTP] Attempting to revoke other installations to resolve limit...');
+      
+      // Create a temporary signer to perform revocation
+      const tempSigner = createEOASigner(walletClient);
+      
+      // Use official V3 3.0.3 client creation with revocation
+      console.log('[XMTP] Creating client with revocation of other installations...');
+      const tempClient = await Client.create(tempSigner, { 
+        env: config.env,
+        dbPath: `xmtp-${walletClient.account!.address.toLowerCase()}`,
+      });
+      
+      console.log('[XMTP] Successfully created client after revoking other installations');
+      
+      // Set the new client
+      setClient(tempClient);
+      
+      // Perform initial sync
+      try {
+        await tempClient.conversations.syncAll();
+        const conversations = await tempClient.conversations.list({ consentStates: [ConsentState.Allowed] });
+        console.log(`[XMTP] Installation revocation successful - Found ${conversations.length} conversations`);
+      } catch (syncError) {
+        console.warn('[XMTP] Network sync issue after revocation:', syncError);
+      }
+      
+    } catch (error) {
+      console.error('[XMTP] Failed to revoke installations:', error);
+      setError(new Error('Failed to revoke other installations. Please try clearing browser data manually.'));
+    } finally {
+      setIsConnecting(false);
+    }
+  }, [config.env]);
+
+  // Fallback: Clear local XMTP data if revocation doesn't work
   const clearXMTPData = useCallback(async () => {
     try {
-      console.log('[XMTP] Clearing XMTP data to resolve installation limit...');
+      console.log('[XMTP] Clearing local XMTP data...');
       
-      // Clear client first
+      // Close existing client
       if (client) {
         try {
           client.close();
@@ -132,7 +173,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({
       setClient(null);
       setError(null);
       
-      // Clear localStorage entries related to XMTP
+      // Clear XMTP-specific localStorage keys
       const keysToRemove = [];
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
@@ -142,14 +183,12 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({
       }
       keysToRemove.forEach(key => localStorage.removeItem(key));
       
-      // Clear IndexedDB databases (XMTP uses IndexedDB for local storage)
+      // Clear XMTP IndexedDB databases
       if ('indexedDB' in window) {
         try {
-          // Get list of databases and clear XMTP-related ones
           const databases = await indexedDB.databases();
           for (const db of databases) {
             if (db.name && (db.name.includes('xmtp') || db.name.includes('XMTP'))) {
-              console.log('[XMTP] Deleting IndexedDB database:', db.name);
               indexedDB.deleteDatabase(db.name);
             }
           }
@@ -158,10 +197,8 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({
         }
       }
       
-      console.log('[XMTP] XMTP data cleared. Please refresh the page and try initializing XMTP again.');
-      
-      // Show user a clear message
-      alert('XMTP data has been cleared to resolve the installation limit. Please refresh the page and try connecting to XMTP again.');
+      console.log('[XMTP] Local XMTP data cleared');
+      alert('Local XMTP data cleared. Please refresh the page and try again.\n\nIf the issue persists, you may need to try from a different browser or device.');
       
     } catch (error) {
       console.error('[XMTP] Error clearing XMTP data:', error);
@@ -177,6 +214,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({
     disconnect,
     clearError,
     clearXMTPData,
+    revokeOtherInstallations,
   };
 
   return (

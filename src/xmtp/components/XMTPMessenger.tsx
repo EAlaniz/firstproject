@@ -9,10 +9,12 @@ import {
   type Group, 
   type Identifier
 } from '@xmtp/browser-sdk';
+import { useWalletClient } from 'wagmi';
 
 export const XMTPMessenger: React.FC = () => {
-  const { isConnecting, isInitialized, error, clearXMTPData } = useXMTP();
+  const { isConnecting, isInitialized, error, clearXMTPData, revokeOtherInstallations } = useXMTP();
   const client = useXMTPClient();
+  const { data: walletClient } = useWalletClient();
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
@@ -331,23 +333,42 @@ export const XMTPMessenger: React.FC = () => {
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <h3 className="text-lg font-semibold mb-4">XMTP Not Initialized</h3>
-          {error && error.message.includes('installation limit reached') ? (
-            <div className="space-y-4">
-              <p className="text-sm text-red-600 mb-2">
-                XMTP installation limit reached (5/5 installations)
-              </p>
-              <p className="text-xs text-gray-600 mb-4">
-                This happens when you've used XMTP on multiple devices/browsers.
-              </p>
-              <button
-                onClick={clearXMTPData}
-                className="bg-red-600 text-white px-4 py-2 rounded text-sm hover:bg-red-700"
-              >
-                Clear XMTP Data & Reset
-              </button>
-              <p className="text-xs text-gray-500 mt-2">
-                This will clear local XMTP data and allow you to reconnect.
-              </p>
+          {error && error.message === 'installation_limit_reached' ? (
+            <div className="space-y-4 max-w-md">
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                <h4 className="text-sm font-semibold text-orange-800 mb-2">
+                  🚨 Installation Limit Reached
+                </h4>
+                <p className="text-xs text-orange-700 mb-3">
+                  Your XMTP inbox has 5/5 installations (the maximum). Each browser/device creates a new installation.
+                </p>
+              </div>
+              
+              <div className="space-y-3">
+                <p className="text-xs font-medium text-gray-700">Choose a solution:</p>
+                
+                {walletClient && (
+                  <button
+                    onClick={() => revokeOtherInstallations(walletClient)}
+                    disabled={isConnecting}
+                    className="w-full bg-blue-600 text-white px-4 py-3 rounded text-sm hover:bg-blue-700 disabled:bg-gray-400"
+                  >
+                    {isConnecting ? 'Revoking...' : '✨ Revoke Other Installations (Recommended)'}
+                  </button>
+                )}
+                
+                <button
+                  onClick={clearXMTPData}
+                  className="w-full bg-gray-600 text-white px-4 py-2 rounded text-sm hover:bg-gray-700"
+                >
+                  🗑️ Clear Local Data (Fallback)
+                </button>
+              </div>
+              
+              <div className="text-xs text-gray-500 space-y-1">
+                <p><strong>Recommended:</strong> Revoke other installations to free up space.</p>
+                <p><strong>Fallback:</strong> Clear local data, then refresh the page.</p>
+              </div>
             </div>
           ) : (
             <p className="text-sm text-gray-600">Connect your wallet to start messaging</p>

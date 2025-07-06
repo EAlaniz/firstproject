@@ -11,6 +11,7 @@ export interface XMTPContextValue {
   disconnect: () => Promise<void>;
   clearError: () => void;
   clearXMTPData: () => Promise<void>;
+  revokeOtherInstallations: (walletClient: WalletClient) => Promise<void>;
 }
 
 // Message Types - using official XMTP V3 3.0.3 types
