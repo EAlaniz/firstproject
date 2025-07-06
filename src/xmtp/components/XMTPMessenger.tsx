@@ -94,23 +94,38 @@ export const XMTPMessenger: React.FC = () => {
     }
   }, [client]);
 
-  // Create conversation using official XMTP V3 3.0.3 patterns
+  // Create conversation using official XMTP V3 3.0.3 patterns with identity reachability check
   const handleCreateConversation = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newRecipient.trim() || !client) return;
     
     try {
+      const recipientAddress = newRecipient.trim().toLowerCase();
+      
+      // Official V3 3.0.3 pattern: Check identity reachability first
+      console.log('[XMTP] Checking if recipient can receive messages...');
+      const canMessage = await client.canMessage([recipientAddress]);
+      
+      if (!canMessage[recipientAddress]) {
+        alert('This address cannot receive XMTP messages. Please ensure they have an XMTP identity.');
+        return;
+      }
+      
       // Use official XMTP V3 browser-sdk pattern for creating conversations with identifier
       const identifier: Identifier = {
-        identifier: newRecipient.trim().toLowerCase(),
+        identifier: recipientAddress,
         identifierKind: 'Ethereum',
       };
       
       const conversation = await client.conversations.newDmWithIdentifier(identifier);
       
+      // Official V3 3.0.3 pattern: Set conversation consent to allowed for user-initiated conversations
+      await conversation.updateConsentState(ConsentState.Allowed);
+      console.log('[XMTP] Conversation consent set to allowed');
+      
       const newConversation: Conversation = {
         id: conversation.id, // XMTP V3 uses 'id'
-        peerAddress: newRecipient.trim(),
+        peerAddress: recipientAddress,
         isGroup: false,
         conversation: conversation as Dm<unknown>, // Store the actual XMTP conversation object
       };
@@ -126,27 +141,90 @@ export const XMTPMessenger: React.FC = () => {
     }
   };
 
-  // Send message using official XMTP V3 3.0.3 patterns
+  // Send message using official XMTP V3 3.0.3 patterns with optimistic UI
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!messageText.trim() || isSending || !selectedConversation?.conversation) return;
+    if (!messageText.trim() || isSending || !selectedConversation?.conversation || !client) return;
     
     const messageContent = messageText.trim();
     setMessageText('');
     setIsSending(true);
     
     try {
-      // Use the stored conversation object directly
-      const messageId = await selectedConversation.conversation.send(messageContent);
-      console.log('[XMTP] Message sent with ID:', messageId);
+      // Check conversation consent state - official V3 3.0.3 pattern
+      const consentState = await selectedConversation.conversation.consentState();
+      if (consentState === ConsentState.Denied) {
+        alert('Cannot send message to this conversation. The conversation has been denied.');
+        setMessageText(messageContent); // Restore text
+        return;
+      }
       
-      // Official V3 3.0.3 pattern: Don't add optimistic updates
-      // Let the message stream handle adding messages to avoid race conditions
-      // The stream will receive the message once it's properly synced
+      // If consent is unknown, set to allowed for user-initiated messages
+      if (consentState === ConsentState.Unknown) {
+        await selectedConversation.conversation.updateConsentState(ConsentState.Allowed);
+        console.log('[XMTP] Updated conversation consent to allowed');
+      }
+      
+      // V3 3.0.3 pattern: Ensure conversation is synced before sending
+      try {
+        console.log('[XMTP] Syncing conversation before sending message...');
+        await selectedConversation.conversation.sync();
+      } catch (syncError) {
+        console.warn('[XMTP] Conversation sync warning (continuing):', syncError);
+      }
+      
+      // Official V3 3.0.3 optimistic sending pattern
+      try {
+        console.log('[XMTP] Sending message with optimistic UI...');
+        
+        // Send optimistic (immediately show in UI)
+        await selectedConversation.conversation.sendOptimistic(messageContent);
+        console.log('[XMTP] Message added optimistically to local UI');
+        
+        // Publish to network
+        await selectedConversation.conversation.publishMessages();
+        console.log('[XMTP] Message published to network successfully');
+        
+      } catch (sendError) {
+        const errorMessage = sendError instanceof Error ? sendError.message : String(sendError);
+        
+        // Handle specific V3 3.0.3 error patterns
+        if (errorMessage.includes('InboxValidationFailed') || errorMessage.includes('Intent') || errorMessage.includes('moved to error status')) {
+          console.warn('[XMTP] Inbox validation issue detected, attempting full sync recovery...');
+          
+          // V3 3.0.3 recovery pattern: Full sync to resolve identity issues
+          try {
+            await client.conversations.syncAll();
+            console.log('[XMTP] Full sync completed, retrying message send...');
+            
+            // Retry with standard send after sync
+            const messageId = await selectedConversation.conversation.send(messageContent);
+            console.log('[XMTP] Message sent successfully after recovery:', messageId);
+            return; // Success, exit function
+          } catch (retryError) {
+            console.error('[XMTP] Message send failed even after recovery:', retryError);
+            throw new Error('Message sending failed due to identity synchronization issues. Please try reconnecting XMTP.');
+          }
+        } else {
+          // Re-throw other errors
+          throw sendError;
+        }
+      }
       
     } catch (error) {
       console.error('[XMTP] Failed to send message:', error);
-      alert('Failed to send message. Please try again.');
+      
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      let userMessage = 'Failed to send message. Please try again.';
+      
+      // Provide more specific error messages for common V3 issues
+      if (errorMessage.includes('identity synchronization')) {
+        userMessage = 'Identity sync issue. Please reconnect XMTP and try again.';
+      } else if (errorMessage.includes('InboxValidationFailed')) {
+        userMessage = 'Account validation issue. Please reconnect XMTP.';
+      }
+      
+      alert(userMessage);
       
       // Restore message text on failure
       setMessageText(messageContent);
@@ -159,17 +237,17 @@ export const XMTPMessenger: React.FC = () => {
   useEffect(() => {
     if (!client || !isInitialized || !selectedConversation) return;
 
-    let messageStream: AsyncIterable<DecodedMessage<unknown>> | null = null;
+    let messageStream: any = null;
     let isStreamActive = true;
 
     const startMessageStream = async () => {
       try {
         // Use XMTP V3 browser-sdk streaming pattern with consent state filtering
-        messageStream = (await client.conversations.streamAllMessages(
+        messageStream = await client.conversations.streamAllMessages(
           undefined, // callback
           undefined, // conversationType
           [ConsentState.Allowed] // consentStates - official pattern
-        )) as AsyncIterable<DecodedMessage<unknown>>;
+        );
         
         console.log('[XMTP] Message stream started');
         
@@ -215,9 +293,8 @@ export const XMTPMessenger: React.FC = () => {
       if (messageStream) {
         try {
           // Use official V3 3.0.3 stream cleanup pattern
-          const stream = messageStream as AsyncIterable<DecodedMessage<unknown>> & { return?: () => void };
-          if (stream.return) {
-            stream.return();
+          if (messageStream && typeof messageStream.return === 'function') {
+            messageStream.return();
           }
         } catch (error) {
           console.error('[XMTP] Error closing message stream:', error);

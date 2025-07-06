@@ -44,9 +44,11 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({
         throw new Error('Invalid XMTP signer');
       }
       
-      // Create XMTP client using official pattern
+      // Create XMTP client using official V3 3.0.3 pattern with enhanced options
       const xmtpClient = await Client.create(signer, { 
-        env: config.env 
+        env: config.env,
+        // Use official V3 3.0.3 pattern for handling db path and encryption
+        dbPath: `xmtp-${walletClient.account!.address.toLowerCase()}`,
       });
       
       setClient(xmtpClient);
@@ -54,14 +56,20 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({
       console.log('[XMTP] Inbox ID:', xmtpClient.inboxId);
       console.log('[XMTP] Environment:', config.env);
       
-      // Sync conversations as per official XMTP V3 pattern with consent filtering
+      // Enhanced sync pattern for V3 3.0.3 to handle identity validation issues
       try {
-        await xmtpClient.conversations.sync();
+        console.log('[XMTP] Starting conversation sync...');
+        
+        // Use official V3 3.0.3 comprehensive sync pattern including history
+        await xmtpClient.conversations.syncAll();
+        console.log('[XMTP] Full sync completed (conversations, messages, and history)');
+        
         // Use official pattern: list only allowed conversations
         const conversations = await xmtpClient.conversations.list({ consentStates: [ConsentState.Allowed] });
         console.log(`[XMTP] Network sync successful - Found ${conversations.length} allowed conversations`);
       } catch (syncError) {
-        console.warn('[XMTP] Network sync issue:', syncError);
+        console.warn('[XMTP] Network sync issue (may resolve automatically):', syncError);
+        // Don't throw - sync issues often resolve themselves in V3
       }
     } catch (err) {
       let error: Error;
