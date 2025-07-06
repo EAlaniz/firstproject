@@ -3,9 +3,10 @@ import { useAccount, useBalance, useWalletClient, useDisconnect } from 'wagmi';
 import { ENV_CONFIG } from './constants';
 import { EnhancedWalletConnector } from './components/EnhancedWalletConnector';
 import Modal from './components/Modal';
-import { SimpleXMTPMessaging } from './components/SimpleXMTPMessaging';
-import { useSimpleXMTP, SimpleXMTPProvider } from './contexts/SimpleXMTPContext';
-import { useXMTPClient } from './contexts/useXMTPHooks';
+import { XMTPMessenger } from './xmtp/components/XMTPMessenger';
+import { XMTPProvider } from './xmtp/contexts/XMTPContext';
+import { useXMTP } from './xmtp/contexts/useXMTPContext';
+import { useXMTPClient } from './xmtp/hooks/useXMTP';
 import { Activity, Trophy, Circle, MessageCircle, Menu, X, User, ExternalLink, Settings, Lock, LogOut } from 'lucide-react';
 // Import the Farcaster Frame SDK for mini app splash screen control
 import { sdk } from '@farcaster/frame-sdk';
@@ -53,11 +54,11 @@ function AppContent() {
       }
     })();
   }, []);
-  // Use Simple XMTP context
+  // Use XMTP context
   const {
     initialize: initializeClient,
     isConnecting: isInitializing
-  } = useSimpleXMTP();
+  } = useXMTP();
   const xmtpClient = useXMTPClient();
 
   // Debug modal state
@@ -644,7 +645,7 @@ function AppContent() {
             ) : (
               // Messages Content
               <div className="h-[calc(100vh-120px)]">
-                <SimpleXMTPMessaging />
+                <XMTPMessenger />
               </div>
             )}
 
@@ -881,13 +882,13 @@ function AppContent() {
   );
 }
 
-// Main App component that wraps everything with Simple XMTP provider
+// Main App component that wraps everything with XMTP provider
 function App() {
   return (
-    <SimpleXMTPProvider>
+    <XMTPProvider>
       <Toaster position="top-center" />
       <AppContent />
-    </SimpleXMTPProvider>
+    </XMTPProvider>
   );
 }
 
