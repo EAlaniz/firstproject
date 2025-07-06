@@ -74,17 +74,21 @@ export const XMTPMessenger: React.FC = () => {
     if (!client || !conversation.conversation) return;
     
     try {
-      // Sync messages first to ensure we have the latest state
-      await conversation.conversation.sync();
-      
+      // Official V3 3.0.3 pattern: Load messages without additional sync
+      // The conversation is already synced when loaded from conversations.list()
       const msgs = await conversation.conversation.messages({ limit: BigInt(50) });
       const enhancedMessages: Message[] = msgs.map((msg: DecodedMessage<unknown>) => ({
         id: msg.id,
         content: String(msg.content || ''),
-        senderAddress: msg.senderInboxId, // Use senderInboxId instead of senderAddress
+        senderAddress: msg.senderInboxId, // Use senderInboxId from V3 3.0.3
         sentAt: new Date(Number(msg.sentAtNs) / 1000000), // Convert nanoseconds to milliseconds
       }));
+      
+      // Sort messages by timestamp to ensure proper order
+      enhancedMessages.sort((a, b) => a.sentAt.getTime() - b.sentAt.getTime());
+      
       setMessages(enhancedMessages);
+      console.log(`[XMTP] Loaded ${enhancedMessages.length} messages for conversation`);
     } catch (error) {
       console.error('[XMTP] Failed to load messages:', error);
     }
@@ -134,27 +138,26 @@ export const XMTPMessenger: React.FC = () => {
     try {
       // Use the stored conversation object directly
       const messageId = await selectedConversation.conversation.send(messageContent);
+      console.log('[XMTP] Message sent with ID:', messageId);
       
-      // Add message to local state (optimistic update)
-      const newMessage: Message = {
-        id: messageId,
-        content: messageContent,
-        senderAddress: client!.inboxId || '',
-        sentAt: new Date(),
-      };
-      setMessages(prev => [...prev, newMessage]);
-      console.log('[XMTP] Message sent successfully:', messageId);
+      // Official V3 3.0.3 pattern: Don't add optimistic updates
+      // Let the message stream handle adding messages to avoid race conditions
+      // The stream will receive the message once it's properly synced
+      
     } catch (error) {
       console.error('[XMTP] Failed to send message:', error);
       alert('Failed to send message. Please try again.');
+      
+      // Restore message text on failure
+      setMessageText(messageContent);
     } finally {
       setIsSending(false);
     }
   };
 
-  // Message streaming using official XMTP V3 3.0.3 patterns
+  // Message streaming using official XMTP V3 3.0.3 patterns  
   useEffect(() => {
-    if (!client || !isInitialized) return;
+    if (!client || !isInitialized || !selectedConversation) return;
 
     let messageStream: AsyncIterable<DecodedMessage<unknown>> | null = null;
     let isStreamActive = true;
@@ -168,25 +171,40 @@ export const XMTPMessenger: React.FC = () => {
           [ConsentState.Allowed] // consentStates - official pattern
         )) as AsyncIterable<DecodedMessage<unknown>>;
         
+        console.log('[XMTP] Message stream started');
+        
         // Stream messages using async iterator pattern
         for await (const message of messageStream) {
           if (!isStreamActive) break; // Check if stream should stop
           
-          const newMessage: Message = {
-            id: message.id,
-            content: String(message.content || ''),
-            senderAddress: message.senderInboxId, // Use senderInboxId instead of senderAddress
-            sentAt: new Date(Number(message.sentAtNs) / 1000000), // Convert nanoseconds to milliseconds
-          };
-          
-          setMessages(prev => {
-            // Prevent duplicates
-            if (prev.some(msg => msg.id === newMessage.id)) return prev;
-            return [...prev, newMessage];
-          });
+          // Only add messages for the currently selected conversation
+          if (message.conversationId === selectedConversation?.id) {
+            const newMessage: Message = {
+              id: message.id,
+              content: String(message.content || ''),
+              senderAddress: message.senderInboxId, // Use senderInboxId from V3 3.0.3
+              sentAt: new Date(Number(message.sentAtNs) / 1000000), // Convert nanoseconds to milliseconds
+            };
+            
+            setMessages(prev => {
+              // Prevent duplicates and maintain chronological order
+              if (prev.some(msg => msg.id === newMessage.id)) return prev;
+              
+              const updated = [...prev, newMessage];
+              return updated.sort((a, b) => a.sentAt.getTime() - b.sentAt.getTime());
+            });
+            
+            console.log('[XMTP] New message received via stream:', newMessage.id);
+          }
         }
       } catch (error) {
-        console.error('[XMTP] Message stream error:', error);
+        // Official V3 3.0.3 pattern: Handle specific stream errors gracefully
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        if (errorMessage.includes('group with welcome id') || errorMessage.includes('not found')) {
+          console.warn('[XMTP] Stream warning (expected during sync):', errorMessage);
+        } else {
+          console.error('[XMTP] Message stream error:', error);
+        }
       }
     };
 
@@ -206,7 +224,7 @@ export const XMTPMessenger: React.FC = () => {
         }
       }
     };
-  }, [client, isInitialized]);
+  }, [client, isInitialized, selectedConversation]);
 
   // Load conversations on mount
   useEffect(() => {
