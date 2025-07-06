@@ -11,7 +11,7 @@ import {
 } from '@xmtp/browser-sdk';
 
 export const XMTPMessenger: React.FC = () => {
-  const { isConnecting, isInitialized } = useXMTP();
+  const { isConnecting, isInitialized, error, clearXMTPData } = useXMTP();
   const client = useXMTPClient();
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -331,7 +331,27 @@ export const XMTPMessenger: React.FC = () => {
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <h3 className="text-lg font-semibold mb-4">XMTP Not Initialized</h3>
-          <p className="text-sm text-gray-600">Connect your wallet to start messaging</p>
+          {error && error.message.includes('installation limit reached') ? (
+            <div className="space-y-4">
+              <p className="text-sm text-red-600 mb-2">
+                XMTP installation limit reached (5/5 installations)
+              </p>
+              <p className="text-xs text-gray-600 mb-4">
+                This happens when you've used XMTP on multiple devices/browsers.
+              </p>
+              <button
+                onClick={clearXMTPData}
+                className="bg-red-600 text-white px-4 py-2 rounded text-sm hover:bg-red-700"
+              >
+                Clear XMTP Data & Reset
+              </button>
+              <p className="text-xs text-gray-500 mt-2">
+                This will clear local XMTP data and allow you to reconnect.
+              </p>
+            </div>
+          ) : (
+            <p className="text-sm text-gray-600">Connect your wallet to start messaging</p>
+          )}
         </div>
       </div>
     );

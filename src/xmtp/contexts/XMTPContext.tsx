@@ -73,6 +73,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({
       }
     } catch (err) {
       let error: Error;
+      const errorMessage = err instanceof Error ? err.message : String(err);
       
       // Handle specific XMTP V3 3.0.3 error types
       if (err instanceof ClientNotInitializedError) {
@@ -83,6 +84,11 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({
         error = new Error('This account is already associated with a different inbox');
       } else if (err instanceof InboxReassignError) {
         error = new Error('Inbox reassignment error. Please try again.');
+      } else if (errorMessage.includes('already registered 5/5 installations')) {
+        // Handle installation limit error with official V3 3.0.3 solution
+        error = new Error('XMTP installation limit reached (5/5). This typically happens when you\'ve used XMTP on multiple devices/browsers. Clear your browser data or try a different browser to create a new installation.');
+        console.error('[XMTP] Installation limit error details:', errorMessage);
+        console.error('[XMTP] Solution: Clear browser data, localStorage, and indexedDB for this domain, then try again.');
       } else {
         error = err instanceof Error ? err : new Error('Failed to initialize XMTP');
       }
@@ -110,6 +116,58 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({
 
   const clearError = useCallback(() => setError(null), []);
 
+  // Official V3 3.0.3 pattern for clearing XMTP data when installation limit reached
+  const clearXMTPData = useCallback(async () => {
+    try {
+      console.log('[XMTP] Clearing XMTP data to resolve installation limit...');
+      
+      // Clear client first
+      if (client) {
+        try {
+          client.close();
+        } catch (err) {
+          console.warn('[XMTP] Error closing client:', err);
+        }
+      }
+      setClient(null);
+      setError(null);
+      
+      // Clear localStorage entries related to XMTP
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.includes('xmtp') || key.includes('XMTP'))) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+      
+      // Clear IndexedDB databases (XMTP uses IndexedDB for local storage)
+      if ('indexedDB' in window) {
+        try {
+          // Get list of databases and clear XMTP-related ones
+          const databases = await indexedDB.databases();
+          for (const db of databases) {
+            if (db.name && (db.name.includes('xmtp') || db.name.includes('XMTP'))) {
+              console.log('[XMTP] Deleting IndexedDB database:', db.name);
+              indexedDB.deleteDatabase(db.name);
+            }
+          }
+        } catch (err) {
+          console.warn('[XMTP] Could not clear IndexedDB:', err);
+        }
+      }
+      
+      console.log('[XMTP] XMTP data cleared. Please refresh the page and try initializing XMTP again.');
+      
+      // Show user a clear message
+      alert('XMTP data has been cleared to resolve the installation limit. Please refresh the page and try connecting to XMTP again.');
+      
+    } catch (error) {
+      console.error('[XMTP] Error clearing XMTP data:', error);
+    }
+  }, [client]);
+
   const contextValue: XMTPContextValue = {
     client,
     isInitialized: !!client,
@@ -118,6 +176,7 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({
     initialize,
     disconnect,
     clearError,
+    clearXMTPData,
   };
 
   return (
