@@ -117,45 +117,90 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({
 
   const clearError = useCallback(() => setError(null), []);
 
-  // Official V3 3.0.3 pattern for handling installation limit using revocation
+  // Enhanced approach: Clear local data first, then try initialization
   const revokeOtherInstallations = useCallback(async (walletClient: WalletClient) => {
     setIsConnecting(true);
     setError(null);
     
     try {
-      console.log('[XMTP] Attempting to revoke other installations to resolve limit...');
+      console.log('[XMTP] Step 1: Clearing local XMTP data to resolve database conflicts...');
       
-      // Create a temporary signer to perform revocation
+      // Close any existing client first
+      if (client) {
+        try {
+          client.close();
+          console.log('[XMTP] Existing client closed');
+        } catch (err) {
+          console.warn('[XMTP] Error closing existing client:', err);
+        }
+      }
+      setClient(null);
+      
+      // Clear all XMTP-related local data to avoid database conflicts
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.includes('xmtp') || key.includes('XMTP'))) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+      console.log('[XMTP] LocalStorage cleared');
+      
+      // Clear IndexedDB databases
+      if ('indexedDB' in window) {
+        try {
+          const databases = await indexedDB.databases();
+          for (const db of databases) {
+            if (db.name && (db.name.includes('xmtp') || db.name.includes('XMTP'))) {
+              indexedDB.deleteDatabase(db.name);
+              console.log('[XMTP] IndexedDB cleared:', db.name);
+            }
+          }
+        } catch (err) {
+          console.warn('[XMTP] Could not clear IndexedDB:', err);
+        }
+      }
+      
+      // Wait a moment for cleanup to complete
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      console.log('[XMTP] Step 2: Creating fresh client with unique dbPath...');
+      
+      // Create signer and new client with a unique dbPath to avoid conflicts
       const tempSigner = createEOASigner(walletClient);
+      const uniqueDbPath = `xmtp-fresh-${walletClient.account!.address.toLowerCase()}-${Date.now()}`;
       
-      // Use official V3 3.0.3 client creation with revocation
-      console.log('[XMTP] Creating client with revocation of other installations...');
       const tempClient = await Client.create(tempSigner, { 
         env: config.env,
-        dbPath: `xmtp-${walletClient.account!.address.toLowerCase()}`,
+        dbPath: uniqueDbPath,
       });
       
-      console.log('[XMTP] Successfully created client after revoking other installations');
-      
-      // Set the new client
+      console.log('[XMTP] Fresh client created successfully');
       setClient(tempClient);
       
       // Perform initial sync
       try {
         await tempClient.conversations.syncAll();
         const conversations = await tempClient.conversations.list({ consentStates: [ConsentState.Allowed] });
-        console.log(`[XMTP] Installation revocation successful - Found ${conversations.length} conversations`);
+        console.log(`[XMTP] Success! Found ${conversations.length} conversations after fresh initialization`);
       } catch (syncError) {
-        console.warn('[XMTP] Network sync issue after revocation:', syncError);
+        console.warn('[XMTP] Network sync issue:', syncError);
       }
       
     } catch (error) {
-      console.error('[XMTP] Failed to revoke installations:', error);
-      setError(new Error('Failed to revoke other installations. Please try clearing browser data manually.'));
+      console.error('[XMTP] Failed to create fresh installation:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      
+      if (errorMessage.includes('already registered 5/5 installations')) {
+        setError(new Error('installation_limit_cannot_resolve'));
+      } else {
+        setError(new Error('Failed to create fresh installation. Please try using a different browser or device.'));
+      }
     } finally {
       setIsConnecting(false);
     }
-  }, [config.env]);
+  }, [config.env, client]);
 
   // Fallback: Clear local XMTP data if revocation doesn't work
   const clearXMTPData = useCallback(async () => {

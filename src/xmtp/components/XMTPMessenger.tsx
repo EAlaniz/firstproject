@@ -106,19 +106,21 @@ export const XMTPMessenger: React.FC = () => {
       
       // Official V3 3.0.3 pattern: Check identity reachability first
       console.log('[XMTP] Checking if recipient can receive messages...');
-      const canMessage = await client.canMessage([recipientAddress]);
       
-      if (!canMessage[recipientAddress]) {
-        alert('This address cannot receive XMTP messages. Please ensure they have an XMTP identity.');
-        return;
-      }
-      
-      // Use official XMTP V3 browser-sdk pattern for creating conversations with identifier
+      // Create Identifier object for canMessage check
       const identifier: Identifier = {
         identifier: recipientAddress,
         identifierKind: 'Ethereum',
       };
       
+      const canMessage = await client.canMessage([identifier]);
+      
+      if (!canMessage.get(recipientAddress)) {
+        alert('This address cannot receive XMTP messages. Please ensure they have an XMTP identity.');
+        return;
+      }
+      
+      // Use official XMTP V3 browser-sdk pattern for creating conversations with identifier
       const conversation = await client.conversations.newDmWithIdentifier(identifier);
       
       // Official V3 3.0.3 pattern: Set conversation consent to allowed for user-initiated conversations
