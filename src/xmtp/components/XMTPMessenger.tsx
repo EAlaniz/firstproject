@@ -36,8 +36,23 @@ export const XMTPMessenger: React.FC = () => {
       // First sync conversations to ensure we have the latest state
       await client.conversations.sync();
       
-      // Use official XMTP V3 pattern with consent state filtering
-      const convs = await client.conversations.list({ consentStates: [ConsentState.Allowed] });
+      // Use official XMTP V3 pattern - include both Allowed and Unknown consent states
+      // This ensures we capture new conversations that haven't been explicitly allowed yet
+      const convs = await client.conversations.list({ 
+        consentStates: [ConsentState.Allowed, ConsentState.Unknown] 
+      });
+      
+      console.log(`[XMTP] Raw conversations found: ${convs.length}`);
+      
+      // Debug: Log all conversation details
+      convs.forEach((conv, index) => {
+        console.log(`[XMTP] Conversation ${index + 1}:`, {
+          id: conv.id,
+          type: 'name' in conv ? 'Group' : 'DM',
+          hasName: 'name' in conv,
+          properties: Object.keys(conv)
+        });
+      });
       
       const enhancedConversations: Conversation[] = await Promise.all(
         convs.map(async (conv) => {
@@ -46,10 +61,22 @@ export const XMTPMessenger: React.FC = () => {
           
           if (!isGroup) {
             try {
-              // Use the proper method for getting peer inbox ID in V3 3.0.3
-              peerAddress = await (conv as Dm<unknown>).peerInboxId();
+              // For V3, try to get the peer address from the conversation context
+              const dm = conv as Dm<unknown>;
+              
+              // Try multiple approaches to get peer address
+              try {
+                peerAddress = await dm.peerInboxId();
+              } catch (error) {
+                console.warn('[XMTP] peerInboxId failed, trying alternative approach:', error);
+                // Fallback: try to extract from conversation ID or context
+                // This is a workaround for V3 peer address resolution
+                peerAddress = dm.id.split('-').pop() || undefined;
+              }
+              
+              console.log(`[XMTP] Conversation ${conv.id} peer address: ${peerAddress}`);
             } catch (error) {
-              console.warn('[XMTP] Failed to get peer inbox ID:', error);
+              console.warn('[XMTP] Failed to get peer address for conversation:', conv.id, error);
             }
           }
           
@@ -64,6 +91,12 @@ export const XMTPMessenger: React.FC = () => {
       
       setConversations(enhancedConversations);
       console.log(`[XMTP] Loaded ${enhancedConversations.length} conversations`);
+      
+      // Log conversation details for debugging
+      enhancedConversations.forEach(conv => {
+        console.log(`[XMTP] Conversation: ${conv.id}, Group: ${conv.isGroup}, Peer: ${conv.peerAddress}`);
+      });
+      
     } catch (error) {
       console.error('[XMTP] Failed to load conversations:', error);
     } finally {
@@ -246,11 +279,12 @@ export const XMTPMessenger: React.FC = () => {
 
     const startMessageStream = async () => {
       try {
-        // Use XMTP V3 browser-sdk streaming pattern with consent state filtering
+        // Use XMTP V3 browser-sdk streaming pattern - include both Allowed and Unknown consent states
+        // This ensures we receive messages from new conversations that haven't been explicitly allowed yet
         messageStream = await client.conversations.streamAllMessages(
           undefined, // callback
           undefined, // conversationType
-          [ConsentState.Allowed] // consentStates - official pattern
+          [ConsentState.Allowed, ConsentState.Unknown] // consentStates - include unknown for new conversations
         );
         
         console.log('[XMTP] Message stream started');
@@ -307,11 +341,65 @@ export const XMTPMessenger: React.FC = () => {
     };
   }, [client, isInitialized, selectedConversation]);
 
-  // Load conversations on mount
+  // Load conversations on mount and stream for new conversations
   useEffect(() => {
-    if (client && isInitialized) {
-      loadConversations();
-    }
+    if (!client || !isInitialized) return;
+
+    let conversationStream: any = null;
+    let isStreamActive = true;
+
+    const startConversationStream = async () => {
+      try {
+        // Load existing conversations first
+        await loadConversations();
+        
+        // Start streaming for new conversations
+        console.log('[XMTP] Starting conversation stream...');
+        conversationStream = await client.conversations.stream();
+        
+        for await (const conversation of conversationStream) {
+          if (!isStreamActive) break;
+          
+          console.log('[XMTP] New conversation received via stream:', conversation.id);
+          
+          // Check if conversation already exists
+          setConversations(prev => {
+            if (prev.some(conv => conv.id === conversation.id)) {
+              return prev; // Already exists
+            }
+            
+            // Add new conversation
+            const isGroup = 'name' in conversation;
+            const newConversation: Conversation = {
+              id: conversation.id,
+              peerAddress: undefined, // Will be resolved when selected
+              isGroup,
+              conversation: conversation as Dm<unknown> | Group<unknown>,
+            };
+            
+            console.log('[XMTP] Added new conversation to list:', conversation.id);
+            return [newConversation, ...prev];
+          });
+        }
+      } catch (error) {
+        console.error('[XMTP] Conversation stream error:', error);
+      }
+    };
+
+    startConversationStream();
+
+    return () => {
+      isStreamActive = false;
+      if (conversationStream) {
+        try {
+          if (typeof conversationStream.return === 'function') {
+            conversationStream.return();
+          }
+        } catch (error) {
+          console.error('[XMTP] Error closing conversation stream:', error);
+        }
+      }
+    };
   }, [client, isInitialized, loadConversations]);
 
   // Auto-scroll to bottom
@@ -387,12 +475,21 @@ export const XMTPMessenger: React.FC = () => {
         <div className="p-4 border-b border-gray-200 bg-gray-50">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold text-gray-800">Messages</h2>
-            <button
-              onClick={() => setShowNewConversation(!showNewConversation)}
-              className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700"
-            >
-              New
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={loadConversations}
+                disabled={isLoading}
+                className="bg-gray-600 text-white px-3 py-1 rounded text-sm hover:bg-gray-700 disabled:bg-gray-400"
+              >
+                {isLoading ? 'Loading...' : 'Refresh'}
+              </button>
+              <button
+                onClick={() => setShowNewConversation(!showNewConversation)}
+                className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700"
+              >
+                New
+              </button>
+            </div>
           </div>
         </div>
 
