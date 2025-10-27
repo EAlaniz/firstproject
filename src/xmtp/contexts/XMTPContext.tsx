@@ -1,7 +1,7 @@
 import React, { createContext, useState, useCallback } from 'react';
-import { 
-  Client, 
-  ConsentState, 
+import {
+  Client,
+  ConsentState,
   ClientNotInitializedError,
   SignerUnavailableError,
   AccountAlreadyAssociatedError,
@@ -10,6 +10,7 @@ import {
 import type { WalletClient } from 'viem';
 import type { XMTPContextValue, XMTPConfig } from '../types';
 import { createEOASigner, validateSigner } from '../utils/signer';
+import toast from 'react-hot-toast';
 
 export const XMTPContext = createContext<XMTPContextValue | null>(null);
 
@@ -243,7 +244,9 @@ export const XMTPProvider: React.FC<XMTPProviderProps> = ({
       }
       
       console.log('[XMTP] Local XMTP data cleared');
-      alert('Local XMTP data cleared. Please refresh the page and try again.\n\nIf the issue persists, you may need to try from a different browser or device.');
+      toast.error('Local XMTP data cleared. Please refresh the page and try again.\n\nIf the issue persists, you may need to try from a different browser or device.', {
+        duration: 6000,
+      });
       
     } catch (error) {
       console.error('[XMTP] Error clearing XMTP data:', error);

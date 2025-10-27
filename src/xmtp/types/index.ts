@@ -27,7 +27,9 @@ export interface Conversation {
   id: string; // XMTP V3 uses 'id' not 'topic'
   peerAddress?: string;
   isGroup: boolean;
-  conversation?: Dm<unknown> | Group<unknown>; // Store the actual XMTP conversation object with proper typing
+  // Use 'any' for conversation content type to avoid generic type conflicts
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  conversation?: Dm<any> | Group<any>; // Store the actual XMTP conversation object with proper typing
 }
 
 // XMTP Configuration - V3 3.0.3 Compatible

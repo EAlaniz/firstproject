@@ -42,21 +42,27 @@ export function setupCoinbaseWalletSDKFix() {
   if (typeof window !== 'undefined' && (window as unknown as { CoinbaseWalletSDK?: unknown }).CoinbaseWalletSDK) {
     try {
       const CoinbaseWalletSDK = (window as unknown as { CoinbaseWalletSDK: unknown }).CoinbaseWalletSDK;
-      
+
       // Override the default configuration to include Base
-      const originalConstructor = CoinbaseWalletSDK;
+      const originalConstructor = CoinbaseWalletSDK as any; // eslint-disable-line @typescript-eslint/no-explicit-any
       (window as unknown as { CoinbaseWalletSDK: unknown }).CoinbaseWalletSDK = function(options: { rpc?: Record<string, string> }) {
+        const rpcUrl = import.meta.env.VITE_RPC_URL;
+        if (!rpcUrl) {
+          console.error('❌ VITE_RPC_URL is required for Coinbase Wallet SDK');
+          throw new Error('VITE_RPC_URL environment variable is required');
+        }
+
         const enhancedOptions = {
           ...options,
           rpc: {
             ...options.rpc,
-            8453: import.meta.env.VITE_RPC_URL || 'https://flashy-convincing-paper.base-mainnet.quiknode.pro/fe55bc09278a1ccc534942fad989695b412ab4ea/'
+            8453: rpcUrl
           }
         };
-        
+
         console.log('🔧 Coinbase Wallet SDK configured for Base network');
         return new originalConstructor(enhancedOptions);
-      };
+      } as any; // eslint-disable-line @typescript-eslint/no-explicit-any
       
       console.log('✅ Coinbase Wallet SDK fix applied');
     } catch (error) {

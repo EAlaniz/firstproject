@@ -2,16 +2,18 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useXMTP } from '../contexts/useXMTPContext';
 import { useXMTPClient } from '../hooks/useXMTP';
 import type { Message, Conversation } from '../types';
-import { 
-  ConsentState, 
-  type Dm, 
-  type DecodedMessage, 
-  type Group, 
+import {
+  ConsentState,
+  type Dm,
+  type DecodedMessage,
+  type Group,
   type Identifier
 } from '@xmtp/browser-sdk';
 import { useWalletClient } from 'wagmi';
+import toast from 'react-hot-toast';
+import { isGroupConversation, isDmConversation, isIdentitySyncError, isInboxValidationError } from '../utils/typeGuards';
 
-export const XMTPMessenger: React.FC = () => {
+export const XMTPMessenger: React.FC = React.memo(() => {
   const { isConnecting, isInitialized, error, clearXMTPData, revokeOtherInstallations } = useXMTP();
   const client = useXMTPClient();
   const { data: walletClient } = useWalletClient();
@@ -56,35 +58,31 @@ export const XMTPMessenger: React.FC = () => {
       
       const enhancedConversations: Conversation[] = await Promise.all(
         convs.map(async (conv) => {
-          const isGroup = 'name' in conv; // Group has 'name' property, Dm doesn't
           let peerAddress: string | undefined;
-          
-          if (!isGroup) {
+
+          if (isDmConversation(conv)) {
             try {
-              // For V3, try to get the peer address from the conversation context
-              const dm = conv as Dm<unknown>;
-              
               // Try multiple approaches to get peer address
               try {
-                peerAddress = await dm.peerInboxId();
+                peerAddress = await conv.peerInboxId();
               } catch (error) {
                 console.warn('[XMTP] peerInboxId failed, trying alternative approach:', error);
                 // Fallback: try to extract from conversation ID or context
                 // This is a workaround for V3 peer address resolution
-                peerAddress = dm.id.split('-').pop() || undefined;
+                peerAddress = conv.id.split('-').pop() || undefined;
               }
-              
+
               console.log(`[XMTP] Conversation ${conv.id} peer address: ${peerAddress}`);
             } catch (error) {
               console.warn('[XMTP] Failed to get peer address for conversation:', conv.id, error);
             }
           }
-          
+
           return {
             id: conv.id, // XMTP V3 uses 'id'
             peerAddress,
-            isGroup,
-            conversation: conv as Dm<unknown> | Group<unknown>, // Store the actual XMTP conversation object
+            isGroup: isGroupConversation(conv),
+            conversation: conv, // Store the actual XMTP conversation object
           };
         })
       );
@@ -149,7 +147,7 @@ export const XMTPMessenger: React.FC = () => {
       const canMessage = await client.canMessage([identifier]);
       
       if (!canMessage.get(recipientAddress)) {
-        alert('This address cannot receive XMTP messages. Please ensure they have an XMTP identity.');
+        toast.error('This address cannot receive XMTP messages. Please ensure they have an XMTP identity.');
         return;
       }
       
@@ -174,7 +172,7 @@ export const XMTPMessenger: React.FC = () => {
       console.log('[XMTP] Created new conversation:', conversation.id);
     } catch (error) {
       console.error('[XMTP] Failed to create conversation:', error);
-      alert('Failed to create conversation. Please check the address and try again.');
+      toast.error('Failed to create conversation. Please check the address and try again.');
     }
   };
 
@@ -191,7 +189,7 @@ export const XMTPMessenger: React.FC = () => {
       // Check conversation consent state - official V3 3.0.3 pattern
       const consentState = await selectedConversation.conversation.consentState();
       if (consentState === ConsentState.Denied) {
-        alert('Cannot send message to this conversation. The conversation has been denied.');
+        toast.error('Cannot send message to this conversation. The conversation has been denied.');
         setMessageText(messageContent); // Restore text
         return;
       }
@@ -250,18 +248,17 @@ export const XMTPMessenger: React.FC = () => {
       
     } catch (error) {
       console.error('[XMTP] Failed to send message:', error);
-      
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+
       let userMessage = 'Failed to send message. Please try again.';
-      
-      // Provide more specific error messages for common V3 issues
-      if (errorMessage.includes('identity synchronization')) {
+
+      // Provide more specific error messages for common V3 issues using type guards
+      if (isIdentitySyncError(error)) {
         userMessage = 'Identity sync issue. Please reconnect XMTP and try again.';
-      } else if (errorMessage.includes('InboxValidationFailed')) {
+      } else if (isInboxValidationError(error)) {
         userMessage = 'Account validation issue. Please reconnect XMTP.';
       }
-      
-      alert(userMessage);
+
+      toast.error(userMessage);
       
       // Restore message text on failure
       setMessageText(messageContent);
@@ -270,11 +267,11 @@ export const XMTPMessenger: React.FC = () => {
     }
   };
 
-  // Message streaming using official XMTP V3 3.0.3 patterns  
+  // Message streaming using official XMTP V3 3.0.3 patterns
   useEffect(() => {
     if (!client || !isInitialized || !selectedConversation) return;
 
-    let messageStream: any = null;
+    let messageStream: Awaited<ReturnType<typeof client.conversations.streamAllMessages>> | null = null;
     let isStreamActive = true;
 
     const startMessageStream = async () => {
@@ -286,31 +283,33 @@ export const XMTPMessenger: React.FC = () => {
           undefined, // conversationType
           [ConsentState.Allowed, ConsentState.Unknown] // consentStates - include unknown for new conversations
         );
-        
+
         console.log('[XMTP] Message stream started');
-        
+
         // Stream messages using async iterator pattern
-        for await (const message of messageStream) {
-          if (!isStreamActive) break; // Check if stream should stop
-          
-          // Only add messages for the currently selected conversation
-          if (message.conversationId === selectedConversation?.id) {
-            const newMessage: Message = {
-              id: message.id,
-              content: String(message.content || ''),
-              senderAddress: message.senderInboxId, // Use senderInboxId from V3 3.0.3
-              sentAt: new Date(Number(message.sentAtNs) / 1000000), // Convert nanoseconds to milliseconds
-            };
-            
-            setMessages(prev => {
-              // Prevent duplicates and maintain chronological order
-              if (prev.some(msg => msg.id === newMessage.id)) return prev;
-              
-              const updated = [...prev, newMessage];
-              return updated.sort((a, b) => a.sentAt.getTime() - b.sentAt.getTime());
-            });
-            
-            console.log('[XMTP] New message received via stream:', newMessage.id);
+        if (messageStream) {
+          for await (const message of messageStream) {
+            if (!isStreamActive) break; // Check if stream should stop
+
+            // Only add messages for the currently selected conversation
+            if (message.conversationId === selectedConversation?.id) {
+              const newMessage: Message = {
+                id: message.id,
+                content: String(message.content || ''),
+                senderAddress: message.senderInboxId, // Use senderInboxId from V3 3.0.3
+                sentAt: new Date(Number(message.sentAtNs) / 1000000), // Convert nanoseconds to milliseconds
+              };
+
+              setMessages(prev => {
+                // Prevent duplicates and maintain chronological order
+                if (prev.some(msg => msg.id === newMessage.id)) return prev;
+
+                const updated = [...prev, newMessage];
+                return updated.sort((a, b) => a.sentAt.getTime() - b.sentAt.getTime());
+              });
+
+              console.log('[XMTP] New message received via stream:', newMessage.id);
+            }
           }
         }
       } catch (error) {
@@ -627,4 +626,6 @@ export const XMTPMessenger: React.FC = () => {
       </div>
     </div>
   );
-}; 
+});
+
+XMTPMessenger.displayName = 'XMTPMessenger'; 

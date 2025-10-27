@@ -13,15 +13,22 @@ export const APP_CONFIG = {
 export const ENV_CONFIG = {
   // Base Chain RPC URL
   BASE_RPC_URL: import.meta.env.VITE_BASE_RPC_URL || 'https://mainnet.base.org',
-  
+
   // RPC URL for auth kit and other services (same as wagmi config)
-  RPC_URL: import.meta.env.VITE_RPC_URL || 'https://flashy-convincing-paper.base-mainnet.quiknode.pro/fe55bc09278a1ccc534942fad989695b412ab4ea/',
-  
+  // MUST be set in environment variables for production
+  RPC_URL: import.meta.env.VITE_RPC_URL || (() => {
+    if (import.meta.env.PROD) {
+      throw new Error('VITE_RPC_URL environment variable is required in production');
+    }
+    console.warn('⚠️ VITE_RPC_URL not set, using public Base RPC endpoint');
+    return 'https://mainnet.base.org';
+  })(),
+
   // Step Tracker Contract
   // XMTP Environment - Set to production for cross-platform compatibility
   XMTP_ENV: 'production' as const,
   STEP_TRACKER_CONTRACT: import.meta.env.VITE_STEP_TRACKER_CONTRACT || '0x0000000000000000000000000000000000000000',
-  
+
   // Environment
   NODE_ENV: import.meta.env.NODE_ENV || 'development',
   IS_PRODUCTION: import.meta.env.NODE_ENV === 'production',
@@ -95,10 +102,13 @@ export const FARCASTER_CONFIG = {
 } as const; 
 
 // Validate required environment variables
-if (!ENV_CONFIG.BASE_RPC_URL) {
-  console.warn('VITE_BASE_RPC_URL not set, using public Base RPC endpoint');
+if (!import.meta.env.VITE_BASE_RPC_URL) {
+  console.warn('⚠️ VITE_BASE_RPC_URL not set, using public Base RPC endpoint');
 }
 
-if (!ENV_CONFIG.RPC_URL) {
-  console.warn('VITE_RPC_URL not set, using QuickNode RPC endpoint');
+if (!import.meta.env.VITE_RPC_URL) {
+  if (import.meta.env.PROD) {
+    throw new Error('VITE_RPC_URL environment variable is required in production');
+  }
+  console.warn('⚠️ VITE_RPC_URL not set, using public Base RPC endpoint');
 }

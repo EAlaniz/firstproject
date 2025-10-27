@@ -9,6 +9,7 @@ import { AuthKitProvider } from '@farcaster/auth-kit';
 import { http } from 'viem';
 import { isFarcasterMiniApp, farcasterCompatibility } from './utils/farcasterCompatibility';
 import { setupCoinbaseWalletFix, setupCoinbaseWalletSDKFix } from './utils/coinbaseWalletFix';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import App from './App';
 import './index.css';
 
@@ -28,16 +29,20 @@ const queryClient = new QueryClient({
   },
 });
 
-const RPC_URL =
-  import.meta.env.VITE_RPC_URL ||
-  'https://flashy-convincing-paper.base-mainnet.quiknode.pro/fe55bc09278a1ccc534942fad989695b412ab4ea/'
+const RPC_URL = import.meta.env.VITE_RPC_URL || (() => {
+  if (import.meta.env.PROD) {
+    throw new Error('VITE_RPC_URL environment variable is required in production');
+  }
+  console.warn('⚠️ VITE_RPC_URL not set, using public Base RPC endpoint');
+  return 'https://mainnet.base.org';
+})();
 
 // Create viem transport instance for wagmi
 const viemTransport = http(RPC_URL);
 
 // Log RPC configuration for debugging
 console.log('🔧 RPC Configuration:', {
-  rpcUrl: RPC_URL,
+  rpcUrl: RPC_URL ? 'Configured ✓' : 'Missing ✗',
   viemTransport: viemTransport,
   authKitConfig: {
     domain: 'www.move10k.xyz',
@@ -52,42 +57,44 @@ if (!rootElement) throw new Error('Root element not found');
 
 createRoot(rootElement).render(
   <StrictMode>
-    <WagmiProvider config={wagmiConfig}>
-      <QueryClientProvider client={queryClient}>
-        <AuthKitProvider
-          config={{
-            domain: 'www.move10k.xyz',
-            redirectUrl: window.location.origin,
-            chainId: base.id,
-            viemTransport: viemTransport,
-            options: {
-              timeout: 30000,
-              enableLogging: true,
-            },
-            miniApp: {
-              enabled: isFarcasterMiniApp(),
-              walletConnection: {
-                type: 'native',
-                fallback: 'popup',
-              },
-            },
-          }}
-        >
-          <OnchainKitProvider
-            apiKey={import.meta.env.VITE_ONCHAINKIT_API_KEY || ''}
-            chain={base}
-            options={{
-              timeout: 30000,
-              enableLogging: true,
-              rpcUrl: RPC_URL,
+    <ErrorBoundary>
+      <WagmiProvider config={wagmiConfig}>
+        <QueryClientProvider client={queryClient}>
+          <AuthKitProvider
+            config={{
+              domain: 'www.move10k.xyz',
+              redirectUrl: window.location.origin,
               chainId: base.id,
-              disablePopup: isFarcasterMiniApp(),
+              viemTransport: viemTransport,
+              options: {
+                timeout: 30000,
+                enableLogging: true,
+              },
+              miniApp: {
+                enabled: isFarcasterMiniApp(),
+                walletConnection: {
+                  type: 'native',
+                  fallback: 'popup',
+                },
+              },
             }}
           >
-            <App />
-          </OnchainKitProvider>
-        </AuthKitProvider>
-      </QueryClientProvider>
-    </WagmiProvider>
+            <OnchainKitProvider
+              apiKey={import.meta.env.VITE_ONCHAINKIT_API_KEY || ''}
+              chain={base}
+              options={{
+                timeout: 30000,
+                enableLogging: true,
+                rpcUrl: RPC_URL,
+                chainId: base.id,
+                disablePopup: isFarcasterMiniApp(),
+              }}
+            >
+              <App />
+            </OnchainKitProvider>
+          </AuthKitProvider>
+        </QueryClientProvider>
+      </WagmiProvider>
+    </ErrorBoundary>
   </StrictMode>
 );

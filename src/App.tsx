@@ -7,17 +7,11 @@ import { XMTPMessenger } from './xmtp/components/XMTPMessenger';
 import { XMTPProvider } from './xmtp/contexts/XMTPContext';
 import { useXMTP } from './xmtp/contexts/useXMTPContext';
 import { useXMTPClient } from './xmtp/hooks/useXMTP';
-import { Activity, Trophy, Circle, MessageCircle, Menu, X, User, ExternalLink, Settings, Lock, LogOut } from 'lucide-react';
+import { LandingPage, DashboardHeader, StepsCard } from './components/pages';
+import { Activity, Circle, MessageCircle, X, User, ExternalLink, Settings, Lock, LogOut } from 'lucide-react';
 // Import the Farcaster Frame SDK for mini app splash screen control
 import { sdk } from '@farcaster/frame-sdk';
 import { Toaster } from 'react-hot-toast';
-
-// Add this type declaration at the top of the file
-declare global {
-  interface Window {
-    farcaster?: { isMiniApp?: boolean };
-  }
-}
 
 function AppContent() {
   // your existing state hooks
@@ -189,142 +183,25 @@ function AppContent() {
   return (
     <div className="min-h-screen bg-white text-black">
       {!isConnected ? (
-        // Landing page for disconnected users
-        <>
-          {/* Header */}
-          <header className="border-b border-gray-200 px-4 sm:px-6 py-4">
-            <div className="max-w-6xl mx-auto flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-black rounded-full flex items-center justify-center">
-                  <Activity className="w-5 h-5 text-white" />
-                </div>
-                <span className="text-xl font-medium">10K</span>
-              </div>
-            </div>
-          </header>
-
-          {/* Hero Section */}
-          <main className="max-w-4xl mx-auto px-4 sm:px-6 py-12 sm:py-20">
-            <div className="text-center space-y-6 sm:space-y-8">
-              <div className="space-y-4">
-                <h1 className="text-4xl sm:text-6xl font-light tracking-tight leading-tight">
-                  Move. Earn. Connect.
-                </h1>
-                <p className="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed px-4">
-                  An inclusive wellness platform that rewards your daily movement with tokens and connects you with a community of movers.
-                </p>
-              </div>
-              
-              <div className="flex justify-center px-4">
-                <button
-                  onClick={() => {
-                    console.log('Get Started button clicked');
-                    console.log('Current showWalletConnector state:', showWalletConnector);
-                    console.log('Current isConnected state:', isConnected);
-                    setShowWalletConnector(true);
-                    console.log('Set showWalletConnector to true');
-                  }}
-                  className="bg-black text-white px-6 sm:px-8 py-3 sm:py-4 rounded-full hover:bg-gray-800 transition-colors cursor-pointer font-medium flex items-center space-x-2 w-full sm:w-auto justify-center"
-                >
-                  <span>Get Started</span>
-                </button>
-              </div>
-              
-              <div className="pt-8 sm:pt-12 text-sm text-gray-500">
-                Powered by Base Chain • Low fees • Fast transactions
-              </div>
-            </div>
-          </main>
-        </>
+        <LandingPage
+          onGetStarted={() => {
+            console.log('Get Started button clicked');
+            setShowWalletConnector(true);
+          }}
+        />
       ) : (
         // Main dashboard for connected users
         <>
-          {/* Header */}
-          <header className="border-b border-gray-200 px-4 py-3 sm:px-6 sm:py-4">
-            <div className="max-w-6xl mx-auto flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-black rounded-full flex items-center justify-center">
-                  <Activity className="w-5 h-5 text-white" />
-                </div>
-                <span className="text-xl font-medium">10K</span>
-              </div>
-              {/* Desktop Navigation */}
-              <div className="hidden sm:flex items-center space-x-6">
-                {/* Navigation */}
-                <div className="flex items-center space-x-4">
-                  <button
-                    onClick={() => setActiveView('dashboard')}
-                    className={`px-4 py-2 rounded-full transition-colors text-sm ${
-                      activeView === 'dashboard'
-                        ? 'bg-black text-white'
-                        : 'text-gray-600 hover:text-gray-800'
-                    }`}
-                  >
-                    Dashboard
-                  </button>
-                  {xmtpClient && (
-                    <button
-                      onClick={() => setActiveView('messages')}
-                      className={`px-4 py-2 rounded-full transition-colors text-sm ${
-                        activeView === 'messages'
-                          ? 'bg-black text-white'
-                          : 'text-gray-600 hover:text-gray-800'
-                      }`}
-                    >
-                      Messages
-                    </button>
-                  )}
-                </div>
-                {/* Stats */}
-                <div className="flex items-center space-x-6 text-sm">
-                  <div className="flex items-center space-x-2">
-                    <Trophy className="w-4 h-4 text-amber-500" />
-                    <span className="font-medium">{currentStreak}</span>
-                    <span className="text-gray-600 hidden lg:inline">day streak</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Circle className="w-4 h-4 text-purple-500 fill-current" />
-                    <span className="font-medium">{totalTokens}</span>
-                    <span className="text-gray-600 hidden lg:inline">tokens</span>
-                  </div>
-                </div>
-                {/* Action Buttons */}
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => setShowWalletConnector(true)}
-                    className="bg-gray-100 text-black px-4 py-2 rounded-full hover:bg-gray-200 transition-colors cursor-pointer text-sm"
-                  >
-                    Wallet
-                  </button>
-                  {!xmtpClient && (
-                    <button
-                      onClick={handleXMTPInitialization}
-                      disabled={isInitializing}
-                      className={`px-4 py-2 rounded-full transition-colors cursor-pointer text-sm flex items-center space-x-2 ${
-                        isInitializing
-                        ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
-                        : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                      }`}
-                    >
-                      <MessageCircle className="w-4 h-4" />
-                      <span>
-                        {isInitializing ? 'Initializing...' : 'Enable Messages'}
-                      </span>
-                    </button>
-                  )}
-                </div>
-              </div>
-              {/* Mobile Menu Button */}
-              <div className="flex items-center space-x-2 sm:hidden">
-                <button
-                  onClick={() => setIsMobileMenuOpen(true)}
-                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                >
-                  <Menu className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-          </header>
+          <DashboardHeader
+            address={address}
+            activeView={activeView}
+            isInitialized={xmtpClient !== null}
+            isInitializing={isInitializing}
+            onMenuClick={() => setIsMobileMenuOpen(true)}
+            onMessagesClick={() => setActiveView('messages')}
+            onWalletClick={() => setShowWalletConnector(true)}
+            onInitializeXMTP={handleXMTPInitialization}
+          />
 
           {/* Main Content */}
           <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
@@ -333,67 +210,26 @@ function AppContent() {
               <div>
             {/* Today's Progress */}
             <section className="mb-8 sm:mb-16">
-              <div className="text-center space-y-6 sm:space-y-8">
-                <div className="space-y-2">
-                  <h1 className="text-4xl sm:text-5xl font-light tracking-tight">
-                    {currentSteps.toLocaleString()}
-                  </h1>
-                  <p className="text-gray-600">
-                    of {dailyGoal.toLocaleString()} steps today
-                  </p>
-                </div>
-                {/* Progress Circle */}
-                <div className="relative w-40 h-40 sm:w-48 sm:h-48 mx-auto">
-                  <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                    <circle
-                      cx="50"
-                      cy="50"
-                      r="45"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      fill="none"
-                      className="text-gray-200"
-                    />
-                    <circle
-                      cx="50"
-                      cy="50"
-                      r="45"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      fill="none"
-                      strokeDasharray={`${2 * Math.PI * 45}`}
-                      strokeDashoffset={`${2 * Math.PI * 45 * (1 - Math.min(currentSteps / dailyGoal, 1))}`}
-                      className={`transition-all duration-1000 ${
-                        currentSteps >= dailyGoal ? 'text-green-500' : 'text-black'
-                      }`}
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-center">
-                      <div className="text-xl sm:text-2xl font-medium">
-                        {Math.min(Math.round((currentSteps / dailyGoal) * 100), 100)}%
-                      </div>
-                      {currentSteps >= dailyGoal && (
-                        <span className="text-green-500 font-semibold">Goal!</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                {/* Goal Selector */}
-                <div className="flex justify-center">
-                  <select
-                    value={dailyGoal}
-                    onChange={(e) => handleGoalChange(Number(e.target.value))}
-                    className="bg-gray-100 border-0 rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
-                  >
-                    <option value={5000}>5K Steps</option>
-                    <option value={7500}>7.5K Steps</option>
-                    <option value={10000}>10K Steps</option>
-                    <option value={12500}>12.5K Steps</option>
-                    <option value={15000}>15K Steps</option>
-                  </select>
-                </div>
+              <StepsCard
+                currentSteps={currentSteps}
+                dailyGoal={dailyGoal}
+                currentStreak={currentStreak}
+                totalTokens={totalTokens}
+              />
+
+              {/* Goal Selector */}
+              <div className="flex justify-center mt-6">
+                <select
+                  value={dailyGoal}
+                  onChange={(e) => handleGoalChange(Number(e.target.value))}
+                  className="bg-gray-100 border-0 rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
+                >
+                  <option value={5000}>5K Steps</option>
+                  <option value={7500}>7.5K Steps</option>
+                  <option value={10000}>10K Steps</option>
+                  <option value={12500}>12.5K Steps</option>
+                  <option value={15000}>15K Steps</option>
+                </select>
               </div>
             </section>
 

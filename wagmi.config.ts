@@ -3,10 +3,14 @@ import { base } from 'wagmi/chains'
 import { coinbaseWallet } from 'wagmi/connectors'
 import { http } from 'viem'
 
-// Use the private QuickNode RPC URL - FIXED: use import.meta.env for Vite
-const rpcUrl = import.meta.env.VITE_RPC_URL || 'https://flashy-convincing-paper.base-mainnet.quiknode.pro/fe55bc09278a1ccc534942fad989695b412ab4ea/'
+// Use the private QuickNode RPC URL - MUST be set in environment variables
+const rpcUrl = import.meta.env.VITE_RPC_URL;
 
-console.log('🔧 Wagmi Config RPC URL:', rpcUrl);
+if (!rpcUrl) {
+  throw new Error('VITE_RPC_URL environment variable is required. Please set it in your .env file.');
+}
+
+console.log('🔧 Wagmi Config RPC URL:', rpcUrl ? 'Configured ✓' : 'Missing ✗');
 
 // Check if running in Farcaster environment
 const isFarcaster = typeof window !== 'undefined' && (
