@@ -9,41 +9,71 @@ export const WearablesManager: React.FC = () => {
 
   return (
     <div
+      className="card-elevated fade-in-up"
       style={{
-        backgroundColor: 'white',
-        borderRadius: '16px',
-        padding: '24px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+        background: 'linear-gradient(to bottom, white 0%, var(--color-gray-50) 100%)',
+        borderRadius: 'var(--radius-xl)',
+        padding: 'var(--space-8)',
+        position: 'relative',
+        overflow: 'hidden',
       }}
     >
+      {/* Decorative background gradient */}
+      <div
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: '200px',
+          background: 'var(--gradient-mesh)',
+          opacity: 0.5,
+          pointerEvents: 'none',
+        }}
+      />
       {/* Header */}
-      <div style={{ marginBottom: '20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-          <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '700' }}>Wearables & Devices</h2>
+      <div style={{ marginBottom: 'var(--space-6)', position: 'relative', zIndex: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-2)' }}>
+          <h2
+            className="text-gradient"
+            style={{
+              margin: 0,
+              fontSize: '24px',
+              fontWeight: '800',
+              background: 'var(--gradient-primary)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+            }}
+          >
+            Wearables & Devices
+          </h2>
           {connectedDevice && (
             <button
               onClick={refreshData}
               disabled={isLoading}
+              className="btn-enhanced glass"
               style={{
-                padding: '8px 16px',
-                borderRadius: '8px',
-                border: '1px solid #E0E0E0',
-                backgroundColor: 'white',
+                padding: '10px 18px',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
                 fontSize: '14px',
-                fontWeight: '600',
+                fontWeight: '700',
                 cursor: isLoading ? 'not-allowed' : 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '6px',
+                gap: 'var(--space-2)',
                 opacity: isLoading ? 0.6 : 1,
+                boxShadow: 'var(--shadow-base)',
+                transition: 'all var(--transition-base)',
               }}
             >
-              <span>🔄</span>
+              <span className={isLoading ? 'pulse' : ''}>🔄</span>
               {isLoading ? 'Syncing...' : 'Refresh'}
             </button>
           )}
         </div>
-        <p style={{ margin: 0, fontSize: '14px', color: '#666' }}>
+        <p style={{ margin: 0, fontSize: '15px', color: 'var(--color-gray-600)', lineHeight: '1.6' }}>
           Connect your fitness tracker to sync step data and earn rewards
         </p>
       </div>
@@ -51,12 +81,16 @@ export const WearablesManager: React.FC = () => {
       {/* Connection Status Summary */}
       {connectedDevice ? (
         <div
+          className="glass scale-in"
           style={{
-            backgroundColor: '#F0F9FF',
-            border: '2px solid #3B82F6',
-            borderRadius: '12px',
-            padding: '16px',
-            marginBottom: '20px',
+            background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(59, 130, 246, 0.05) 100%)',
+            border: '2px solid var(--color-primary-500)',
+            borderRadius: 'var(--radius-lg)',
+            padding: 'var(--space-4)',
+            marginBottom: 'var(--space-6)',
+            position: 'relative',
+            zIndex: 1,
+            boxShadow: 'var(--shadow-md)',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

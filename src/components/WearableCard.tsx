@@ -32,29 +32,36 @@ export const WearableCard: React.FC<WearableCardProps> = ({
 
   return (
     <div
-      className="wearable-card"
+      className={`wearable-card card-elevated fade-in-up ${comingSoon ? '' : 'interactive'}`}
       style={{
-        border: `2px solid ${isConnected ? color : '#E0E0E0'}`,
-        borderRadius: '12px',
-        padding: '20px',
-        backgroundColor: isConnected ? `${color}08` : '#FAFAFA',
+        border: `2px solid ${isConnected ? color : 'transparent'}`,
+        borderRadius: 'var(--radius-lg)',
+        padding: 'var(--space-6)',
+        background: isConnected
+          ? `linear-gradient(135deg, ${color}12 0%, ${color}08 100%)`
+          : 'white',
         position: 'relative',
         opacity: comingSoon ? 0.6 : 1,
+        transition: 'all var(--transition-base)',
       }}
     >
       {/* Coming Soon Badge */}
       {comingSoon && (
         <div
+          className="scale-in"
           style={{
             position: 'absolute',
-            top: '12px',
-            right: '12px',
-            backgroundColor: '#FFA726',
+            top: 'var(--space-3)',
+            right: 'var(--space-3)',
+            background: 'var(--gradient-primary)',
             color: 'white',
-            padding: '4px 12px',
-            borderRadius: '12px',
-            fontSize: '12px',
-            fontWeight: '600',
+            padding: '6px 14px',
+            borderRadius: 'var(--radius-full)',
+            fontSize: '11px',
+            fontWeight: '700',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+            boxShadow: 'var(--shadow-md)',
           }}
         >
           Coming Soon
@@ -80,25 +87,46 @@ export const WearableCard: React.FC<WearableCardProps> = ({
           <div style={{ marginBottom: '12px' }}>
             {isConnected && stepData && (
               <div
+                className="glass scale-in"
                 style={{
-                  backgroundColor: 'white',
-                  padding: '12px',
-                  borderRadius: '8px',
-                  marginBottom: '8px',
+                  padding: 'var(--space-4)',
+                  borderRadius: 'var(--radius-md)',
+                  marginBottom: 'var(--space-2)',
+                  boxShadow: 'var(--shadow-sm)',
                 }}
               >
-                <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>
+                <div style={{ fontSize: '12px', color: 'var(--color-gray-600)', marginBottom: '4px', fontWeight: '500' }}>
                   Today's Steps
                 </div>
-                <div style={{ fontSize: '24px', fontWeight: '700', color }}>
+                <div
+                  className="text-gradient"
+                  style={{
+                    fontSize: '28px',
+                    fontWeight: '800',
+                    background: `linear-gradient(135deg, ${color} 0%, ${color}AA 100%)`,
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    backgroundClip: 'text',
+                  }}
+                >
                   {stepData.steps.toLocaleString()}
                 </div>
               </div>
             )}
 
             {isConnected && lastSyncTime && (
-              <div style={{ fontSize: '12px', color: '#666', display: 'flex', alignItems: 'center' }}>
-                <span style={{ marginRight: '6px' }}>🔄</span>
+              <div
+                className="pulse"
+                style={{
+                  fontSize: '12px',
+                  color: 'var(--color-gray-500)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 'var(--space-1)',
+                  fontWeight: '500',
+                }}
+              >
+                <span style={{ fontSize: '14px' }}>🔄</span>
                 Last synced: {formatLastSync(lastSyncTime)}
               </div>
             )}
@@ -124,21 +152,44 @@ export const WearableCard: React.FC<WearableCardProps> = ({
           <button
             onClick={isConnected ? onDisconnect : onConnect}
             disabled={isConnecting || comingSoon}
+            className="btn-enhanced"
             style={{
               width: '100%',
-              padding: '12px',
-              borderRadius: '8px',
+              padding: 'var(--space-3)',
+              borderRadius: 'var(--radius-md)',
               border: 'none',
-              backgroundColor: isConnected ? '#F5F5F5' : color,
-              color: isConnected ? '#666' : 'white',
-              fontWeight: '600',
+              background: isConnected
+                ? 'var(--color-gray-100)'
+                : `linear-gradient(135deg, ${color} 0%, ${color}DD 100%)`,
+              color: isConnected ? 'var(--color-gray-700)' : 'white',
+              fontWeight: '700',
               fontSize: '14px',
               cursor: isConnecting || comingSoon ? 'not-allowed' : 'pointer',
               opacity: isConnecting ? 0.6 : 1,
-              transition: 'all 0.2s',
+              transition: 'all var(--transition-base)',
+              boxShadow: isConnected ? 'none' : 'var(--shadow-md)',
+              transform: 'translateZ(0)',
+            }}
+            onMouseEnter={(e) => {
+              if (!isConnecting && !comingSoon && !isConnected) {
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = 'var(--shadow-lg)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isConnecting && !comingSoon) {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = isConnected ? 'none' : 'var(--shadow-md)';
+              }
             }}
           >
-            {isConnecting ? 'Connecting...' : isConnected ? 'Disconnect' : 'Connect'}
+            {isConnecting ? (
+              <span className="shimmer">Connecting...</span>
+            ) : isConnected ? (
+              'Disconnect'
+            ) : (
+              'Connect'
+            )}
           </button>
         </>
       )}
