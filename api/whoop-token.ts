@@ -6,15 +6,11 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Only allow POST requests
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
   // Enable CORS for your domain
   const allowedOrigins = [
     'http://localhost:5173',
     'http://localhost:5174',
+    'http://localhost:3000',
     'https://move10k.xyz',
     'https://www.move10k.xyz'
   ];
@@ -29,6 +25,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Handle preflight request
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
+  }
+
+  // Only allow POST requests
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
