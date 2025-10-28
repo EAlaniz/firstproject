@@ -177,6 +177,7 @@ class WhoopService {
       : 'https://' + window.location.host + '/api/whoop-token';
 
     console.log('🔄 Exchanging code for tokens using redirect_uri:', this.config.redirectUri);
+    console.log('🔄 Token exchange endpoint:', tokenEndpoint);
 
     const response = await fetch(tokenEndpoint, {
       method: 'POST',
@@ -190,10 +191,17 @@ class WhoopService {
       }),
     });
 
+    console.log('🔄 Token exchange response status:', response.status);
+
     if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Failed to exchange code for tokens: ${error}`);
+      const errorText = await response.text();
+      console.error('❌ Token exchange error:', errorText);
+      throw new Error(`Failed to exchange code for tokens: ${errorText}`);
     }
+    
+    const tokens = await response.json();
+    console.log('✅ Token exchange successful');
+    return tokens;
 
     return response.json();
   }
