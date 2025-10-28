@@ -36,17 +36,36 @@ export function useWhoop(): UseWhoopReturn {
       const clientSecret = import.meta.env.VITE_WHOOP_CLIENT_SECRET || '9900daf530da283c0d5bf014d914f1939337fa1e0eef5f50403e2e32c46fbcf2';
       
       // Construct redirect URI based on current environment
-      const defaultRedirectUri = window.location.hostname === 'localhost'
-        ? 'http://localhost:3000/auth/whoop.html'
-        : `https://${window.location.host}/auth/whoop.html`;
+      const isLocalhost = window.location.hostname === 'localhost';
+      let defaultRedirectUri;
+      
+      if (isLocalhost) {
+        defaultRedirectUri = 'http://localhost:3000/auth/whoop.html';
+      } else {
+        // Normalize domain to remove www prefix for Whoop OAuth matching
+        const host = window.location.host;
+        const hostname = host.replace(/^www\./, ''); // Remove www prefix
+        defaultRedirectUri = `https://${hostname}/auth/whoop.html`;
+      }
       
       // If VITE_WHOOP_REDIRECT_URI is set but points to localhost in production, ignore it
       let redirectUri = import.meta.env.VITE_WHOOP_REDIRECT_URI;
       
       // If no env var set, or if it's localhost while we're in production, use dynamic value
-      if (!redirectUri || (redirectUri.includes('localhost') && window.location.hostname !== 'localhost')) {
+      if (!redirectUri || (redirectUri.includes('localhost') && !isLocalhost)) {
         redirectUri = defaultRedirectUri;
       }
+
+      console.log('🔗 Redirect URI Debug:', {
+        isLocalhost,
+        hostname: window.location.hostname,
+        host: window.location.host,
+        protocol: window.location.protocol,
+        envRedirectUri: import.meta.env.VITE_WHOOP_REDIRECT_URI || 'not set',
+        defaultRedirectUri,
+        finalRedirectUri: redirectUri,
+        normalizedDomain: window.location.host.replace(/^www\./, '')
+      });
 
       console.log('🔍 Checking Whoop credentials:', {
         hasClientId: !!clientId,
