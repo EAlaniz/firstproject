@@ -48,9 +48,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Missing refresh token' });
     }
 
-    // Get credentials from environment variables
-    const clientId = process.env.WHOOP_CLIENT_ID;
-    const clientSecret = process.env.WHOOP_CLIENT_SECRET;
+    // Get credentials from environment variables with fallback to hardcoded values for testing
+    const clientId = process.env.WHOOP_CLIENT_ID || 'df7fcd55-a40a-42db-a81c-249873f80afe';
+    const clientSecret = process.env.WHOOP_CLIENT_SECRET || '9900daf530da283c0d5bf014d914f1939337fa1e0eef5f50403e2e32c46fbcf2';
 
     console.log('🔍 Whoop Token Exchange - Environment check:', {
       env_keys: Object.keys(process.env).filter(k => k.includes('WHOOP')),
