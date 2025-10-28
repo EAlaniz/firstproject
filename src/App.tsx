@@ -16,6 +16,14 @@ import { sdk } from '@farcaster/frame-sdk';
 import { Toaster } from 'react-hot-toast';
 
 function AppContent() {
+  // Debug: Check environment variables on component mount
+  useEffect(() => {
+    console.log('🔍 Environment Variables Check:');
+    console.log('VITE_WHOOP_CLIENT_ID:', import.meta.env.VITE_WHOOP_CLIENT_ID || 'NOT SET');
+    console.log('VITE_WHOOP_CLIENT_SECRET:', import.meta.env.VITE_WHOOP_CLIENT_SECRET ? 'SET (hidden)' : 'NOT SET');
+    console.log('VITE_WHOOP_REDIRECT_URI:', import.meta.env.VITE_WHOOP_REDIRECT_URI || 'NOT SET');
+  }, []);
+
   // your existing state hooks
   const [showWalletConnector, setShowWalletConnector] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);

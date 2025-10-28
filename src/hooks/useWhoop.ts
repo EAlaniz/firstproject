@@ -35,8 +35,17 @@ export function useWhoop(): UseWhoopReturn {
       const clientSecret = import.meta.env.VITE_WHOOP_CLIENT_SECRET;
       const redirectUri = import.meta.env.VITE_WHOOP_REDIRECT_URI;
 
+      console.log('🔍 Checking Whoop credentials:', {
+        hasClientId: !!clientId,
+        hasClientSecret: !!clientSecret,
+        hasRedirectUri: !!redirectUri,
+        clientId: clientId ? `${clientId.substring(0, 8)}...` : 'missing',
+        redirectUri: redirectUri || 'missing'
+      });
+
       if (!clientId || !clientSecret || !redirectUri) {
         console.warn('⚠️ Whoop credentials not configured');
+        setError('Whoop credentials not configured. Please check environment variables.');
         return;
       }
 
@@ -46,7 +55,7 @@ export function useWhoop(): UseWhoopReturn {
         redirectUri,
       });
 
-      console.log('✅ Whoop service initialized');
+      console.log('✅ Whoop service initialized successfully');
     } catch (err) {
       console.error('❌ Failed to initialize Whoop service:', err);
       setError('Failed to initialize Whoop integration');
@@ -182,14 +191,18 @@ export function useWhoop(): UseWhoopReturn {
       setIsConnecting(true);
       setError(null);
 
+      console.log('🔄 Attempting to get Whoop service...');
       const whoopService = getWhoopService();
+
+      console.log('✅ Whoop service retrieved, generating auth URL...');
       const authUrl = whoopService.getAuthorizationUrl();
 
-      console.log('🚀 Redirecting to Whoop authorization...');
+      console.log('🚀 Redirecting to Whoop authorization...', authUrl);
       window.location.href = authUrl;
     } catch (err) {
       console.error('❌ Failed to start Whoop connection:', err);
-      setError('Failed to connect to Whoop');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to connect to Whoop';
+      setError(errorMessage);
       setIsConnecting(false);
     }
   }, []);
