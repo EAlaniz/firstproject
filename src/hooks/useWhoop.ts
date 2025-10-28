@@ -34,7 +34,7 @@ export function useWhoop(): UseWhoopReturn {
       // Temporarily hardcoded credentials for testing
       const clientId = import.meta.env.VITE_WHOOP_CLIENT_ID || 'df7fcd55-a40a-42db-a81c-249873f80afe';
       const clientSecret = import.meta.env.VITE_WHOOP_CLIENT_SECRET || '9900daf530da283c0d5bf014d914f1939337fa1e0eef5f50403e2e32c46fbcf2';
-      const redirectUri = import.meta.env.VITE_WHOOP_REDIRECT_URI || 'http://localhost:5173/auth/whoop';
+      const redirectUri = import.meta.env.VITE_WHOOP_REDIRECT_URI || 'http://localhost:5173/auth/whoop.html';
 
       console.log('🔍 Checking Whoop credentials:', {
         hasClientId: !!clientId,
@@ -106,6 +106,21 @@ export function useWhoop(): UseWhoopReturn {
 
       if (whoopConnected === 'true') {
         const code = localStorage.getItem('whoop_auth_code');
+        const returnedState = localStorage.getItem('whoop_auth_state');
+        const expectedState = localStorage.getItem('whoop_oauth_state');
+
+        // Validate state for CSRF protection
+        if (expectedState && returnedState !== expectedState) {
+          console.error('❌ State mismatch - possible CSRF attack');
+          setError('Authorization failed: invalid_state');
+          setIsConnecting(false);
+          window.history.replaceState({}, '', window.location.pathname);
+          localStorage.removeItem('whoop_auth_code');
+          localStorage.removeItem('whoop_auth_state');
+          localStorage.removeItem('whoop_oauth_state');
+          return;
+        }
+
         if (code) {
           try {
             setIsConnecting(true);
@@ -135,6 +150,7 @@ export function useWhoop(): UseWhoopReturn {
             // Clean up
             localStorage.removeItem('whoop_auth_code');
             localStorage.removeItem('whoop_auth_state');
+            localStorage.removeItem('whoop_oauth_state');
           } catch (err) {
             console.error('❌ Failed to complete Whoop connection:', err);
             setError('Failed to connect to Whoop. Please try again.');
@@ -196,10 +212,16 @@ export function useWhoop(): UseWhoopReturn {
       console.log('🔄 Attempting to get Whoop service...');
       const whoopService = getWhoopService();
 
+      // Generate and store state for CSRF protection (minimum 8 characters required by Whoop)
+      const state = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      localStorage.setItem('whoop_oauth_state', state);
+
       console.log('✅ Whoop service retrieved, generating auth URL...');
-      const authUrl = whoopService.getAuthorizationUrl();
+      console.log('🔐 Generated OAuth state:', state);
+      const authUrl = whoopService.getAuthorizationUrl(state);
 
       console.log('🚀 Redirecting to Whoop authorization...', authUrl);
+      console.log('📋 State stored in localStorage as "whoop_oauth_state"');
       window.location.href = authUrl;
     } catch (err) {
       console.error('❌ Failed to start Whoop connection:', err);

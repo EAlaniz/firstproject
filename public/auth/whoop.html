@@ -67,6 +67,16 @@
         const code = urlParams.get('code');
         const error = urlParams.get('error');
         const state = urlParams.get('state');
+        const errorDescription = urlParams.get('error_description');
+
+        // Debug logging
+        console.log('🔍 Whoop OAuth Callback:', {
+            code: code ? 'received' : 'missing',
+            error: error || 'none',
+            errorDescription: errorDescription || 'none',
+            state: state || 'missing',
+            fullUrl: window.location.href
+        });
 
         const titleEl = document.getElementById('title');
         const messageEl = document.getElementById('message');

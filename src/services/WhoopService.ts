@@ -140,12 +140,15 @@ class WhoopService {
    * User clicks this to start OAuth flow
    */
   getAuthorizationUrl(state?: string): string {
+    // Generate a random state with at least 8 characters if not provided
+    const oauthState = state || (Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15));
+
     const params = new URLSearchParams({
       client_id: this.config.clientId,
       redirect_uri: this.config.redirectUri,
       response_type: 'code',
       scope: 'read:recovery read:cycles read:workout read:sleep read:profile offline',
-      state: state || Math.random().toString(36).substring(7)
+      state: oauthState
     });
 
     return `${this.baseUrl}/oauth/oauth2/auth?${params.toString()}`;
@@ -154,19 +157,22 @@ class WhoopService {
   /**
    * Exchange authorization code for access tokens
    * Called after user authorizes and returns to redirect URI
+   * Uses serverless function to avoid CORS issues
    */
   async exchangeCodeForTokens(code: string): Promise<WhoopTokens> {
-    const response = await fetch(`${this.baseUrl}/oauth/oauth2/token`, {
+    // Use serverless function endpoint (works locally with Vercel CLI or deployed)
+    const tokenEndpoint = window.location.hostname === 'localhost'
+      ? 'http://localhost:3000/api/whoop-token'
+      : '/api/whoop-token';
+
+    const response = await fetch(tokenEndpoint, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Type': 'application/json',
       },
-      body: new URLSearchParams({
+      body: JSON.stringify({
         grant_type: 'authorization_code',
         code,
-        client_id: this.config.clientId,
-        client_secret: this.config.clientSecret,
-        redirect_uri: this.config.redirectUri,
       }),
     });
 
@@ -180,18 +186,22 @@ class WhoopService {
 
   /**
    * Refresh expired access token using refresh token
+   * Uses serverless function to avoid CORS issues
    */
   async refreshAccessToken(refreshToken: string): Promise<WhoopTokens> {
-    const response = await fetch(`${this.baseUrl}/oauth/oauth2/token`, {
+    // Use serverless function endpoint (works locally with Vercel CLI or deployed)
+    const tokenEndpoint = window.location.hostname === 'localhost'
+      ? 'http://localhost:3000/api/whoop-token'
+      : '/api/whoop-token';
+
+    const response = await fetch(tokenEndpoint, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Type': 'application/json',
       },
-      body: new URLSearchParams({
+      body: JSON.stringify({
         grant_type: 'refresh_token',
         refresh_token: refreshToken,
-        client_id: this.config.clientId,
-        client_secret: this.config.clientSecret,
       }),
     });
 
