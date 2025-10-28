@@ -12,6 +12,10 @@ import { useHealthData } from './hooks/useHealthData';
 import { useWhoop } from './hooks/useWhoop';
 import { LandingPage, DashboardHeader, StepsCard } from './components/pages';
 import { WearablesManager } from './components/WearablesManager';
+import { BottomTabNav, type TabView } from './components/BottomTabNav';
+import { TodayTab } from './components/tabs/TodayTab';
+import { ConnectTab } from './components/tabs/ConnectTab';
+import { RewardsTab } from './components/tabs/RewardsTab';
 import { Activity, Circle, MessageCircle, X, User, ExternalLink, Settings, Lock, LogOut, RefreshCw, Zap } from 'lucide-react';
 // Import the Farcaster Frame SDK for mini app splash screen control
 import { sdk } from '@farcaster/frame-sdk';
@@ -32,6 +36,7 @@ function AppContent() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<'dashboard' | 'messages'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'today' | 'connect' | 'rewards'>('today');
   const [dailyGoal, setDailyGoal] = useState(10000);
   const [currentStreak] = useState(12);
   const [totalTokens] = useState(156);
@@ -243,442 +248,50 @@ function AppContent() {
 
           {/* Main Content */}
           <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
-            {activeView === 'dashboard' ? (
-              // Dashboard Content
-              <div>
-            {/* Today's Progress */}
-            <section className="mb-8 sm:mb-16">
-              {/* Health Permission Banner */}
-              {isNative && !hasPermission && (
-                <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
-                  <div className="flex items-start space-x-3">
-                    <Activity className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                    <div className="flex-1">
-                      <h4 className="font-medium text-blue-900 mb-1">Enable Step Tracking</h4>
-                      <p className="text-sm text-blue-700 mb-3">
-                        Connect to {stepData?.source === 'healthkit' ? 'Apple Health' : 'Health Connect'} to automatically track your daily steps.
-                      </p>
-                      <button
-                        onClick={requestPermissions}
-                        className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
-                      >
-                        Enable Tracking
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Health Error Banner */}
-              {healthError && isNative && (
-                <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl">
-                  <div className="flex items-start space-x-3">
-                    <svg className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                    <div className="flex-1">
-                      <h4 className="font-medium text-amber-900 mb-1">Health Permission Required</h4>
-                      <p className="text-sm text-amber-700 mb-3">{healthError}</p>
-                      <button
-                        onClick={openHealthSettings}
-                        className="bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-700 transition-colors"
-                      >
-                        Open Health Settings
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Whoop Connection Banner */}
-              {!isWhoopConnected && !isWhoopConnecting && (
-                <div className="mb-6 p-4 bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-xl">
-                  <div className="flex items-start space-x-3">
-                    <Zap className="w-5 h-5 text-purple-600 flex-shrink-0 mt-0.5" />
-                    <div className="flex-1">
-                      <h4 className="font-medium text-purple-900 mb-1">Connect Your Whoop</h4>
-                      <p className="text-sm text-purple-700 mb-3">
-                        Automatically track your recovery, sleep, and strain data. Get rewarded for maintaining optimal health metrics!
-                      </p>
-                      <button
-                        onClick={connectWhoop}
-                        className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors flex items-center space-x-2"
-                      >
-                        <Zap className="w-4 h-4" />
-                        <span>Connect Whoop</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Whoop Connecting State */}
-              {isWhoopConnecting && (
-                <div className="mb-6 p-4 bg-purple-50 border border-purple-200 rounded-xl">
-                  <div className="flex items-center space-x-3">
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-purple-600"></div>
-                    <p className="text-sm text-purple-700 font-medium">Connecting to Whoop...</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Whoop Connected State */}
-              {isWhoopConnected && whoopData && (
-                <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start space-x-3 flex-1">
-                      <Zap className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                      <div className="flex-1">
-                        <h4 className="font-medium text-green-900 mb-1">Whoop Connected</h4>
-                        <div className="text-sm text-green-700 space-y-1">
-                          {whoopData.profile && (
-                            <p>Connected as {whoopData.profile.first_name} {whoopData.profile.last_name}</p>
-                          )}
-                          {whoopData.recovery && (
-                            <p>Latest Recovery: {whoopData.recovery.score?.recovery_score}%</p>
-                          )}
-                          {whoopData.sleep && (
-                            <p>Sleep Performance: {whoopData.sleep.score?.sleep_performance_percentage}%</p>
-                          )}
-                          {whoopData.cycle && (
-                            <p>Daily Strain: {whoopData.cycle.score?.strain.toFixed(1)}</p>
-                          )}
-                        </div>
-                        <div className="flex items-center space-x-2 mt-3">
-                          <button
-                            onClick={refreshWhoopData}
-                            className="text-xs text-green-600 hover:text-green-700 flex items-center space-x-1"
-                          >
-                            <RefreshCw className="w-3 h-3" />
-                            <span>Refresh Data</span>
-                          </button>
-                          <span className="text-gray-300">•</span>
-                          <button
-                            onClick={disconnectWhoop}
-                            className="text-xs text-red-600 hover:text-red-700"
-                          >
-                            Disconnect
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Whoop Error Banner */}
-              {whoopError && (
-                <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
-                  <div className="flex items-start space-x-3">
-                    <svg className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <div className="flex-1">
-                      <h4 className="font-medium text-red-900 mb-1">Whoop Connection Error</h4>
-                      <p className="text-sm text-red-700">{whoopError}</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <StepsCard
-                currentSteps={todaySteps}
+            {/* Tab-based content */}
+            {activeTab === 'today' && (
+              <TodayTab
+                todaySteps={todaySteps}
                 dailyGoal={dailyGoal}
                 currentStreak={currentStreak}
                 totalTokens={totalTokens}
+                onGoalChange={handleGoalChange}
+                isNative={isNative}
+                hasPermission={hasPermission}
+                isLoadingSteps={isLoadingSteps}
+                healthError={healthError}
+                stepDataSource={stepData?.source || 'mock'}
+                requestPermissions={requestPermissions}
+                refreshSteps={refreshSteps}
+                openHealthSettings={openHealthSettings}
+                isWhoopConnected={isWhoopConnected}
+                isWhoopConnecting={isWhoopConnecting}
+                whoopError={whoopError}
+                whoopData={whoopData}
+                connectWhoop={connectWhoop}
+                disconnectWhoop={disconnectWhoop}
+                refreshWhoopData={refreshWhoopData}
               />
+            )}
 
-              {/* Step Data Source Indicator & Refresh */}
-              <div className="flex justify-center items-center mt-4 space-x-3">
-                <span className="text-xs text-gray-500">
-                  {stepData?.source === 'healthkit' && '📱 Apple Health'}
-                  {stepData?.source === 'health-connect' && '📱 Health Connect'}
-                  {stepData?.source === 'mock' && '🌐 Demo Mode'}
-                  {stepData?.source === 'manual' && '✍️ Manual Entry'}
-                </span>
-                {isNative && hasPermission && (
-                  <button
-                    onClick={refreshSteps}
-                    disabled={isLoadingSteps}
-                    className="text-xs text-blue-600 hover:text-blue-700 flex items-center space-x-1 disabled:opacity-50"
-                  >
-                    <RefreshCw className={`w-3 h-3 ${isLoadingSteps ? 'animate-spin' : ''}`} />
-                    <span>Refresh</span>
-                  </button>
-                )}
-              </div>
+            {activeTab === 'connect' && (
+              <ConnectTab
+                xmtpClient={xmtpClient}
+                isInitializing={isInitializing}
+                onInitializeXMTP={handleXMTPInitialization}
+                todaySteps={todaySteps}
+                dailyGoal={dailyGoal}
+                onShare={handleShare}
+              />
+            )}
 
-              {/* Goal Selector */}
-              <div className="flex justify-center mt-6">
-                <select
-                  value={dailyGoal}
-                  onChange={(e) => handleGoalChange(Number(e.target.value))}
-                  className="bg-gray-100 border-0 rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
-                >
-                  <option value={5000}>5K Steps</option>
-                  <option value={7500}>7.5K Steps</option>
-                  <option value={10000}>10K Steps</option>
-                  <option value={12500}>12.5K Steps</option>
-                  <option value={15000}>15K Steps</option>
-                </select>
-              </div>
-            </section>
-
-            {/* Wearables Section */}
-            <section className="mb-8 sm:mb-16">
-              <WearablesManager />
-            </section>
-
-            {/* Quick Actions */}
-            <section className="mb-8 sm:mb-16">
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
-                {/* Social Component - Gated by daily goal */}
-                <button
-                  onClick={() => {
-                    if (todaySteps >= dailyGoal) {
-                      handleShare('twitter', 'Share your progress with the community!');
-                    }
-                  }}
-                  disabled={todaySteps < dailyGoal}
-                  className={`p-4 sm:p-6 border-2 rounded-xl sm:rounded-2xl transition-colors text-left group relative ${
-                    todaySteps >= dailyGoal
-                      ? 'border-green-400 hover:border-green-500 bg-green-50'
-                      : 'border-gray-200 hover:border-gray-300 opacity-60'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-2 sm:mb-3">
-                    <div className="flex items-center space-x-2">
-                      {todaySteps >= dailyGoal ? (
-                        <svg className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                        </svg>
-                      ) : (
-                        <svg className="w-5 h-5 sm:w-6 sm:h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                        </svg>
-                      )}
-                      {todaySteps >= dailyGoal && (
-                        <svg className="w-3 h-3 sm:w-4 sm:h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
-                    </div>
-                    <svg className={`w-3 h-3 sm:w-4 sm:h-4 transition-opacity ${
-                      todaySteps >= dailyGoal ? 'opacity-0 group-hover:opacity-100' : 'opacity-0'
-                    }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </div>
-                  <h3 className={`font-medium mb-1 text-sm sm:text-base ${
-                    todaySteps >= dailyGoal ? 'text-green-800' : 'text-gray-500'
-                  }`}>
-                    {todaySteps >= dailyGoal ? 'Social Hub' : 'Social Hub'}
-                  </h3>
-                  <p className="text-xs sm:text-sm text-gray-600 hidden sm:block">
-                    {todaySteps >= dailyGoal
-                      ? 'Share achievements and connect with community'
-                      : `Complete your goal to unlock (${(dailyGoal - todaySteps).toLocaleString()} steps left)`
-                    }
-                  </p>
-                  {todaySteps < dailyGoal && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-80 rounded-xl sm:rounded-2xl">
-                      <div className="text-center">
-                        <svg className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                        </svg>
-                        <p className="text-xs text-gray-500 font-medium">Goal Required</p>
-                      </div>
-                    </div>
-                  )}
-                </button>
-                
-                {/* XMTP Messaging */}
-                <button
-                  onClick={() => {
-                    if (xmtpClient) {
-                      return;
-                    }
-                    handleXMTPInitialization();
-                  }}
-                  disabled={isInitializing}
-                  className={`p-4 sm:p-6 border-2 rounded-xl sm:rounded-2xl transition-colors text-left group relative ${
-                    isInitializing 
-                      ? 'border-gray-300 bg-gray-50 cursor-not-allowed' 
-                      : error 
-                        ? 'border-red-400 bg-red-50 hover:border-red-500' 
-                        : xmtpClient 
-                          ? 'border-green-400 bg-green-50 hover:border-green-500' 
-                          : 'border-blue-400 hover:border-blue-500 bg-blue-50'
-                  }`}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className={`p-2 rounded-lg ${
-                        isInitializing 
-                          ? 'bg-gray-200' 
-                          : error 
-                            ? 'bg-red-200' 
-                            : xmtpClient 
-                              ? 'bg-green-200' 
-                              : 'bg-blue-200'
-                      }`}>
-                        <MessageCircle className={`w-5 h-5 ${
-                          isInitializing 
-                            ? 'text-gray-600' 
-                            : error 
-                              ? 'text-red-600' 
-                              : xmtpClient 
-                                ? 'text-green-600' 
-                                : 'text-blue-600'
-                        }`} />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-gray-900">Messages</h3>
-                        <p className="text-sm text-gray-600">
-                          {isInitializing 
-                            ? 'Initializing messaging...' 
-                            : error 
-                              ? 'Click to retry setup' 
-                              : xmtpClient 
-                                ? 'Ready to chat' 
-                                : 'Enable secure messaging'
-                          }
-                        </p>
-                      </div>
-                    </div>
-                    {isInitializing && (
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                    )}
-                    {xmtpClient && (
-                      <div className="text-green-600">
-                        <Circle className="w-4 h-4 fill-current" />
-                      </div>
-                    )}
-                    {error && (
-                      <div className="text-red-600">
-                        <X className="w-4 h-4" />
-                      </div>
-                    )}
-                  </div>
-                </button>
-              
-                {/* Rewards */}
-                <button
-                  onClick={() => {
-                    // TODO: Implement rewards modal or page
-                    console.log('Rewards clicked');
-                  }}
-                  className="p-4 sm:p-6 border border-gray-200 rounded-xl sm:rounded-2xl hover:border-gray-300 transition-colors text-left group"
-                >
-                  <div className="flex items-center justify-between mb-2 sm:mb-3">
-                    <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                    <svg className="w-3 h-3 sm:w-4 sm:h-4 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </div>
-                  <h3 className="font-medium mb-1 text-sm sm:text-base">Earn Rewards</h3>
-                  <p className="text-xs sm:text-sm text-gray-600 hidden sm:block">Get tokens for completing goals</p>
-                </button>
-              </div>
-            </section>
-
-            {/* Recent Activity */}
-            <section className="mb-8 sm:mb-16">
-              <h2 className="text-xl sm:text-2xl font-light mb-6 sm:mb-8">Recent Activity</h2>
-              <div className="space-y-3 sm:space-y-4">
-                <div className="flex items-center justify-between p-3 sm:p-4 border border-gray-200 rounded-lg sm:rounded-xl">
-                  <div className="flex items-center space-x-3 sm:space-x-4 flex-1 min-w-0">
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                      <svg className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium text-sm sm:text-base">Daily goal completed</p>
-                      <p className="text-xs sm:text-sm text-gray-600 truncate">12,450 steps • 2 hours ago</p>
-                    </div>
-                  </div>
-                  <div className="text-right flex-shrink-0">
-                    <p className="font-medium text-sm sm:text-base">+10 tokens</p>
-                    <p className="text-xs sm:text-sm text-gray-600">Reward earned</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-center justify-between p-3 sm:p-4 border border-gray-200 rounded-lg sm:rounded-xl">
-                  <div className="flex items-center space-x-3 sm:space-x-4 flex-1 min-w-0">
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
-                      <svg className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-                      </svg>
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium text-sm sm:text-base">7-day streak achieved</p>
-                      <p className="text-xs sm:text-sm text-gray-600 truncate">Consistency bonus unlocked</p>
-                    </div>
-                  </div>
-                  <div className="text-right flex-shrink-0">
-                    <p className="font-medium text-sm sm:text-base">+25 tokens</p>
-                    <p className="text-xs sm:text-sm text-gray-600">Streak bonus</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between p-3 sm:p-4 border border-gray-200 rounded-lg sm:rounded-xl">
-                  <div className="flex items-center space-x-3 sm:space-x-4 flex-1 min-w-0">
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
-                      <svg className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                      </svg>
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium text-sm sm:text-base">New message from Alex Walker</p>
-                      <p className="text-xs sm:text-sm text-gray-600 truncate">Just hit 15K steps! 🚶‍♂️</p>
-                    </div>
-                  </div>
-                  <div className="text-right flex-shrink-0">
-                    <p className="text-xs sm:text-sm text-gray-600">5 min ago</p>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            {/* Conversations List - Simplified */}
-            <section className="mb-8 sm:mb-16">
-              <h2 className="text-xl sm:text-2xl font-light mb-6 sm:mb-8">Quick Actions</h2>
-              <div className="text-center py-8">
-                <p className="text-gray-500 mb-4">Enable messaging to start conversations</p>
-                {xmtpClient && (
-                  <button
-                    onClick={() => setActiveView('messages')}
-                    className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
-                  >
-                    Open Messages
-                  </button>
-                )}
-              </div>
-            </section>
-
-            {/* Footer */}
-            <footer className="text-center text-xs sm:text-sm text-gray-500 space-y-2">
-              <p>Connected to Base</p>
-              {address && (
-                <div className="flex justify-center">
-                  <div className="inline-flex items-center space-x-1">
-                    <span className="text-sm font-medium">
-                      {address.slice(0, 6)}...{address.slice(-4)}
-                    </span>
-                  </div>
-                </div>
-              )}
-              <p>Secure • Decentralized • Community-driven</p>
-            </footer>
-            </div>
-            ) : (
-              // Messages Content
-              <div className="h-[calc(100vh-120px)]">
-                <XMTPMessenger />
-              </div>
+            {activeTab === 'rewards' && (
+              <RewardsTab
+                totalTokens={totalTokens}
+                currentStreak={currentStreak}
+                address={address}
+                balance={balance}
+              />
             )}
 
             {/* Mobile Menu */}
@@ -716,49 +329,50 @@ function AppContent() {
                     </button>
                     <button
                       onClick={() => {
-                        setActiveView('dashboard');
+                        setActiveTab('today');
                         setIsMobileMenuOpen(false);
                       }}
                       className={`w-full flex items-center space-x-3 p-3 rounded-lg transition-colors ${
-                        activeView === 'dashboard' ? 'bg-black text-white' : 'hover:bg-gray-50'
+                        activeTab === 'today' ? 'bg-black text-white' : 'hover:bg-gray-50'
                       }`}
                     >
                       <Activity className="w-5 h-5" />
-                      <span>Dashboard</span>
+                      <span>Today</span>
                     </button>
-                    {xmtpClient && (
-                      <button
-                        onClick={() => {
-                          setActiveView('messages');
+                    <button
+                      onClick={() => {
+                        if (xmtpClient) {
+                          setActiveTab('connect');
                           setIsMobileMenuOpen(false);
-                        }}
-                        className={`w-full flex items-center space-x-3 p-3 rounded-lg transition-colors ${
-                          activeView === 'messages' ? 'bg-black text-white' : 'hover:bg-gray-50'
-                        }`}
-                      >
-                        <MessageCircle className="w-5 h-5" />
-                        <span>Messages</span>
-                      </button>
-                    )}
-                    {!xmtpClient && (
-                      <button
-                        onClick={() => {
+                        } else {
                           handleXMTPInitialization();
                           setIsMobileMenuOpen(false);
-                        }}
-                        disabled={isInitializing}
-                        className={`w-full flex items-center space-x-3 p-3 rounded-lg transition-colors ${
-                          isInitializing
+                        }
+                      }}
+                      disabled={isInitializing}
+                      className={`w-full flex items-center space-x-3 p-3 rounded-lg transition-colors ${
+                        isInitializing
                           ? 'bg-gray-50 text-gray-500 cursor-not-allowed'
+                          : activeTab === 'connect'
+                          ? 'bg-black text-white'
                           : 'hover:bg-gray-50'
-                        }`}
-                      >
-                        <MessageCircle className="w-5 h-5" />
-                        <span>
-                          {isInitializing ? 'Initializing...' : 'Enable Messages'}
-                        </span>
-                      </button>
-                    )}
+                      }`}
+                    >
+                      <MessageCircle className="w-5 h-5" />
+                      <span>{isInitializing ? 'Initializing...' : xmtpClient ? 'Connect' : 'Enable Messages'}</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setActiveTab('rewards');
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center space-x-3 p-3 rounded-lg transition-colors ${
+                        activeTab === 'rewards' ? 'bg-black text-white' : 'hover:bg-gray-50'
+                      }`}
+                    >
+                      <Trophy className="w-5 h-5" />
+                      <span>Rewards</span>
+                    </button>
                     <button
                       onClick={() => {
                         disconnect();
@@ -774,15 +388,21 @@ function AppContent() {
               </div>
             )}
           </main>
+
+          {/* Bottom Tab Navigation */}
+          <BottomTabNav
+            activeTab={activeTab}
+            onTabChange={(tab: TabView) => setActiveTab(tab)}
+          />
         </>
       )}
 
       {/* Modals - Rendered outside conditional so they work on both landing page and dashboard */}
-      
+
       {/* Wallet Connector Modal */}
       {showWalletConnector && (
-        <Modal 
-          isOpen={showWalletConnector} 
+        <Modal
+          isOpen={showWalletConnector}
           onClose={() => {
             console.log('Closing wallet modal');
             setShowWalletConnector(false);
@@ -810,7 +430,7 @@ function AppContent() {
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-600">Balance:</span>
                       <span className="font-medium">
-                        {parseFloat(balance.formatted).toFixed(4)} {balance.symbol}
+                        {parseFloat(balance.formatted).toFixed(4)} {balance?.symbol}
                       </span>
                     </div>
                   )}
@@ -828,7 +448,7 @@ function AppContent() {
                     <ExternalLink className="w-4 h-4" />
                     <span>Manage Wallet</span>
                   </button>
-                  
+
                   <button
                     onClick={() => {
                       window.open('https://www.coinbase.com/settings', '_blank');
@@ -839,7 +459,7 @@ function AppContent() {
                     <Settings className="w-4 h-4" />
                     <span>Account Settings</span>
                   </button>
-                  
+
                   <button
                     onClick={() => {
                       window.open('https://www.coinbase.com/security', '_blank');
@@ -850,7 +470,7 @@ function AppContent() {
                     <Lock className="w-4 h-4" />
                     <span>Security</span>
                   </button>
-                  
+
                   <button
                     onClick={() => {
                       disconnect();
@@ -872,9 +492,9 @@ function AppContent() {
                   </div>
                   <h3 className="text-lg font-medium mb-2 text-center">Connect Your Wallet</h3>
                   <p className="text-gray-600 mb-4 text-center">Connect your wallet to access all features</p>
-                  
+
                   <div className="flex justify-center">
-                    <EnhancedWalletConnector 
+                    <EnhancedWalletConnector
                       className="w-full max-w-xs"
                       onWalletClientReady={(client) => {
                         console.log('Wallet client ready:', client);
@@ -887,10 +507,6 @@ function AppContent() {
           </div>
         </Modal>
       )}
-
-
-      {/* XMTP Debug Panel - Removed for simplified implementation */}
-
 
       {/* Error/Success Messages */}
       {error && (
