@@ -146,6 +146,8 @@ class WhoopService {
     console.log('🔗 Whoop OAuth - Redirect URI:', this.config.redirectUri);
     console.log('🔗 Whoop OAuth - Current host:', window.location.host);
     console.log('🔗 Whoop OAuth - Current origin:', window.location.origin);
+    console.log('🔗 Whoop OAuth - Full hostname:', window.location.hostname);
+    console.log('🔗 Whoop OAuth - Protocol:', window.location.protocol);
 
     const params = new URLSearchParams({
       client_id: this.config.clientId,
@@ -157,6 +159,8 @@ class WhoopService {
 
     const authUrl = `${this.baseUrl}/oauth/oauth2/auth?${params.toString()}`;
     console.log('🔗 Whoop OAuth - Full URL:', authUrl);
+    console.log('🔗 Whoop OAuth - Redirect URI being sent to Whoop:', this.config.redirectUri);
+    console.log('⚠️ Check this redirect URI matches your Whoop Dev Tool registered URLs');
     
     return authUrl;
   }
