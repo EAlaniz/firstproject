@@ -10,10 +10,6 @@
     {
       "source": "/.well-known/(.*)",
       "destination": "/.well-known/$1"
-    },
-    {
-      "source": "/auth/whoop.html",
-      "destination": "/auth/whoop.html"
     }
   ],
   "headers": [
