@@ -11,6 +11,7 @@ import { useXMTPClient } from './xmtp/hooks/useXMTP';
 import { useHealthData } from './hooks/useHealthData';
 import { useWhoop } from './hooks/useWhoop';
 import { LandingPage, DashboardHeader, StepsCard } from './components/pages';
+import { WearablesManager } from './components/WearablesManager';
 import { Activity, Circle, MessageCircle, X, User, ExternalLink, Settings, Lock, LogOut, RefreshCw, Zap } from 'lucide-react';
 // Import the Farcaster Frame SDK for mini app splash screen control
 import { sdk } from '@farcaster/frame-sdk';
@@ -421,6 +422,11 @@ function AppContent() {
                   <option value={15000}>15K Steps</option>
                 </select>
               </div>
+            </section>
+
+            {/* Wearables Section */}
+            <section className="mb-8 sm:mb-16">
+              <WearablesManager />
             </section>
 
             {/* Quick Actions */}
