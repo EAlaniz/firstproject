@@ -91,7 +91,8 @@
 
             // Redirect back to app after 3 seconds
             setTimeout(() => {
-                window.location.href = `/?whoop_error=${error}`;
+                const baseUrl = window.location.protocol + '//' + window.location.host;
+                window.location.href = `${baseUrl}/?whoop_error=${error}`;
             }, 3000);
         } else if (code) {
             // Success! Send code to parent window or redirect
@@ -106,7 +107,8 @@
 
             // Redirect back to main app
             setTimeout(() => {
-                window.location.href = '/?whoop_connected=true';
+                const baseUrl = window.location.protocol + '//' + window.location.host;
+                window.location.href = `${baseUrl}/?whoop_connected=true`;
             }, 1500);
         } else {
             // No code or error - something went wrong
@@ -116,7 +118,8 @@
             errorEl.textContent = 'No authorization code received from Whoop.';
 
             setTimeout(() => {
-                window.location.href = '/';
+                const baseUrl = window.location.protocol + '//' + window.location.host;
+                window.location.href = baseUrl + '/';
             }, 3000);
         }
     </script>

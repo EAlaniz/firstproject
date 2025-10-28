@@ -163,7 +163,7 @@ class WhoopService {
     // Use serverless function endpoint (works locally with Vercel CLI or deployed)
     const tokenEndpoint = window.location.hostname === 'localhost'
       ? 'http://localhost:3000/api/whoop-token'
-      : '/api/whoop-token';
+      : 'https://' + window.location.host + '/api/whoop-token';
 
     const response = await fetch(tokenEndpoint, {
       method: 'POST',
@@ -192,7 +192,7 @@ class WhoopService {
     // Use serverless function endpoint (works locally with Vercel CLI or deployed)
     const tokenEndpoint = window.location.hostname === 'localhost'
       ? 'http://localhost:3000/api/whoop-token'
-      : '/api/whoop-token';
+      : 'https://' + window.location.host + '/api/whoop-token';
 
     const response = await fetch(tokenEndpoint, {
       method: 'POST',

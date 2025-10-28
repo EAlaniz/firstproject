@@ -34,7 +34,13 @@ export function useWhoop(): UseWhoopReturn {
       // Temporarily hardcoded credentials for testing
       const clientId = import.meta.env.VITE_WHOOP_CLIENT_ID || 'df7fcd55-a40a-42db-a81c-249873f80afe';
       const clientSecret = import.meta.env.VITE_WHOOP_CLIENT_SECRET || '9900daf530da283c0d5bf014d914f1939337fa1e0eef5f50403e2e32c46fbcf2';
-      const redirectUri = import.meta.env.VITE_WHOOP_REDIRECT_URI || 'http://localhost:3000/auth/whoop.html';
+      
+      // Construct redirect URI based on current environment
+      const defaultRedirectUri = window.location.hostname === 'localhost'
+        ? 'http://localhost:3000/auth/whoop.html'
+        : `https://${window.location.host}/auth/whoop.html`;
+      
+      const redirectUri = import.meta.env.VITE_WHOOP_REDIRECT_URI || defaultRedirectUri;
 
       console.log('🔍 Checking Whoop credentials:', {
         hasClientId: !!clientId,
