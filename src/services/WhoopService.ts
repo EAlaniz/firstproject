@@ -143,6 +143,10 @@ class WhoopService {
     // Generate a random state with at least 8 characters if not provided
     const oauthState = state || (Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15));
 
+    console.log('🔗 Whoop OAuth - Redirect URI:', this.config.redirectUri);
+    console.log('🔗 Whoop OAuth - Current host:', window.location.host);
+    console.log('🔗 Whoop OAuth - Current origin:', window.location.origin);
+
     const params = new URLSearchParams({
       client_id: this.config.clientId,
       redirect_uri: this.config.redirectUri,
@@ -151,7 +155,10 @@ class WhoopService {
       state: oauthState
     });
 
-    return `${this.baseUrl}/oauth/oauth2/auth?${params.toString()}`;
+    const authUrl = `${this.baseUrl}/oauth/oauth2/auth?${params.toString()}`;
+    console.log('🔗 Whoop OAuth - Full URL:', authUrl);
+    
+    return authUrl;
   }
 
   /**

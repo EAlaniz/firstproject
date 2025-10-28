@@ -49,6 +49,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const clientSecret = process.env.WHOOP_CLIENT_SECRET;
     const redirectUri = process.env.WHOOP_REDIRECT_URI;
 
+    console.log('🔍 Whoop Token Exchange - Redirect URI from env:', redirectUri);
+    console.log('🔍 Whoop Token Exchange - Request origin:', req.headers.origin);
+
     if (!clientId || !clientSecret) {
       console.error('Missing Whoop credentials in environment variables');
       return res.status(500).json({ error: 'Server configuration error' });
