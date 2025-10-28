@@ -202,8 +202,6 @@ class WhoopService {
     const tokens = await response.json();
     console.log('✅ Token exchange successful');
     return tokens;
-
-    return response.json();
   }
 
   /**
