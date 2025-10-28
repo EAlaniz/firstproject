@@ -7,8 +7,9 @@ import { XMTPMessenger } from './xmtp/components/XMTPMessenger';
 import { XMTPProvider } from './xmtp/contexts/XMTPContext';
 import { useXMTP } from './xmtp/contexts/useXMTPContext';
 import { useXMTPClient } from './xmtp/hooks/useXMTP';
+import { useHealthData } from './hooks/useHealthData';
 import { LandingPage, DashboardHeader, StepsCard } from './components/pages';
-import { Activity, Circle, MessageCircle, X, User, ExternalLink, Settings, Lock, LogOut } from 'lucide-react';
+import { Activity, Circle, MessageCircle, X, User, ExternalLink, Settings, Lock, LogOut, RefreshCw } from 'lucide-react';
 // Import the Farcaster Frame SDK for mini app splash screen control
 import { sdk } from '@farcaster/frame-sdk';
 import { Toaster } from 'react-hot-toast';
@@ -20,7 +21,6 @@ function AppContent() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<'dashboard' | 'messages'>('dashboard');
-  const [currentSteps, setCurrentSteps] = useState(7240);
   const [dailyGoal, setDailyGoal] = useState(10000);
   const [currentStreak] = useState(12);
   const [totalTokens] = useState(156);
@@ -29,6 +29,19 @@ function AppContent() {
   const { data: balance } = useBalance({ address: address });
   const { data: walletClient } = useWalletClient();
   const { disconnect } = useDisconnect();
+
+  // Health data integration - replaces mock step counter
+  const {
+    todaySteps,
+    stepData,
+    isLoading: isLoadingSteps,
+    error: healthError,
+    hasPermission,
+    isNative,
+    requestPermissions,
+    refreshSteps,
+    openHealthSettings,
+  } = useHealthData();
 
   // Add this useEffect near the top inside your component
   useEffect(() => {
@@ -89,20 +102,9 @@ function AppContent() {
     }
   }, [success]);
 
-  // Ensure current steps never exceed the daily goal
-  useEffect(() => {
-    if (currentSteps > dailyGoal) {
-      setCurrentSteps(dailyGoal);
-    }
-  }, [currentSteps, dailyGoal]);
-
-  // Function to handle goal changes and adjust current steps if needed
+  // Function to handle goal changes
   const handleGoalChange = (newGoal: number) => {
     setDailyGoal(newGoal);
-    // If current steps exceed the new goal, cap them at the goal
-    if (currentSteps > newGoal) {
-      setCurrentSteps(newGoal);
-    }
   };
 
   const handleShare = async (platform: string, text: string) => {
@@ -224,12 +226,74 @@ function AppContent() {
               <div>
             {/* Today's Progress */}
             <section className="mb-8 sm:mb-16">
+              {/* Health Permission Banner */}
+              {isNative && !hasPermission && (
+                <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                  <div className="flex items-start space-x-3">
+                    <Activity className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <h4 className="font-medium text-blue-900 mb-1">Enable Step Tracking</h4>
+                      <p className="text-sm text-blue-700 mb-3">
+                        Connect to {stepData?.source === 'healthkit' ? 'Apple Health' : 'Health Connect'} to automatically track your daily steps.
+                      </p>
+                      <button
+                        onClick={requestPermissions}
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                      >
+                        Enable Tracking
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Health Error Banner */}
+              {healthError && isNative && (
+                <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                  <div className="flex items-start space-x-3">
+                    <svg className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <div className="flex-1">
+                      <h4 className="font-medium text-amber-900 mb-1">Health Permission Required</h4>
+                      <p className="text-sm text-amber-700 mb-3">{healthError}</p>
+                      <button
+                        onClick={openHealthSettings}
+                        className="bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-700 transition-colors"
+                      >
+                        Open Health Settings
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <StepsCard
-                currentSteps={currentSteps}
+                currentSteps={todaySteps}
                 dailyGoal={dailyGoal}
                 currentStreak={currentStreak}
                 totalTokens={totalTokens}
               />
+
+              {/* Step Data Source Indicator & Refresh */}
+              <div className="flex justify-center items-center mt-4 space-x-3">
+                <span className="text-xs text-gray-500">
+                  {stepData?.source === 'healthkit' && '📱 Apple Health'}
+                  {stepData?.source === 'health-connect' && '📱 Health Connect'}
+                  {stepData?.source === 'mock' && '🌐 Demo Mode'}
+                  {stepData?.source === 'manual' && '✍️ Manual Entry'}
+                </span>
+                {isNative && hasPermission && (
+                  <button
+                    onClick={refreshSteps}
+                    disabled={isLoadingSteps}
+                    className="text-xs text-blue-600 hover:text-blue-700 flex items-center space-x-1 disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${isLoadingSteps ? 'animate-spin' : ''}`} />
+                    <span>Refresh</span>
+                  </button>
+                )}
+              </div>
 
               {/* Goal Selector */}
               <div className="flex justify-center mt-6">
@@ -253,20 +317,20 @@ function AppContent() {
                 {/* Social Component - Gated by daily goal */}
                 <button
                   onClick={() => {
-                    if (currentSteps >= dailyGoal) {
+                    if (todaySteps >= dailyGoal) {
                       handleShare('twitter', 'Share your progress with the community!');
                     }
                   }}
-                  disabled={currentSteps < dailyGoal}
+                  disabled={todaySteps < dailyGoal}
                   className={`p-4 sm:p-6 border-2 rounded-xl sm:rounded-2xl transition-colors text-left group relative ${
-                    currentSteps >= dailyGoal 
-                      ? 'border-green-400 hover:border-green-500 bg-green-50' 
+                    todaySteps >= dailyGoal
+                      ? 'border-green-400 hover:border-green-500 bg-green-50'
                       : 'border-gray-200 hover:border-gray-300 opacity-60'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-2 sm:mb-3">
                     <div className="flex items-center space-x-2">
-                      {currentSteps >= dailyGoal ? (
+                      {todaySteps >= dailyGoal ? (
                         <svg className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                         </svg>
@@ -275,30 +339,30 @@ function AppContent() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                         </svg>
                       )}
-                      {currentSteps >= dailyGoal && (
+                      {todaySteps >= dailyGoal && (
                         <svg className="w-3 h-3 sm:w-4 sm:h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
                       )}
                     </div>
                     <svg className={`w-3 h-3 sm:w-4 sm:h-4 transition-opacity ${
-                      currentSteps >= dailyGoal ? 'opacity-0 group-hover:opacity-100' : 'opacity-0'
+                      todaySteps >= dailyGoal ? 'opacity-0 group-hover:opacity-100' : 'opacity-0'
                     }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>
                   </div>
                   <h3 className={`font-medium mb-1 text-sm sm:text-base ${
-                    currentSteps >= dailyGoal ? 'text-green-800' : 'text-gray-500'
+                    todaySteps >= dailyGoal ? 'text-green-800' : 'text-gray-500'
                   }`}>
-                    {currentSteps >= dailyGoal ? 'Social Hub' : 'Social Hub'}
+                    {todaySteps >= dailyGoal ? 'Social Hub' : 'Social Hub'}
                   </h3>
                   <p className="text-xs sm:text-sm text-gray-600 hidden sm:block">
-                    {currentSteps >= dailyGoal 
-                      ? 'Share achievements and connect with community' 
-                      : `Complete your goal to unlock (${(dailyGoal - currentSteps).toLocaleString()} steps left)`
+                    {todaySteps >= dailyGoal
+                      ? 'Share achievements and connect with community'
+                      : `Complete your goal to unlock (${(dailyGoal - todaySteps).toLocaleString()} steps left)`
                     }
                   </p>
-                  {currentSteps < dailyGoal && (
+                  {todaySteps < dailyGoal && (
                     <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-80 rounded-xl sm:rounded-2xl">
                       <div className="text-center">
                         <svg className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
