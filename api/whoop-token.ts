@@ -48,18 +48,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const clientId = process.env.WHOOP_CLIENT_ID;
     const clientSecret = process.env.WHOOP_CLIENT_SECRET;
 
+    console.log('🔍 Whoop Token Exchange - Environment check:', {
+      env_keys: Object.keys(process.env).filter(k => k.includes('WHOOP')),
+      hasClientId: !!clientId,
+      hasClientSecret: !!clientSecret,
+      clientId_length: clientId?.length,
+      clientSecret_length: clientSecret?.length
+    });
+
     console.log('🔍 Whoop Token Exchange - Request details:', {
       method: req.method,
       origin: req.headers.origin,
       redirect_uri_from_client: redirect_uri || 'NOT PROVIDED',
-      hasClientId: !!clientId,
-      hasClientSecret: !!clientSecret,
       grant_type,
       code_length: code?.length
     });
 
     if (!clientId || !clientSecret) {
-      console.error('Missing Whoop credentials in environment variables');
+      console.error('❌ Missing Whoop credentials in environment variables');
+      console.error('Available env vars:', Object.keys(process.env).filter(k => k.includes('WHOOP')));
       return res.status(500).json({ error: 'Server configuration error' });
     }
 
