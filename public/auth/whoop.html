@@ -89,11 +89,12 @@
             errorEl.style.display = 'block';
             errorEl.textContent = `Error: ${error}`;
 
-            // Redirect back to app after 3 seconds
+            // Redirect back to app after 5 seconds (give time to see logs)
             setTimeout(() => {
                 const baseUrl = window.location.protocol + '//' + window.location.host;
+                console.log('🔄 Redirecting to:', `${baseUrl}/?whoop_error=${error}`);
                 window.location.href = `${baseUrl}/?whoop_error=${error}`;
-            }, 3000);
+            }, 5000);
         } else if (code) {
             // Success! Send code to parent window or redirect
             titleEl.textContent = 'Authorization Successful!';
@@ -105,11 +106,13 @@
                 localStorage.setItem('whoop_auth_state', state);
             }
 
-            // Redirect back to main app
+            // Redirect back to main app (delayed to see logs)
             setTimeout(() => {
                 const baseUrl = window.location.protocol + '//' + window.location.host;
+                console.log('🔄 Redirecting to:', `${baseUrl}/?whoop_connected=true`);
+                console.log('✅ Auth code stored in localStorage, redirecting...');
                 window.location.href = `${baseUrl}/?whoop_connected=true`;
-            }, 1500);
+            }, 3000);
         } else {
             // No code or error - something went wrong
             titleEl.textContent = 'Invalid Response';
