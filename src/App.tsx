@@ -131,6 +131,7 @@ function AppContent() {
 
     if (xmtpClient) {
       // XMTP already initialized, just show the messaging interface
+      console.log('✅ XMTP client already initialized, switching to messages view');
       setActiveView('messages');
       return;
     }
@@ -146,29 +147,42 @@ function AppContent() {
       chainId: walletClient.chain?.id,
       chainName: walletClient.chain?.name
     });
-    
+
     // Check if wallet is on Base network
     if (walletClient.chain?.id !== 8453) {
       console.log('⚠️  Wallet not on Base network. Current:', walletClient.chain?.id, 'Expected: 8453');
       setError('Please switch your Coinbase Wallet to Base network before enabling XMTP messaging. You can do this by: 1) Opening Coinbase Wallet extension, 2) Clicking the network selector, 3) Selecting "Base"');
       return;
     }
-    
+
     setError(null);
 
     try {
       console.log('🔄 Starting XMTP initialization process...');
       console.log('🔄 XMTP is requesting your signature to enable messaging...');
-      
+
       await initializeClient(walletClient);
       console.log('✅ XMTP initialized successfully');
       setSuccess('XMTP messaging enabled successfully!');
-      setActiveView('messages');
+
+      // Don't switch view immediately - wait for client to be ready
+      console.log('⏳ Waiting for XMTP client to be ready...');
     } catch (error) {
       console.error('❌ XMTP initialization failed:', error);
       setError('XMTP setup failed. Please try again.');
     }
   };
+
+  // Auto-switch to messages view after XMTP client is initialized
+  const prevXmtpClient = React.useRef(xmtpClient);
+  useEffect(() => {
+    // Only switch when client transitions from null to initialized
+    if (!prevXmtpClient.current && xmtpClient && isConnected) {
+      console.log('✅ XMTP client is ready, switching to messages view');
+      setActiveView('messages');
+    }
+    prevXmtpClient.current = xmtpClient;
+  }, [xmtpClient, isConnected]);
 
   // Debug logging for configuration verification
   useEffect(() => {
