@@ -40,7 +40,13 @@ export function useWhoop(): UseWhoopReturn {
         ? 'http://localhost:3000/auth/whoop.html'
         : `https://${window.location.host}/auth/whoop.html`;
       
-      const redirectUri = import.meta.env.VITE_WHOOP_REDIRECT_URI || defaultRedirectUri;
+      // If VITE_WHOOP_REDIRECT_URI is set but points to localhost in production, ignore it
+      let redirectUri = import.meta.env.VITE_WHOOP_REDIRECT_URI;
+      
+      // If no env var set, or if it's localhost while we're in production, use dynamic value
+      if (!redirectUri || (redirectUri.includes('localhost') && window.location.hostname !== 'localhost')) {
+        redirectUri = defaultRedirectUri;
+      }
 
       console.log('🔍 Checking Whoop credentials:', {
         hasClientId: !!clientId,
@@ -48,7 +54,11 @@ export function useWhoop(): UseWhoopReturn {
         hasRedirectUri: !!redirectUri,
         clientId: clientId ? `${clientId.substring(0, 8)}...` : 'missing',
         redirectUri: redirectUri || 'missing',
-        usingEnvVars: !!(import.meta.env.VITE_WHOOP_CLIENT_ID)
+        hostname: window.location.hostname,
+        host: window.location.host,
+        usingEnvVars: !!(import.meta.env.VITE_WHOOP_CLIENT_ID),
+        envRedirectUri: import.meta.env.VITE_WHOOP_REDIRECT_URI || 'not set',
+        finalRedirectUri: redirectUri
       });
 
       if (!clientId || !clientSecret || !redirectUri) {
