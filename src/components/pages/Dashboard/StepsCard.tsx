@@ -1,5 +1,7 @@
-import React from 'react';
-import { Activity, Trophy, Circle } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { motion, useSpring, useTransform } from 'framer-motion';
+import { Trophy, Coins } from 'lucide-react';
+import { CircularProgress } from '../../CircularProgress';
 
 interface StepsCardProps {
   currentSteps: number;
@@ -8,88 +10,259 @@ interface StepsCardProps {
   totalTokens: number;
 }
 
+// Spring config for smooth, physics-based animations
+const springConfig = {
+  type: 'spring' as const,
+  damping: 25,
+  stiffness: 300,
+};
+
 export const StepsCard: React.FC<StepsCardProps> = React.memo(({
   currentSteps,
   dailyGoal,
   currentStreak,
   totalTokens,
 }) => {
-  const progress = (currentSteps / dailyGoal) * 100;
+  const progress = Math.min((currentSteps / dailyGoal) * 100, 100);
   const isGoalReached = currentSteps >= dailyGoal;
 
+  // Animated step counter
+  const [displaySteps, setDisplaySteps] = useState(0);
+
+  useEffect(() => {
+    const duration = 1500; // 1.5 seconds
+    const steps = 60;
+    const increment = currentSteps / steps;
+    let current = 0;
+
+    const timer = setInterval(() => {
+      current += increment;
+      if (current >= currentSteps) {
+        setDisplaySteps(currentSteps);
+        clearInterval(timer);
+      } else {
+        setDisplaySteps(Math.floor(current));
+      }
+    }, duration / steps);
+
+    return () => clearInterval(timer);
+  }, [currentSteps]);
+
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-6">
-      {/* Steps Progress */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-sm font-medium text-gray-600">Today's Steps</h2>
-            <p className="text-3xl font-medium mt-1">{currentSteps.toLocaleString()}</p>
-          </div>
-          <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center">
-            <Activity className="w-8 h-8 text-gray-700" />
-          </div>
-        </div>
-
-        {/* Progress Bar */}
-        <div className="space-y-2">
-          <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all duration-500 ${
-                isGoalReached ? 'bg-green-500' : 'bg-black'
-              }`}
-              style={{ width: `${Math.min(progress, 100)}%` }}
-            />
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-600">
-              {dailyGoal.toLocaleString()} goal
-            </span>
-            <span className={isGoalReached ? 'text-green-600 font-medium' : 'text-gray-600'}>
-              {Math.round(progress)}%
-            </span>
-          </div>
-        </div>
+    <motion.div
+      className="card-dimensional"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={springConfig}
+      style={{
+        padding: 'var(--space-8)',
+        position: 'relative',
+        overflow: 'visible',
+      }}
+    >
+      {/* Header Label */}
+      <div style={{ marginBottom: 'var(--space-6)', textAlign: 'center' }}>
+        <p className="text-label" style={{ color: 'var(--gray-500)' }}>
+          Today's Activity
+        </p>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 gap-4">
-        {/* Streak */}
-        <div className="bg-gray-50 rounded-xl p-4">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center">
-              <Trophy className="w-5 h-5 text-orange-600" />
-            </div>
-            <div>
-              <p className="text-xs text-gray-600">Streak</p>
-              <p className="text-xl font-medium">{currentStreak} days</p>
-            </div>
-          </div>
-        </div>
+      {/* Circular Progress with Step Count */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 'var(--space-8)',
+        position: 'relative',
+      }}>
+        <CircularProgress value={progress} size={240} strokeWidth={14} />
 
-        {/* Tokens */}
-        <div className="bg-gray-50 rounded-xl p-4">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-              <Circle className="w-5 h-5 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-xs text-gray-600">Tokens</p>
-              <p className="text-xl font-medium">{totalTokens}</p>
-            </div>
+        {/* Step count overlay */}
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ ...springConfig, delay: 0.2 }}
+          style={{
+            position: 'absolute',
+            textAlign: 'center',
+          }}
+        >
+          <div
+            className="text-display"
+            style={{
+              background: 'var(--gradient-base)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              lineHeight: 1,
+              marginBottom: 'var(--space-2)',
+            }}
+          >
+            {displaySteps.toLocaleString()}
           </div>
-        </div>
+          <div
+            className="text-label"
+            style={{
+              color: 'var(--gray-600)',
+              fontSize: 'var(--text-sm)',
+            }}
+          >
+            / {dailyGoal.toLocaleString()} steps
+          </div>
+          <div
+            style={{
+              fontSize: 'var(--text-h4)',
+              fontWeight: 600,
+              color: isGoalReached ? 'var(--success-600)' : 'var(--color-base-blue)',
+              marginTop: 'var(--space-1)',
+            }}
+          >
+            {Math.round(progress)}%
+          </div>
+        </motion.div>
       </div>
 
-      {/* Goal Reached Banner */}
+      {/* Goal Reached Celebration */}
       {isGoalReached && (
-        <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-          <p className="text-center text-green-800 font-medium">
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ ...springConfig, delay: 0.4 }}
+          style={{
+            background: 'var(--success-50)',
+            border: '2px solid var(--success-500)',
+            borderRadius: 'var(--radius-lg)',
+            padding: 'var(--space-4)',
+            marginBottom: 'var(--space-6)',
+            textAlign: 'center',
+          }}
+        >
+          <div style={{ fontSize: '28px', marginBottom: 'var(--space-1)' }}>🎉</div>
+          <p style={{
+            fontSize: 'var(--text-base)',
+            fontWeight: 600,
+            color: 'var(--success-600)',
+            margin: 0,
+          }}>
             Goal Reached! Keep moving!
           </p>
-        </div>
+        </motion.div>
       )}
-    </div>
+
+      {/* Stats Pills */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        gap: 'var(--space-4)',
+      }}>
+        {/* Streak Pill */}
+        <motion.div
+          className="stat-pill"
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ ...springConfig, delay: 0.3 }}
+          whileHover={{ y: -2 }}
+          style={{
+            background: 'var(--glass-subtle)',
+            backdropFilter: 'blur(16px)',
+            border: '1px solid rgba(255, 255, 255, 0.3)',
+            borderRadius: 'var(--radius-lg)',
+            padding: 'var(--space-4)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 'var(--space-3)',
+            boxShadow: 'var(--shadow-sm)',
+          }}
+        >
+          <div style={{
+            width: '40px',
+            height: '40px',
+            borderRadius: 'var(--radius-md)',
+            background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 4px 12px rgba(245, 158, 11, 0.3)',
+          }}>
+            <Trophy size={20} color="white" />
+          </div>
+          <div>
+            <p className="text-label" style={{
+              fontSize: 'var(--text-xs)',
+              color: 'var(--gray-600)',
+              margin: 0,
+              textTransform: 'uppercase',
+            }}>
+              Streak
+            </p>
+            <p style={{
+              fontSize: 'var(--text-h3)',
+              fontWeight: 700,
+              color: 'var(--gray-900)',
+              margin: 0,
+              lineHeight: 1.2,
+            }}>
+              {currentStreak}
+              <span style={{ fontSize: 'var(--text-sm)', fontWeight: 500, marginLeft: '4px' }}>
+                days
+              </span>
+            </p>
+          </div>
+        </motion.div>
+
+        {/* Tokens Pill */}
+        <motion.div
+          className="stat-pill"
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ ...springConfig, delay: 0.35 }}
+          whileHover={{ y: -2 }}
+          style={{
+            background: 'var(--glass-subtle)',
+            backdropFilter: 'blur(16px)',
+            border: '1px solid rgba(255, 255, 255, 0.3)',
+            borderRadius: 'var(--radius-lg)',
+            padding: 'var(--space-4)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 'var(--space-3)',
+            boxShadow: 'var(--shadow-sm)',
+          }}
+        >
+          <div style={{
+            width: '40px',
+            height: '40px',
+            borderRadius: 'var(--radius-md)',
+            background: 'var(--gradient-base)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: 'var(--shadow-base-glow)',
+          }}>
+            <Coins size={20} color="white" />
+          </div>
+          <div>
+            <p className="text-label" style={{
+              fontSize: 'var(--text-xs)',
+              color: 'var(--gray-600)',
+              margin: 0,
+              textTransform: 'uppercase',
+            }}>
+              Tokens
+            </p>
+            <p style={{
+              fontSize: 'var(--text-h3)',
+              fontWeight: 700,
+              color: 'var(--gray-900)',
+              margin: 0,
+              lineHeight: 1.2,
+            }}>
+              {totalTokens.toLocaleString()}
+            </p>
+          </div>
+        </motion.div>
+      </div>
+    </motion.div>
   );
 });
 

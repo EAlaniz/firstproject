@@ -13,6 +13,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import App from './App';
 import './index.css';
 import './styles/design-system.css';
+import './styles/refined-design.css';
 
 // Initialize Farcaster compatibility fixes early
 farcasterCompatibility.init();
