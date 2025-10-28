@@ -8,8 +8,9 @@ import { XMTPProvider } from './xmtp/contexts/XMTPContext';
 import { useXMTP } from './xmtp/contexts/useXMTPContext';
 import { useXMTPClient } from './xmtp/hooks/useXMTP';
 import { useHealthData } from './hooks/useHealthData';
+import { useWhoop } from './hooks/useWhoop';
 import { LandingPage, DashboardHeader, StepsCard } from './components/pages';
-import { Activity, Circle, MessageCircle, X, User, ExternalLink, Settings, Lock, LogOut, RefreshCw } from 'lucide-react';
+import { Activity, Circle, MessageCircle, X, User, ExternalLink, Settings, Lock, LogOut, RefreshCw, Zap } from 'lucide-react';
 // Import the Farcaster Frame SDK for mini app splash screen control
 import { sdk } from '@farcaster/frame-sdk';
 import { Toaster } from 'react-hot-toast';
@@ -42,6 +43,17 @@ function AppContent() {
     refreshSteps,
     openHealthSettings,
   } = useHealthData();
+
+  // Whoop integration
+  const {
+    isConnected: isWhoopConnected,
+    isConnecting: isWhoopConnecting,
+    error: whoopError,
+    userData: whoopData,
+    connectWhoop,
+    disconnectWhoop,
+    refreshData: refreshWhoopData,
+  } = useWhoop();
 
   // Add this useEffect near the top inside your component
   useEffect(() => {
@@ -263,6 +275,97 @@ function AppContent() {
                       >
                         Open Health Settings
                       </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Whoop Connection Banner */}
+              {!isWhoopConnected && !isWhoopConnecting && (
+                <div className="mb-6 p-4 bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-xl">
+                  <div className="flex items-start space-x-3">
+                    <Zap className="w-5 h-5 text-purple-600 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <h4 className="font-medium text-purple-900 mb-1">Connect Your Whoop</h4>
+                      <p className="text-sm text-purple-700 mb-3">
+                        Automatically track your recovery, sleep, and strain data. Get rewarded for maintaining optimal health metrics!
+                      </p>
+                      <button
+                        onClick={connectWhoop}
+                        className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors flex items-center space-x-2"
+                      >
+                        <Zap className="w-4 h-4" />
+                        <span>Connect Whoop</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Whoop Connecting State */}
+              {isWhoopConnecting && (
+                <div className="mb-6 p-4 bg-purple-50 border border-purple-200 rounded-xl">
+                  <div className="flex items-center space-x-3">
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-purple-600"></div>
+                    <p className="text-sm text-purple-700 font-medium">Connecting to Whoop...</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Whoop Connected State */}
+              {isWhoopConnected && whoopData && (
+                <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start space-x-3 flex-1">
+                      <Zap className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <h4 className="font-medium text-green-900 mb-1">Whoop Connected</h4>
+                        <div className="text-sm text-green-700 space-y-1">
+                          {whoopData.profile && (
+                            <p>Connected as {whoopData.profile.first_name} {whoopData.profile.last_name}</p>
+                          )}
+                          {whoopData.recovery && (
+                            <p>Latest Recovery: {whoopData.recovery.score?.recovery_score}%</p>
+                          )}
+                          {whoopData.sleep && (
+                            <p>Sleep Performance: {whoopData.sleep.score?.sleep_performance_percentage}%</p>
+                          )}
+                          {whoopData.cycle && (
+                            <p>Daily Strain: {whoopData.cycle.score?.strain.toFixed(1)}</p>
+                          )}
+                        </div>
+                        <div className="flex items-center space-x-2 mt-3">
+                          <button
+                            onClick={refreshWhoopData}
+                            className="text-xs text-green-600 hover:text-green-700 flex items-center space-x-1"
+                          >
+                            <RefreshCw className="w-3 h-3" />
+                            <span>Refresh Data</span>
+                          </button>
+                          <span className="text-gray-300">•</span>
+                          <button
+                            onClick={disconnectWhoop}
+                            className="text-xs text-red-600 hover:text-red-700"
+                          >
+                            Disconnect
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Whoop Error Banner */}
+              {whoopError && (
+                <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
+                  <div className="flex items-start space-x-3">
+                    <svg className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div className="flex-1">
+                      <h4 className="font-medium text-red-900 mb-1">Whoop Connection Error</h4>
+                      <p className="text-sm text-red-700">{whoopError}</p>
                     </div>
                   </div>
                 </div>
