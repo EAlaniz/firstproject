@@ -176,6 +176,8 @@ class WhoopService {
       ? 'http://localhost:3000/api/whoop-token'
       : 'https://' + window.location.host + '/api/whoop-token';
 
+    console.log('🔄 Exchanging code for tokens using redirect_uri:', this.config.redirectUri);
+
     const response = await fetch(tokenEndpoint, {
       method: 'POST',
       headers: {
@@ -184,6 +186,7 @@ class WhoopService {
       body: JSON.stringify({
         grant_type: 'authorization_code',
         code,
+        redirect_uri: this.config.redirectUri, // Pass the SAME redirect_uri used in authorization
       }),
     });
 

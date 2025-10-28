@@ -33,7 +33,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { code, grant_type = 'authorization_code', refresh_token } = req.body;
+    const { code, grant_type = 'authorization_code', refresh_token, redirect_uri } = req.body;
 
     // Validate required parameters
     if (grant_type === 'authorization_code' && !code) {
@@ -47,16 +47,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Get credentials from environment variables
     const clientId = process.env.WHOOP_CLIENT_ID;
     const clientSecret = process.env.WHOOP_CLIENT_SECRET;
-    const redirectUri = process.env.WHOOP_REDIRECT_URI;
 
     console.log('🔍 Whoop Token Exchange - Request details:', {
       method: req.method,
       origin: req.headers.origin,
-      body: req.body,
-      redirectUriFromEnv: redirectUri || 'NOT SET',
+      redirect_uri_from_client: redirect_uri || 'NOT PROVIDED',
       hasClientId: !!clientId,
       hasClientSecret: !!clientSecret,
-      grant_type: req.body?.grant_type
+      grant_type,
+      code_length: code?.length
     });
 
     if (!clientId || !clientSecret) {
@@ -72,11 +71,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (grant_type === 'authorization_code') {
       body.append('code', code);
-      // Use production redirect URI for token exchange
-      const tokenExchangeRedirectUri = redirectUri || 'https://move10k.xyz/auth/whoop.html';
-      body.append('redirect_uri', tokenExchangeRedirectUri);
+      // Use the redirect_uri passed from client, MUST match the one used in authorization request
+      if (!redirect_uri) {
+        return res.status(400).json({ error: 'Missing redirect_uri parameter' });
+      }
+      body.append('redirect_uri', redirect_uri);
       
-      console.log('🔄 Token Exchange - Using redirect_uri:', tokenExchangeRedirectUri);
+      console.log('🔄 Token Exchange - Using redirect_uri:', redirect_uri);
+      console.log('🔄 Token Exchange - Full body params:', {
+        client_id: clientId?.substring(0, 8) + '...',
+        grant_type,
+        code_length: code?.length,
+        redirect_uri
+      });
     } else if (grant_type === 'refresh_token') {
       body.append('refresh_token', refresh_token);
     }
