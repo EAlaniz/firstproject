@@ -6,6 +6,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  console.log('🚀 Whoop Token Exchange Function Called');
+  console.log('🚀 Request method:', req.method);
+  console.log('🚀 Request origin:', req.headers.origin);
+  
   // Enable CORS for your domain
   const allowedOrigins = [
     'http://localhost:5173',
