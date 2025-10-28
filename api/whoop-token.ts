@@ -49,8 +49,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const clientSecret = process.env.WHOOP_CLIENT_SECRET;
     const redirectUri = process.env.WHOOP_REDIRECT_URI;
 
-    console.log('🔍 Whoop Token Exchange - Redirect URI from env:', redirectUri);
-    console.log('🔍 Whoop Token Exchange - Request origin:', req.headers.origin);
+    console.log('🔍 Whoop Token Exchange - Request details:', {
+      method: req.method,
+      origin: req.headers.origin,
+      body: req.body,
+      redirectUriFromEnv: redirectUri || 'NOT SET',
+      hasClientId: !!clientId,
+      hasClientSecret: !!clientSecret,
+      grant_type: req.body?.grant_type
+    });
 
     if (!clientId || !clientSecret) {
       console.error('Missing Whoop credentials in environment variables');
@@ -65,9 +72,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (grant_type === 'authorization_code') {
       body.append('code', code);
-      if (redirectUri) {
-        body.append('redirect_uri', redirectUri);
-      }
+      // Use production redirect URI for token exchange
+      const tokenExchangeRedirectUri = redirectUri || 'https://move10k.xyz/auth/whoop.html';
+      body.append('redirect_uri', tokenExchangeRedirectUri);
+      
+      console.log('🔄 Token Exchange - Using redirect_uri:', tokenExchangeRedirectUri);
     } else if (grant_type === 'refresh_token') {
       body.append('refresh_token', refresh_token);
     }
