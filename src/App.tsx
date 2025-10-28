@@ -16,9 +16,9 @@ import { BottomTabNav, type TabView } from './components/BottomTabNav';
 import { TodayTab } from './components/tabs/TodayTab';
 import { ConnectTab } from './components/tabs/ConnectTab';
 import { RewardsTab } from './components/tabs/RewardsTab';
-import { Activity, Circle, MessageCircle, X, User, ExternalLink, Settings, Lock, LogOut, RefreshCw, Zap } from 'lucide-react';
-// Import the Farcaster Frame SDK for mini app splash screen control
-import { sdk } from '@farcaster/frame-sdk';
+import { Activity, Circle, MessageCircle, X, User, ExternalLink, Settings, Lock, LogOut, RefreshCw, Zap, Trophy } from 'lucide-react';
+// Import the Farcaster Mini App SDK
+import { sdk } from '@farcaster/miniapp-sdk';
 import { Toaster } from 'react-hot-toast';
 
 function AppContent() {

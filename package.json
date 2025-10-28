@@ -22,7 +22,7 @@
     "@coinbase/onchainkit": "^1.1.1",
     "@coinbase/wallet-sdk": "^4.3.4",
     "@farcaster/auth-kit": "^0.8.1",
-    "@farcaster/frame-sdk": "^0.1.12",
+    "@farcaster/miniapp-sdk": "^0.2.1",
     "@tanstack/react-query": "^5.80.7",
     "@xmtp/browser-sdk": "^5.0.1",
     "@xmtp/proto": "^3.87.0",
