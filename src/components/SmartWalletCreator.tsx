@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Sparkles, Loader2, CheckCircle2, AlertCircle, Wallet, Shield, Zap } from 'lucide-react';
+import { useConnect, useAccount } from 'wagmi';
 
 interface SmartWalletCreatorProps {
   onClose: () => void;
@@ -11,34 +12,45 @@ export const SmartWalletCreator: React.FC<SmartWalletCreatorProps> = ({
   onWalletCreated,
 }) => {
   const [step, setStep] = useState<'intro' | 'creating' | 'success' | 'error'>('intro');
-  const [walletAddress, setWalletAddress] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string>('');
+
+  const { connect, connectors, error } = useConnect();
+  const { address, isConnected } = useAccount();
+
+  // Get Coinbase Wallet connector
+  const coinbaseConnector = connectors.find(
+    connector => connector.id === 'coinbaseWallet' || connector.id === 'coinbaseWalletSDK'
+  );
+
+  // Watch for successful connection
+  useEffect(() => {
+    if (isConnected && address && step === 'creating') {
+      setStep('success');
+      onWalletCreated(address);
+    }
+  }, [isConnected, address, step, onWalletCreated]);
+
+  // Watch for connection errors
+  useEffect(() => {
+    if (error && step === 'creating') {
+      console.error('Wallet creation error:', error);
+      setErrorMessage(error.message || 'Failed to create wallet');
+      setStep('error');
+    }
+  }, [error, step]);
 
   const createSmartWallet = async () => {
     setStep('creating');
 
     try {
-      // TODO: Implement actual Onchain Kit smart wallet creation
-      // For now, this is a placeholder that will be implemented
+      if (!coinbaseConnector) {
+        throw new Error('Coinbase Wallet connector not available');
+      }
 
-      // Simulate wallet creation delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // This will be replaced with actual Onchain Kit SDK call
-      // const wallet = await onchainKit.createSmartWallet({ ... });
-
-      // Placeholder success
-      const mockAddress = '0x' + Array.from({ length: 40 }, () =>
-        Math.floor(Math.random() * 16).toString(16)
-      ).join('');
-
-      setWalletAddress(mockAddress);
-      setStep('success');
-
-      // Notify parent component
-      onWalletCreated(mockAddress);
+      // Connect with Coinbase Wallet - will prompt user to create if they don't have one
+      connect({ connector: coinbaseConnector });
     } catch (error) {
-      console.error('Failed to create smart wallet:', error);
+      console.error('Failed to initiate wallet creation:', error);
       setErrorMessage(error instanceof Error ? error.message : 'Failed to create wallet');
       setStep('error');
     }
@@ -331,7 +343,7 @@ export const SmartWalletCreator: React.FC<SmartWalletCreatorProps> = ({
                   wordBreak: 'break-all',
                 }}
               >
-                {walletAddress}
+                {address}
               </div>
             </div>
 
