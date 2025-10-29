@@ -1,0 +1,629 @@
+/*
+ * EXPENSIVE MINIMALISM DESIGN SYSTEM
+ * "Stillness. Precision. Textureless luxury."
+ *
+ * Philosophy: Every pixel feels intentional, breathing, and worth touching.
+ * Whitespace is luxury; motion is reward; depth is silent presence.
+ */
+
+/* ============================================
+   COLOR PALETTE — "Base Mist"
+   ============================================ */
+
+:root {
+  /* Background — Ultra-light neutral */
+  --bg-primary: #F9FAFB;
+
+  /* Surface — Subtle card background */
+  --surface: #FFFFFF;
+
+  /* Primary Accent — Base Blue */
+  --accent-primary: #0057FF;
+  --accent-primary-hover: #0046CC;
+  --accent-primary-light: rgba(0, 87, 255, 0.1);
+
+  /* Secondary Accent — Mint feedback */
+  --accent-secondary: #00BFA6;
+  --accent-secondary-light: rgba(0, 191, 166, 0.1);
+
+  /* Text Colors */
+  --text-primary: #111827;
+  --text-secondary: #6B7280;
+  --text-tertiary: #9CA3AF;
+
+  /* Shadow — Soft depth layer */
+  --shadow-subtle: 0 2px 4px rgba(0, 0, 0, 0.04);
+  --shadow-soft: 0 4px 8px rgba(0, 0, 0, 0.06);
+  --shadow-medium: 0 8px 16px rgba(0, 0, 0, 0.08);
+  --shadow-lifted: 0 12px 24px rgba(0, 0, 0, 0.1);
+
+  /* Borders */
+  --border-subtle: rgba(0, 0, 0, 0.06);
+  --border-ghost: rgba(0, 0, 0, 0.08);
+
+  /* Glass Effect */
+  --glass-bg: rgba(255, 255, 255, 0.8);
+  --glass-blur: blur(12px);
+}
+
+/* ============================================
+   TYPOGRAPHY — "Modern Rational"
+   ============================================ */
+
+:root {
+  /* Font Stack: Satoshi > Inter > Neue Haas Grotesk > System */
+  --font-primary: 'Satoshi', 'Inter', 'Neue Haas Grotesk', -apple-system, BlinkMacSystemFont,
+                  'Segoe UI', system-ui, sans-serif;
+
+  /* Sizes */
+  --text-h1: 48px;
+  --text-h2: 32px;
+  --text-body: 16px;
+  --text-caption: 13px;
+
+  /* Weights */
+  --weight-h1: 600;
+  --weight-h2: 500;
+  --weight-body: 400;
+
+  /* Line Heights */
+  --leading-tight: 1.2;
+  --leading-normal: 1.6;
+
+  /* Letter Spacing */
+  --tracking-tight: -0.02em;
+  --tracking-normal: 0em;
+  --tracking-wide: 0.05em;
+}
+
+/* Typography Classes */
+.text-h1 {
+  font-size: var(--text-h1);
+  font-weight: var(--weight-h1);
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--leading-tight);
+  color: var(--text-primary);
+}
+
+.text-h2 {
+  font-size: var(--text-h2);
+  font-weight: var(--weight-h2);
+  line-height: var(--leading-tight);
+  color: var(--text-primary);
+}
+
+.text-body {
+  font-size: var(--text-body);
+  font-weight: var(--weight-body);
+  line-height: var(--leading-normal);
+  color: var(--text-primary);
+}
+
+.text-caption {
+  font-size: var(--text-caption);
+  font-weight: var(--weight-body);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  color: var(--text-secondary);
+}
+
+.text-secondary {
+  color: var(--text-secondary);
+}
+
+.text-tertiary {
+  color: var(--text-tertiary);
+}
+
+/* ============================================
+   MOTION & DEPTH — "Calm Luxury"
+   ============================================ */
+
+:root {
+  /* Timing — cubic-bezier(0.4, 0, 0.2, 1) */
+  --ease-calm: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Durations */
+  --duration-instant: 100ms;
+  --duration-hover: 150ms;
+  --duration-base: 300ms;
+  --duration-page: 450ms;
+}
+
+/* Base Transitions */
+* {
+  transition-timing-function: var(--ease-calm);
+}
+
+/* ============================================
+   CORE COMPONENTS
+   ============================================ */
+
+/* Buttons — flat with subtle shadow lift */
+.btn-minimal {
+  padding: 12px 24px;
+  background: var(--accent-primary);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: var(--text-body);
+  font-weight: 500;
+  font-family: var(--font-primary);
+  cursor: pointer;
+  box-shadow: var(--shadow-subtle);
+  transition: all var(--duration-hover) var(--ease-calm);
+}
+
+.btn-minimal:hover {
+  background: var(--accent-primary-hover);
+  box-shadow: var(--shadow-soft);
+  transform: translateY(-1px);
+}
+
+.btn-minimal:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-subtle);
+}
+
+.btn-minimal:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Secondary Button */
+.btn-secondary {
+  padding: 12px 24px;
+  background: var(--surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-ghost);
+  border-radius: 8px;
+  font-size: var(--text-body);
+  font-weight: 500;
+  font-family: var(--font-primary);
+  cursor: pointer;
+  box-shadow: var(--shadow-subtle);
+  transition: all var(--duration-hover) var(--ease-calm);
+}
+
+.btn-secondary:hover {
+  border-color: var(--accent-primary);
+  box-shadow: var(--shadow-soft);
+  transform: translateY(-1px);
+}
+
+/* Ghost Button */
+.btn-ghost {
+  padding: 12px 24px;
+  background: transparent;
+  color: var(--text-secondary);
+  border: none;
+  border-radius: 8px;
+  font-size: var(--text-body);
+  font-weight: 500;
+  font-family: var(--font-primary);
+  cursor: pointer;
+  transition: all var(--duration-hover) var(--ease-calm);
+}
+
+.btn-ghost:hover {
+  color: var(--text-primary);
+  background: var(--accent-primary-light);
+}
+
+/* Cards — rounded 12px, hover raise 1.02 scale */
+.card-minimal {
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: var(--shadow-subtle);
+  border: 1px solid var(--border-subtle);
+  transition: all var(--duration-base) var(--ease-calm);
+}
+
+.card-minimal:hover {
+  transform: scale(1.02);
+  box-shadow: var(--shadow-soft);
+}
+
+.card-minimal-interactive {
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: var(--shadow-subtle);
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+  transition: all var(--duration-base) var(--ease-calm);
+}
+
+.card-minimal-interactive:hover {
+  transform: scale(1.02);
+  box-shadow: var(--shadow-medium);
+  border-color: var(--accent-primary);
+}
+
+.card-minimal-interactive:active {
+  transform: scale(1);
+  box-shadow: var(--shadow-subtle);
+}
+
+/* Inputs — ghost borders appearing on focus */
+.input-minimal {
+  width: 100%;
+  padding: 12px 16px;
+  background: var(--surface);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-size: var(--text-body);
+  font-family: var(--font-primary);
+  color: var(--text-primary);
+  outline: none;
+  box-shadow: var(--shadow-subtle);
+  transition: all var(--duration-base) var(--ease-calm);
+}
+
+.input-minimal:hover {
+  border-color: var(--border-ghost);
+}
+
+.input-minimal:focus {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px var(--accent-primary-light);
+}
+
+.input-minimal::placeholder {
+  color: var(--text-tertiary);
+}
+
+/* Select Dropdown */
+.select-minimal {
+  padding: 12px 16px;
+  background: var(--surface);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-size: var(--text-body);
+  font-family: var(--font-primary);
+  color: var(--text-primary);
+  outline: none;
+  box-shadow: var(--shadow-subtle);
+  cursor: pointer;
+  transition: all var(--duration-base) var(--ease-calm);
+}
+
+.select-minimal:hover {
+  border-color: var(--border-ghost);
+}
+
+.select-minimal:focus {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px var(--accent-primary-light);
+}
+
+/* Modals — blurred glass with backdrop-filter */
+.modal-minimal {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.2);
+  backdrop-filter: var(--glass-blur);
+  animation: fadeIn var(--duration-base) var(--ease-calm);
+}
+
+.modal-content {
+  position: relative;
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  padding: 32px;
+  max-width: 480px;
+  width: 100%;
+  box-shadow: var(--shadow-lifted);
+  animation: modalSlideUp var(--duration-page) var(--ease-calm);
+}
+
+/* Nav — floating translucent bar */
+.nav-minimal {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  border-top: 1px solid var(--border-subtle);
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.04);
+  z-index: 40;
+}
+
+/* Loading — skeleton shimmer instead of spinner */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--border-subtle) 0%,
+    rgba(0, 0, 0, 0.08) 50%,
+    var(--border-subtle) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite var(--ease-calm);
+  border-radius: 8px;
+}
+
+.skeleton-text {
+  height: 16px;
+  margin-bottom: 8px;
+}
+
+.skeleton-heading {
+  height: 32px;
+  margin-bottom: 16px;
+  width: 60%;
+}
+
+.skeleton-card {
+  height: 200px;
+  border-radius: 12px;
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modalSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Page Transitions */
+.page-enter {
+  animation: fadeInUp var(--duration-page) var(--ease-calm);
+}
+
+.element-enter {
+  animation: scaleIn var(--duration-base) var(--ease-calm);
+}
+
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+
+/* Spacing */
+.space-tight {
+  margin-bottom: 8px;
+}
+
+.space-normal {
+  margin-bottom: 16px;
+}
+
+.space-loose {
+  margin-bottom: 24px;
+}
+
+.space-luxury {
+  margin-bottom: 48px;
+}
+
+/* Background */
+.bg-primary {
+  background: var(--bg-primary);
+}
+
+.bg-surface {
+  background: var(--surface);
+}
+
+/* Shadows */
+.shadow-subtle {
+  box-shadow: var(--shadow-subtle);
+}
+
+.shadow-soft {
+  box-shadow: var(--shadow-soft);
+}
+
+.shadow-lifted {
+  box-shadow: var(--shadow-lifted);
+}
+
+/* Borders */
+.border-subtle {
+  border: 1px solid var(--border-subtle);
+}
+
+.border-ghost {
+  border: 1px solid var(--border-ghost);
+}
+
+/* Rounded Corners */
+.rounded-minimal {
+  border-radius: 8px;
+}
+
+.rounded-card {
+  border-radius: 12px;
+}
+
+.rounded-modal {
+  border-radius: 16px;
+}
+
+.rounded-full {
+  border-radius: 9999px;
+}
+
+/* Hover States */
+.hover-lift {
+  transition: transform var(--duration-hover) var(--ease-calm);
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+}
+
+.hover-scale {
+  transition: transform var(--duration-hover) var(--ease-calm);
+}
+
+.hover-scale:hover {
+  transform: scale(1.02);
+}
+
+/* Interactive States */
+.interactive {
+  cursor: pointer;
+  user-select: none;
+}
+
+.interactive:active {
+  transform: scale(0.98);
+}
+
+/* Focus States */
+.focus-ring:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-primary-light);
+}
+
+/* Disabled States */
+.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ============================================
+   EMOTIONAL HOOKS
+   ============================================ */
+
+/* Motion as dopamine — gentle haptic-like animations */
+.dopamine-hover {
+  transition: all var(--duration-hover) var(--ease-calm);
+}
+
+.dopamine-hover:hover {
+  transform: translateY(-1px) scale(1.01);
+  box-shadow: var(--shadow-soft);
+}
+
+/* Breathing animation for idle states */
+@keyframes breathe {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.95;
+    transform: scale(1.005);
+  }
+}
+
+.breathe {
+  animation: breathe 4s infinite var(--ease-calm);
+}
+
+/* Satisfaction feedback */
+.satisfaction-pulse {
+  animation: satisfactionPulse 0.6s var(--ease-calm);
+}
+
+@keyframes satisfactionPulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* ============================================
+   ACCESSIBILITY
+   ============================================ */
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* High contrast support */
+@media (prefers-contrast: high) {
+  :root {
+    --border-subtle: rgba(0, 0, 0, 0.2);
+    --border-ghost: rgba(0, 0, 0, 0.3);
+  }
+}
+
+/* Dark mode preparation (optional) */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-primary: #0A0A0A;
+    --surface: #111111;
+    --text-primary: #F9FAFB;
+    --text-secondary: #9CA3AF;
+    --border-subtle: rgba(255, 255, 255, 0.1);
+    --border-ghost: rgba(255, 255, 255, 0.15);
+  }
+}

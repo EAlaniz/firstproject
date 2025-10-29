@@ -50,12 +50,15 @@ export const StepsCard: React.FC<StepsCardProps> = React.memo(({
 
   return (
     <motion.div
-      className="card-dimensional"
-      initial={{ opacity: 0, y: 20 }}
+      className="card-minimal"
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={springConfig}
+      transition={{
+        duration: 0.45,
+        ease: [0.4, 0, 0.2, 1],
+      }}
       style={{
-        padding: 'var(--space-8)',
+        padding: '32px',
         position: 'relative',
         overflow: 'visible',
       }}

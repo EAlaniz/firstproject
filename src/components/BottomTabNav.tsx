@@ -36,9 +36,9 @@ const tabs: TabConfig[] = [
 export const BottomTabNav: React.FC<BottomTabNavProps> = ({ activeTab, onTabChange }) => {
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50"
+      className="nav-minimal"
       style={{
-        boxShadow: '0 -4px 8px rgba(0, 0, 0, 0.04)',
+        transition: 'all 150ms cubic-bezier(0.4, 0, 0.2, 1)',
       }}
     >
       <div className="max-w-6xl mx-auto px-4">

@@ -28,13 +28,13 @@ export const CircularProgress: React.FC<CircularProgressProps> = ({
       {/* Define gradient for progress stroke */}
       <defs>
         <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="var(--color-base-blue)" />
-          <stop offset="100%" stopColor="var(--color-base-blue-light)" />
+          <stop offset="0%" stopColor="#0057FF" />
+          <stop offset="100%" stopColor="#00BFA6" />
         </linearGradient>
 
-        {/* Glow filter */}
+        {/* Subtle glow filter for depth */}
         <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur stdDeviation="4" result="coloredBlur" />
+          <feGaussianBlur stdDeviation="2" result="coloredBlur" />
           <feMerge>
             <feMergeNode in="coloredBlur" />
             <feMergeNode in="SourceGraphic" />
@@ -48,7 +48,7 @@ export const CircularProgress: React.FC<CircularProgressProps> = ({
         cy={center}
         r={radius}
         fill="none"
-        stroke="var(--gray-100)"
+        stroke="rgba(0, 0, 0, 0.06)"
         strokeWidth={strokeWidth}
       />
 
