@@ -224,7 +224,7 @@ function AppContent() {
 
   // Main return with conditional rendering
   return (
-    <div className="min-h-screen bg-white text-black">
+    <div className="min-h-screen bg-black text-white">
       {!isConnected ? (
         <LandingPage
           onGetStarted={() => {
