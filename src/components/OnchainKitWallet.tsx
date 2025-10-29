@@ -3,10 +3,11 @@ import {
   ConnectWallet,
   Wallet,
   WalletDropdown,
+  WalletDropdownBasename,
+  WalletDropdownLink,
   WalletDropdownDisconnect,
 } from '@coinbase/onchainkit/wallet';
-import { Address, Avatar, Name, Identity } from '@coinbase/onchainkit/identity';
-import { color } from '@coinbase/onchainkit/theme';
+import { Address, Avatar, Name, Identity, EthBalance } from '@coinbase/onchainkit/identity';
 
 export const OnchainKitWallet: React.FC = () => {
   return (
@@ -21,7 +22,12 @@ export const OnchainKitWallet: React.FC = () => {
             <Avatar />
             <Name />
             <Address />
+            <EthBalance />
           </Identity>
+          <WalletDropdownBasename />
+          <WalletDropdownLink icon="wallet" href="https://keys.coinbase.com">
+            Wallet
+          </WalletDropdownLink>
           <WalletDropdownDisconnect />
         </WalletDropdown>
       </Wallet>

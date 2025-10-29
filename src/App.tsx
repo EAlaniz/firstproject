@@ -313,25 +313,73 @@ function AppContent() {
 
             {/* Mobile Menu */}
             {isMobileMenuOpen && (
-              <div className="fixed inset-0 bg-black bg-opacity-50 z-50 sm:hidden">
-                <div className="absolute top-0 right-0 h-full w-80 bg-white shadow-xl">
-                  <div className="p-4 border-b border-gray-200">
+              <div
+                className="fixed inset-0 z-50 sm:hidden"
+                style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+              >
+                <div
+                  className="absolute top-0 right-0 h-full w-80 shadow-xl"
+                  style={{
+                    backgroundColor: 'var(--bg)',
+                    borderLeft: '1px solid var(--border)',
+                  }}
+                >
+                  <div
+                    className="p-4"
+                    style={{ borderBottom: '1px solid var(--border)' }}
+                  >
                     <div className="flex items-center justify-between">
-                      <h2 className="text-lg font-semibold">Menu</h2>
+                      <h2
+                        className="font-medium"
+                        style={{
+                          fontSize: 'var(--fs-title-4)',
+                          color: 'var(--text)',
+                        }}
+                      >
+                        Menu
+                      </h2>
                       <button
                         onClick={() => setIsMobileMenuOpen(false)}
-                        className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                        className="p-2 rounded-full transition-colors"
+                        style={{
+                          color: 'var(--text)',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = 'var(--surface)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                        }}
                       >
                         <X className="w-5 h-5" />
                       </button>
                     </div>
                   </div>
                   <div className="p-4 space-y-4">
-                    <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                      <User className="w-5 h-5 text-gray-600" />
+                    <div
+                      className="flex items-center space-x-3 p-3 rounded-lg"
+                      style={{
+                        backgroundColor: 'var(--surface)',
+                        border: '1px solid var(--border)',
+                      }}
+                    >
+                      <User
+                        className="w-5 h-5"
+                        style={{ color: 'rgb(87, 139, 250)' }}
+                      />
                       <div>
-                        <div className="font-medium">{address?.slice(0, 6)}...{address?.slice(-4)}</div>
-                        <div className="text-sm text-gray-500">{balance?.formatted} {balance?.symbol}</div>
+                        <div
+                          className="font-medium"
+                          style={{ color: 'var(--text)' }}
+                        >
+                          {address?.slice(0, 6)}...{address?.slice(-4)}
+                        </div>
+                        <div
+                          className="text-sm"
+                          style={{ color: 'var(--text-muted)' }}
+                        >
+                          {balance?.formatted} {balance?.symbol}
+                        </div>
                       </div>
                     </div>
                     <button
@@ -339,7 +387,14 @@ function AppContent() {
                         setIsMobileMenuOpen(false);
                         setShowWalletConnector(true);
                       }}
-                      className="w-full flex items-center space-x-3 p-3 hover:bg-gray-50 rounded-lg transition-colors"
+                      className="w-full flex items-center space-x-3 p-3 rounded-lg transition-colors"
+                      style={{ color: 'var(--text)' }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = 'var(--surface)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                      }}
                     >
                       <Settings className="w-5 h-5" />
                       <span>Wallet Settings</span>
@@ -349,9 +404,21 @@ function AppContent() {
                         setActiveTab('today');
                         setIsMobileMenuOpen(false);
                       }}
-                      className={`w-full flex items-center space-x-3 p-3 rounded-lg transition-colors ${
-                        activeTab === 'today' ? 'bg-black text-white' : 'hover:bg-gray-50'
-                      }`}
+                      className="w-full flex items-center space-x-3 p-3 rounded-lg transition-colors"
+                      style={{
+                        backgroundColor: activeTab === 'today' ? 'rgb(87, 139, 250)' : 'transparent',
+                        color: activeTab === 'today' ? 'white' : 'var(--text)',
+                      }}
+                      onMouseEnter={(e) => {
+                        if (activeTab !== 'today') {
+                          e.currentTarget.style.backgroundColor = 'var(--surface)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (activeTab !== 'today') {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                        }
+                      }}
                     >
                       <Activity className="w-5 h-5" />
                       <span>Today</span>
@@ -367,13 +434,30 @@ function AppContent() {
                         }
                       }}
                       disabled={isInitializing}
-                      className={`w-full flex items-center space-x-3 p-3 rounded-lg transition-colors ${
-                        isInitializing
-                          ? 'bg-gray-50 text-gray-500 cursor-not-allowed'
+                      className="w-full flex items-center space-x-3 p-3 rounded-lg transition-colors"
+                      style={{
+                        backgroundColor: isInitializing
+                          ? 'var(--surface)'
                           : activeTab === 'connect'
-                          ? 'bg-black text-white'
-                          : 'hover:bg-gray-50'
-                      }`}
+                          ? 'rgb(87, 139, 250)'
+                          : 'transparent',
+                        color: isInitializing
+                          ? 'var(--text-muted)'
+                          : activeTab === 'connect'
+                          ? 'white'
+                          : 'var(--text)',
+                        cursor: isInitializing ? 'not-allowed' : 'pointer',
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isInitializing && activeTab !== 'connect') {
+                          e.currentTarget.style.backgroundColor = 'var(--surface)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isInitializing && activeTab !== 'connect') {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                        }
+                      }}
                     >
                       <MessageCircle className="w-5 h-5" />
                       <span>{isInitializing ? 'Initializing...' : xmtpClient ? 'Connect' : 'Enable Messages'}</span>
@@ -383,9 +467,21 @@ function AppContent() {
                         setActiveTab('rewards');
                         setIsMobileMenuOpen(false);
                       }}
-                      className={`w-full flex items-center space-x-3 p-3 rounded-lg transition-colors ${
-                        activeTab === 'rewards' ? 'bg-black text-white' : 'hover:bg-gray-50'
-                      }`}
+                      className="w-full flex items-center space-x-3 p-3 rounded-lg transition-colors"
+                      style={{
+                        backgroundColor: activeTab === 'rewards' ? 'rgb(87, 139, 250)' : 'transparent',
+                        color: activeTab === 'rewards' ? 'white' : 'var(--text)',
+                      }}
+                      onMouseEnter={(e) => {
+                        if (activeTab !== 'rewards') {
+                          e.currentTarget.style.backgroundColor = 'var(--surface)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (activeTab !== 'rewards') {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                        }
+                      }}
                     >
                       <Trophy className="w-5 h-5" />
                       <span>Rewards</span>
@@ -395,7 +491,14 @@ function AppContent() {
                         disconnect();
                         setIsMobileMenuOpen(false);
                       }}
-                      className="w-full flex items-center space-x-3 p-3 hover:bg-gray-50 rounded-lg transition-colors text-red-600"
+                      className="w-full flex items-center space-x-3 p-3 rounded-lg transition-colors"
+                      style={{ color: 'rgb(239, 68, 68)' }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                      }}
                     >
                       <LogOut className="w-5 h-5" />
                       <span>Disconnect</span>
