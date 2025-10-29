@@ -47,6 +47,9 @@
   --brand-900: #3535FF;
   --brand-contrast: #FFFFFF;
 
+  /* Primary Dark - for button backgrounds */
+  --primary-dark: 87, 139, 250;       /* base.dev --color-bgPrimary as RGB */
+
   /* Semantic Colors - Base.dev Exact */
   --success: #7FD057;                 /* base.dev --color-fgPositive */
   --success-bg: rgba(127, 208, 87, 0.1);
@@ -157,6 +160,9 @@
   --radius-800: 24px;                 /* base.dev --borderRadius-800 */
   --radius-900: 28px;                 /* base.dev --borderRadius-900 */
   --radius-1000: 100000px;            /* base.dev --borderRadius-1000 (full) */
+
+  /* Tailwind/Base.dev compatible names */
+  --rounded-xl: 0.75rem;              /* 12px - matches radius-500 */
 
   /* ============================================
      BASE.DEV SHADOWS

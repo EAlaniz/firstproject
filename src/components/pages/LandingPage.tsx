@@ -104,14 +104,15 @@ export const LandingPage: React.FC<LandingPageProps> = React.memo(({
             {/* Primary CTA - Connect Existing Wallet */}
             <button
               onClick={onGetStarted}
-              className="w-full sm:w-auto rounded transition-all duration-base flex items-center justify-center"
+              className="w-full sm:w-auto relative transition-all duration-base flex items-center justify-center"
               style={{
                 gap: 'var(--space-1)',
                 padding: 'var(--space-2) var(--space-4)',
                 fontSize: 'var(--fs-label-1)',
                 fontWeight: 'var(--fw-label-heavy)',
-                backgroundColor: 'var(--brand-500)',
+                backgroundColor: 'rgb(var(--primary-dark) / 1)',
                 color: 'white',
+                borderRadius: 'var(--rounded-xl)',
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.opacity = '0.88';
@@ -126,7 +127,7 @@ export const LandingPage: React.FC<LandingPageProps> = React.memo(({
             {/* Secondary CTA - Create Smart Wallet */}
             <button
               onClick={onCreateWallet}
-              className="w-full sm:w-auto rounded transition-all duration-base flex items-center justify-center border"
+              className="w-full sm:w-auto relative transition-all duration-base flex items-center justify-center border"
               style={{
                 gap: 'var(--space-1)',
                 padding: 'var(--space-2) var(--space-4)',
@@ -135,6 +136,7 @@ export const LandingPage: React.FC<LandingPageProps> = React.memo(({
                 backgroundColor: 'transparent',
                 color: 'var(--text)',
                 borderColor: 'var(--border)',
+                borderRadius: 'var(--rounded-xl)',
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.backgroundColor = 'var(--surface)';
