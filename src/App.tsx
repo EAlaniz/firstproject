@@ -12,6 +12,7 @@ import { useHealthData } from './hooks/useHealthData';
 import { useWhoop } from './hooks/useWhoop';
 import { LandingPage, DashboardHeader, StepsCard } from './components/pages';
 import { WearablesManager } from './components/WearablesManager';
+import { SmartWalletCreator } from './components/SmartWalletCreator';
 import { BottomTabNav, type TabView } from './components/BottomTabNav';
 import { TodayTab } from './components/tabs/TodayTab';
 import { ConnectTab } from './components/tabs/ConnectTab';
@@ -32,6 +33,7 @@ function AppContent() {
 
   // your existing state hooks
   const [showWalletConnector, setShowWalletConnector] = useState(false);
+  const [showSmartWalletCreator, setShowSmartWalletCreator] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -222,16 +224,38 @@ function AppContent() {
   }, [isConnected, address]);
 
 
+  // Handler for smart wallet creation
+  const handleSmartWalletCreated = (address: string) => {
+    console.log('✅ Smart wallet created:', address);
+    setSuccess('Smart wallet created successfully!');
+    setShowSmartWalletCreator(false);
+    // The wallet should now be connected automatically
+  };
+
   // Main return with conditional rendering
   return (
     <div className="min-h-screen bg-black text-white">
       {!isConnected ? (
-        <LandingPage
-          onGetStarted={() => {
-            console.log('Get Started button clicked');
-            setShowWalletConnector(true);
-          }}
-        />
+        <>
+          <LandingPage
+            onGetStarted={() => {
+              console.log('Get Started button clicked');
+              setShowWalletConnector(true);
+            }}
+            onCreateWallet={() => {
+              console.log('Create Smart Wallet button clicked');
+              setShowSmartWalletCreator(true);
+            }}
+          />
+
+          {/* Smart Wallet Creator Modal */}
+          {showSmartWalletCreator && (
+            <SmartWalletCreator
+              onClose={() => setShowSmartWalletCreator(false)}
+              onWalletCreated={handleSmartWalletCreated}
+            />
+          )}
+        </>
       ) : (
         // Main dashboard for connected users
         <>
