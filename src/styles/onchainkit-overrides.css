@@ -1,0 +1,64 @@
+/**
+ * OnchainKit Component Overrides
+ * Styling to match base.dev design system
+ */
+
+/* Connect Wallet Button - Match base.dev specifications */
+.onchainkit-connect-wallet button,
+.ockConnectWallet_Container button {
+  background-color: rgb(87, 139, 250) !important;
+  border-radius: 12px !important;
+  border: 0px solid rgb(225, 226, 230) !important;
+  color: white !important;
+  cursor: pointer !important;
+  font-family: Inter, "Inter Fallback", ui-sans-serif, system-ui, -apple-system, sans-serif !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  line-height: 20px !important;
+  min-height: 32px !important;
+  padding: 6px 16px !important;
+  white-space: nowrap !important;
+  -webkit-font-smoothing: antialiased !important;
+  transition: opacity 0.25s ease !important;
+}
+
+.onchainkit-connect-wallet button:hover,
+.ockConnectWallet_Container button:hover {
+  opacity: 0.88 !important;
+  background-color: rgb(87, 139, 250) !important;
+}
+
+/* Wallet component in header */
+.onchainkit-wallet-container button {
+  background-color: rgb(87, 139, 250) !important;
+  border-radius: 12px !important;
+  border: 0px solid rgb(225, 226, 230) !important;
+  color: white !important;
+  cursor: pointer !important;
+  font-family: Inter, "Inter Fallback", ui-sans-serif, system-ui, -apple-system, sans-serif !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  line-height: 20px !important;
+  min-height: 32px !important;
+  padding: 6px 16px !important;
+  white-space: nowrap !important;
+  -webkit-font-smoothing: antialiased !important;
+  transition: opacity 0.25s ease !important;
+}
+
+.onchainkit-wallet-container button:hover {
+  opacity: 0.88 !important;
+  background-color: rgb(87, 139, 250) !important;
+}
+
+/* Override OnchainKit default styles */
+[class*="ock"] button {
+  font-family: Inter, "Inter Fallback", ui-sans-serif, system-ui, -apple-system, sans-serif !important;
+}
+
+/* Ensure text color is white */
+.onchainkit-connect-wallet button span,
+.onchainkit-wallet-container button span,
+.ockConnectWallet_Container button span {
+  color: white !important;
+}
