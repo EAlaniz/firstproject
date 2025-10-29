@@ -9,11 +9,9 @@ export const WearablesManager: React.FC = () => {
 
   return (
     <div
-      className="card-elevated fade-in-up"
+      className="card-noir"
       style={{
-        background: 'linear-gradient(to bottom, white 0%, var(--color-gray-50) 100%)',
-        borderRadius: 'var(--radius-xl)',
-        padding: 'var(--space-8)',
+        padding: '32px',
         position: 'relative',
         overflow: 'hidden',
       }}
@@ -26,7 +24,7 @@ export const WearablesManager: React.FC = () => {
           left: 0,
           right: 0,
           height: '200px',
-          background: 'var(--gradient-mesh)',
+          background: 'var(--gradient-radial-glow)',
           opacity: 0.5,
           pointerEvents: 'none',
         }}
@@ -34,47 +32,28 @@ export const WearablesManager: React.FC = () => {
       {/* Header */}
       <div style={{ marginBottom: 'var(--space-6)', position: 'relative', zIndex: 1 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-2)' }}>
-          <h2
-            className="text-gradient"
-            style={{
-              margin: 0,
-              fontSize: '24px',
-              fontWeight: '800',
-              background: 'var(--gradient-primary)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text',
-            }}
-          >
+          <h2 className="text-h3" style={{ margin: 0 }}>
             Wearables & Devices
           </h2>
           {connectedDevice && (
             <button
               onClick={refreshData}
               disabled={isLoading}
-              className="btn-enhanced glass"
+              className="btn-noir-secondary"
               style={{
-                padding: '10px 18px',
-                borderRadius: 'var(--radius-md)',
-                border: '1px solid rgba(255, 255, 255, 0.3)',
-                fontSize: '14px',
-                fontWeight: '700',
-                cursor: isLoading ? 'not-allowed' : 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 'var(--space-2)',
+                gap: '8px',
                 opacity: isLoading ? 0.6 : 1,
-                boxShadow: 'var(--shadow-base)',
-                transition: 'all var(--transition-base)',
+                cursor: isLoading ? 'not-allowed' : 'pointer',
               }}
             >
-              <span className={isLoading ? 'pulse' : ''}>🔄</span>
-              {isLoading ? 'Syncing...' : 'Refresh'}
+              {isLoading ? 'Refreshing...' : 'Refresh'}
             </button>
           )}
         </div>
-        <p style={{ margin: 0, fontSize: '15px', color: 'var(--color-gray-600)', lineHeight: '1.6' }}>
-          Connect your fitness tracker to sync step data and earn rewards
+        <p className="text-body" style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '15px' }}>
+          Connect your fitness tracker to sync step data and earn rewards.
         </p>
       </div>
 
@@ -102,14 +81,25 @@ export const WearablesManager: React.FC = () => {
                 </div>
                 <div style={{ fontSize: '13px', color: '#64748B', marginTop: '2px' }}>
                   {connectedDevice.stepData ? (
-                    <>
-                      <span style={{ fontWeight: '600' }}>
-                        {connectedDevice.stepData.steps.toLocaleString()}
-                      </span>{' '}
-                      steps today
-                    </>
+                    connectedDevice.id === 'whoop' ? (
+                      <>
+                        <span style={{ fontWeight: '600' }}>
+                          {connectedDevice.stepData.steps.toLocaleString()}
+                        </span>{' '}
+                        estimated steps
+                      </>
+                    ) : (
+                      <>
+                        <span style={{ fontWeight: '600' }}>
+                          {connectedDevice.stepData.steps.toLocaleString()}
+                        </span>{' '}
+                        steps today
+                      </>
+                    )
+                  ) : isLoading ? (
+                    'Loading data...'
                   ) : (
-                    'Syncing step data...'
+                    'Waiting for data...'
                   )}
                 </div>
               </div>

@@ -4,6 +4,7 @@ import {
   WearableProvider,
   type WearableDevice,
   type WearableStepData,
+  type WearableConnectionStatus,
   WEARABLE_METADATA,
 } from '../types/wearables';
 
@@ -32,11 +33,9 @@ export function useWearables(): UseWearablesReturn {
       const metadata = WEARABLE_METADATA[provider];
 
       // Get status from provider-specific hooks
-      let status = {
+      let status: WearableConnectionStatus = {
         isConnected: false,
         isConnecting: false,
-        lastSyncTime: undefined,
-        error: undefined,
       };
 
       let stepData: WearableStepData | undefined;
@@ -45,15 +44,26 @@ export function useWearables(): UseWearablesReturn {
         status = {
           isConnected: whoop.isConnected,
           isConnecting: whoop.isConnecting,
-          lastSyncTime: whoop.userData?.updated_at ? new Date(whoop.userData.updated_at) : undefined,
-          error: whoop.error || undefined,
         };
 
-        // Extract step data from Whoop if available
-        // Note: Whoop doesn't provide step count directly, but we can calculate from strain/activity
-        if (whoop.userData) {
+        // Add optional fields only if they exist
+        if (whoop.userData?.timestamp) {
+          status.lastSyncTime = new Date(whoop.userData.timestamp);
+        }
+        if (whoop.error) {
+          status.error = whoop.error;
+        }
+
+        // Whoop provides recovery, sleep, strain, and cycle data but not step count
+        // Set stepData to indicate data has loaded (steps will be estimated from strain)
+        if (whoop.isConnected && !whoop.isConnecting) {
+          // Estimate steps from Whoop strain data (rough approximation)
+          // Strain of 10 ≈ 5000 steps, Strain of 20 ≈ 10000 steps
+          const strain = whoop.userData?.cycle?.score?.strain || 0;
+          const estimatedSteps = Math.round(strain * 500);
+
           stepData = {
-            steps: 0, // TODO: Calculate from Whoop activity data
+            steps: estimatedSteps,
             date: new Date(),
             source: WearableProvider.WHOOP,
           };
