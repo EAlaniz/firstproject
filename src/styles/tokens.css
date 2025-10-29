@@ -19,33 +19,33 @@
      COLOR TOKENS - LIGHT MODE (Primary)
      ============================================ */
 
-  /* Neutrals - High Contrast */
-  --bg: #FFFFFF;
-  --bg-subtle: #F7F8FA;
-  --surface: #FFFFFF;
-  --surface-elevated: #F7F8FA;
-  --surface-elevated-2: #EEF0F3;
+  /* Neutrals - Base.org Dark Theme */
+  --bg: #000000;                /* Pure black like base.org */
+  --bg-subtle: #0A0A0A;         /* Subtle black variation */
+  --surface: #0A0A0A;           /* Card backgrounds */
+  --surface-elevated: #141414;  /* Elevated surfaces */
+  --surface-elevated-2: #1A1A1A;
 
-  /* Text - Strict Hierarchy */
-  --text: #14171A;              /* Headings, primary text - 18.5:1 contrast */
-  --text-secondary: #3E4852;    /* Body text, descriptions - 10:1 contrast */
-  --text-muted: #667085;        /* Metadata, captions - 4.7:1 contrast (AA) */
-  --text-inverse: #FFFFFF;      /* Text on dark surfaces */
+  /* Text - Inverted for Dark Theme */
+  --text: #FFFFFF;              /* Headings, primary text - white on black */
+  --text-secondary: #E5E7EB;    /* Body text, descriptions */
+  --text-muted: #9CA3AF;        /* Metadata, captions */
+  --text-inverse: #000000;      /* Text on light surfaces */
 
-  /* Borders & Dividers */
-  --border: #E5E7EB;            /* Default borders */
-  --border-strong: #D1D5DB;     /* Emphasized borders */
-  --border-subtle: #F3F4F6;     /* Hairline dividers */
+  /* Borders & Dividers - Dark Theme */
+  --border: #262626;            /* Dark borders */
+  --border-strong: #404040;     /* Emphasized borders */
+  --border-subtle: #171717;     /* Hairline dividers */
 
-  /* Brand - Base Blue Family (inspired by Base brand) */
+  /* Brand - Base Blue (Official #0052FF from base.org) */
   --brand-50: #EBF2FF;
   --brand-100: #D6E4FF;
   --brand-200: #ADC9FF;
   --brand-300: #85AFFF;
   --brand-400: #5C94FF;
-  --brand-500: #0057FF;         /* Primary Base Blue - 4.65:1 on white (AA) */
-  --brand-600: #2E73FF;         /* Hover state */
-  --brand-700: #1C5BFF;         /* Active state */
+  --brand-500: #0052FF;         /* Official Base Blue from base.org */
+  --brand-600: #3D6FFF;         /* Hover state */
+  --brand-700: #1A5AFF;         /* Active state */
   --brand-800: #0042CC;
   --brand-900: #002E99;
   --brand-contrast: #FFFFFF;    /* Text on brand backgrounds */

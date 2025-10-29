@@ -35,7 +35,7 @@ const tabs: TabConfig[] = [
 
 export const BottomTabNav: React.FC<BottomTabNavProps> = ({ activeTab, onTabChange }) => {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-neutral-700 border-t border-neutral-200 dark:border-neutral-600 z-50">
+    <nav className="fixed bottom-0 left-0 right-0 bg-neutral-900 border-t border-neutral-800 z-50">
       <div className="max-w-6xl mx-auto px-4">
         <div className="grid grid-cols-3">
           {tabs.map((tab) => {
@@ -46,7 +46,7 @@ export const BottomTabNav: React.FC<BottomTabNavProps> = ({ activeTab, onTabChan
                 key={tab.id}
                 onClick={() => onTabChange(tab.id)}
                 className={`relative flex flex-col items-center justify-center py-3 transition-colors duration-fast ${
-                  isActive ? 'text-brand-500' : 'text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'
+                  isActive ? 'text-brand-500' : 'text-neutral-400 hover:text-neutral-200'
                 }`}
               >
                 {/* Active indicator */}

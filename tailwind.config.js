@@ -11,21 +11,23 @@ export default {
           200: '#ADC9FF',
           300: '#85AFFF',
           400: '#5C94FF',
-          500: '#0057FF',
-          600: '#2E73FF',
-          700: '#1C5BFF',
+          500: '#0052FF',  // Official Base Blue from base.org
+          600: '#3D6FFF',
+          700: '#1A5AFF',
           800: '#0042CC',
           900: '#002E99',
         },
         neutral: {
-          50: '#F7F8FA',
+          50: '#F7F8FA',     // Light grays
           100: '#EEF0F3',
           200: '#E5E7EB',
           300: '#D1D5DB',
           400: '#9CA3AF',
           500: '#667085',
           600: '#3E4852',
-          700: '#14171A',
+          700: '#14171A',    // Near-black for text
+          800: '#0A0A0A',    // Dark surfaces
+          900: '#000000',    // Pure black background
         },
         success: '#00BFA6',
         warning: '#FFC801',

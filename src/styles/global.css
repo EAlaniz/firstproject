@@ -50,6 +50,13 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  background-color: var(--bg);
+  color: var(--text);
+}
+
+#root {
+  background-color: var(--bg);
+  min-height: 100vh;
 }
 
 /* Remove list styles */
