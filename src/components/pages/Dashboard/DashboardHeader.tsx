@@ -1,25 +1,22 @@
 import React from 'react';
-import { Activity, MessageCircle, Menu, User } from 'lucide-react';
+import { Activity, MessageCircle, Menu } from 'lucide-react';
+import { OnchainKitWallet } from '../../OnchainKitWallet';
 
 interface DashboardHeaderProps {
-  address: string | undefined;
   activeView: 'dashboard' | 'messages';
   isInitialized: boolean;
   isInitializing: boolean;
   onMenuClick: () => void;
   onMessagesClick: () => void;
-  onWalletClick: () => void;
   onInitializeXMTP: () => void;
 }
 
 export const DashboardHeader: React.FC<DashboardHeaderProps> = React.memo(({
-  address,
   activeView,
   isInitialized,
   isInitializing,
   onMenuClick,
   onMessagesClick,
-  onWalletClick,
   onInitializeXMTP,
 }) => {
   return (
@@ -115,28 +112,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = React.memo(({
             <span>{isInitializing ? 'Initializing...' : 'Enable Messages'}</span>
           </button>
         )}
-        <button
-          onClick={onWalletClick}
-          className="flex items-center rounded transition-all duration-fast"
-          style={{
-            gap: 'var(--space-1)',
-            padding: 'var(--space-1) var(--space-2)',
-            fontSize: 'var(--fs-label-1)',
-            fontWeight: 'var(--fw-label)',
-            backgroundColor: 'transparent',
-            color: 'var(--text-muted)',
-            opacity: 0.88,
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.opacity = '1';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.opacity = '0.88';
-          }}
-        >
-          <User style={{ width: 'var(--icon-s)', height: 'var(--icon-s)' }} />
-          <span>{address?.slice(0, 6)}...{address?.slice(-4)}</span>
-        </button>
+        <OnchainKitWallet />
       </div>
 
       {/* Mobile Menu Button */}

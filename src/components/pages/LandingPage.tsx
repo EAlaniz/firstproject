@@ -1,13 +1,12 @@
 import React from 'react';
 import { Activity, Sparkles } from 'lucide-react';
+import { ConnectWallet } from '@coinbase/onchainkit/wallet';
 
 interface LandingPageProps {
-  onGetStarted: () => void;
   onCreateWallet: () => void;
 }
 
 export const LandingPage: React.FC<LandingPageProps> = React.memo(({
-  onGetStarted,
   onCreateWallet
 }) => {
   return (
@@ -102,32 +101,9 @@ export const LandingPage: React.FC<LandingPageProps> = React.memo(({
             }}
           >
             {/* Primary CTA - Connect Existing Wallet */}
-            <button
-              onClick={onGetStarted}
-              className="relative transition-all flex items-center justify-center"
-              style={{
-                gap: 'var(--space-1)',
-                padding: '6px 16px',
-                fontSize: '14px',
-                fontWeight: '500',
-                lineHeight: '20px',
-                backgroundColor: 'rgb(87, 139, 250)',
-                color: 'white',
-                borderRadius: '12px',
-                border: '0px solid rgb(225, 226, 230)',
-                cursor: 'pointer',
-                minHeight: '32px',
-                whiteSpace: 'nowrap',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.opacity = '0.88';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.opacity = '1';
-              }}
-            >
-              <span>Connect Wallet</span>
-            </button>
+            <div className="onchainkit-connect-wallet">
+              <ConnectWallet />
+            </div>
 
             {/* Secondary CTA - Create Smart Wallet */}
             <button

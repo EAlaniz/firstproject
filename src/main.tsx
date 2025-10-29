@@ -1,4 +1,4 @@
-import React, { StrictMode } from 'react';
+import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { OnchainKitProvider } from '@coinbase/onchainkit';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -66,31 +66,11 @@ createRoot(rootElement).render(
             config={{
               domain: 'www.move10k.xyz',
               redirectUrl: window.location.origin,
-              chainId: base.id,
-              viemTransport: viemTransport,
-              options: {
-                timeout: 30000,
-                enableLogging: true,
-              },
-              miniApp: {
-                enabled: isFarcasterMiniApp(),
-                walletConnection: {
-                  type: 'native',
-                  fallback: 'popup',
-                },
-              },
             }}
           >
             <OnchainKitProvider
               apiKey={import.meta.env.VITE_ONCHAINKIT_API_KEY || ''}
               chain={base}
-              options={{
-                timeout: 30000,
-                enableLogging: true,
-                rpcUrl: RPC_URL,
-                chainId: base.id,
-                disablePopup: isFarcasterMiniApp(),
-              }}
             >
               <App />
             </OnchainKitProvider>
