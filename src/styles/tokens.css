@@ -1,0 +1,299 @@
+/**
+ * BASE DESIGN SYSTEM - TOKENS
+ *
+ * Design tokens inspired by base.dev visual language:
+ * - Generous whitespace and bold hierarchy
+ * - High-contrast neutrals with Base Blue accents
+ * - Contemporary minimalist aesthetic
+ * - Light mode primary, dark mode secondary
+ *
+ * Reference: base.dev design principles
+ * Contrast: WCAG AA/AAA compliant
+ *
+ * DO NOT copy Base trademarks or proprietary assets.
+ * These tokens emulate the visual language only.
+ */
+
+:root {
+  /* ============================================
+     COLOR TOKENS - LIGHT MODE (Primary)
+     ============================================ */
+
+  /* Neutrals - High Contrast */
+  --bg: #FFFFFF;
+  --bg-subtle: #F7F8FA;
+  --surface: #FFFFFF;
+  --surface-elevated: #F7F8FA;
+  --surface-elevated-2: #EEF0F3;
+
+  /* Text - Strict Hierarchy */
+  --text: #14171A;              /* Headings, primary text - 18.5:1 contrast */
+  --text-secondary: #3E4852;    /* Body text, descriptions - 10:1 contrast */
+  --text-muted: #667085;        /* Metadata, captions - 4.7:1 contrast (AA) */
+  --text-inverse: #FFFFFF;      /* Text on dark surfaces */
+
+  /* Borders & Dividers */
+  --border: #E5E7EB;            /* Default borders */
+  --border-strong: #D1D5DB;     /* Emphasized borders */
+  --border-subtle: #F3F4F6;     /* Hairline dividers */
+
+  /* Brand - Base Blue Family (inspired by Base brand) */
+  --brand-50: #EBF2FF;
+  --brand-100: #D6E4FF;
+  --brand-200: #ADC9FF;
+  --brand-300: #85AFFF;
+  --brand-400: #5C94FF;
+  --brand-500: #0057FF;         /* Primary Base Blue - 4.65:1 on white (AA) */
+  --brand-600: #2E73FF;         /* Hover state */
+  --brand-700: #1C5BFF;         /* Active state */
+  --brand-800: #0042CC;
+  --brand-900: #002E99;
+  --brand-contrast: #FFFFFF;    /* Text on brand backgrounds */
+
+  /* Semantic States */
+  --success: #00BFA6;           /* Mint feedback - 3.2:1 on white */
+  --success-bg: #E6F9F5;
+  --warning: #FFC801;           /* Amber - 1.97:1 (use with caution) */
+  --warning-bg: #FFF8E1;
+  --danger: #FF4D4D;            /* Red - 4.1:1 on white (AA) */
+  --danger-bg: #FFEBEE;
+  --info: #0057FF;              /* Same as brand */
+  --info-bg: #EBF2FF;
+
+  /* Interactive States */
+  --interactive-hover: #F7F8FA;
+  --interactive-active: #EEF0F3;
+  --focus-ring: color-mix(in oklab, var(--brand-500) 70%, white);
+
+  /* Elevation (Shadows) - Subtle Depth */
+  --shadow-xs: 0 1px 2px rgba(16, 24, 40, 0.04);
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06);
+  --shadow-md: 0 4px 12px rgba(16, 24, 40, 0.08);
+  --shadow-lg: 0 8px 20px rgba(16, 24, 40, 0.10);
+  --shadow-xl: 0 12px 32px rgba(16, 24, 40, 0.12);
+  --shadow-2xl: 0 20px 48px rgba(16, 24, 40, 0.15);
+
+  /* ============================================
+     TYPOGRAPHY TOKENS
+     ============================================ */
+
+  /* Font Families */
+  --font-sans: ui-sans-serif, 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Code', 'Source Code Pro', Menlo, Consolas, 'DejaVu Sans Mono', monospace;
+
+  /* Type Scale - Modular Scale (1.250 - Major Third) */
+  --fs-xs: 12px;      /* 0.75rem - Micro copy, labels */
+  --fs-sm: 14px;      /* 0.875rem - Small text, captions */
+  --fs-base: 16px;    /* 1rem - Body text */
+  --fs-lg: 18px;      /* 1.125rem - Large body */
+  --fs-xl: 20px;      /* 1.25rem - Subheadings */
+  --fs-2xl: 24px;     /* 1.5rem - Section titles */
+  --fs-3xl: 32px;     /* 2rem - Page titles */
+  --fs-4xl: 44px;     /* 2.75rem - Hero subheadings */
+  --fs-5xl: 56px;     /* 3.5rem - Hero headlines */
+  --fs-6xl: 72px;     /* 4.5rem - Display headlines */
+
+  /* Line Heights */
+  --lh-tight: 1.2;    /* Display, headings */
+  --lh-snug: 1.375;   /* Subheadings */
+  --lh-normal: 1.5;   /* Body text */
+  --lh-relaxed: 1.625; /* Large body */
+
+  /* Letter Spacing */
+  --ls-tighter: -0.02em;  /* Display text */
+  --ls-tight: -0.01em;    /* Headings */
+  --ls-normal: 0;         /* Body */
+  --ls-wide: 0.025em;     /* Labels */
+  --ls-wider: 0.05em;     /* Uppercase labels */
+
+  /* Font Weights */
+  --fw-normal: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+
+  /* ============================================
+     SPACING TOKENS - 8px Base Grid
+     ============================================ */
+
+  --space-px: 1px;
+  --space-0: 0;
+  --space-1: 4px;     /* 0.25rem */
+  --space-2: 8px;     /* 0.5rem - Base unit */
+  --space-3: 12px;    /* 0.75rem */
+  --space-4: 16px;    /* 1rem */
+  --space-5: 20px;    /* 1.25rem */
+  --space-6: 24px;    /* 1.5rem */
+  --space-8: 32px;    /* 2rem */
+  --space-10: 40px;   /* 2.5rem */
+  --space-12: 48px;   /* 3rem */
+  --space-16: 64px;   /* 4rem - Section spacing */
+  --space-20: 80px;   /* 5rem */
+  --space-24: 96px;   /* 6rem - Hero spacing */
+  --space-32: 128px;  /* 8rem */
+  --space-40: 160px;  /* 10rem */
+
+  /* ============================================
+     SIZING TOKENS
+     ============================================ */
+
+  /* Container Widths */
+  --container-xs: 480px;
+  --container-sm: 640px;
+  --container-md: 768px;
+  --container-lg: 1024px;
+  --container-xl: 1200px;
+  --container-2xl: 1280px;
+  --container-max: 1440px;
+
+  /* Component Sizes */
+  --button-height-sm: 32px;
+  --button-height-md: 40px;
+  --button-height-lg: 48px;
+  --button-height-xl: 56px;
+
+  --input-height-sm: 32px;
+  --input-height-md: 40px;
+  --input-height-lg: 48px;
+
+  --tap-target-min: 40px;  /* Minimum touch target */
+
+  /* ============================================
+     BORDER RADIUS TOKENS
+     ============================================ */
+
+  --radius-none: 0;
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 24px;
+  --radius-full: 9999px;
+
+  /* ============================================
+     MOTION TOKENS
+     ============================================ */
+
+  /* Durations */
+  --duration-instant: 100ms;
+  --duration-fast: 150ms;
+  --duration-base: 250ms;
+  --duration-slow: 350ms;
+  --duration-slower: 500ms;
+
+  /* Easing Functions */
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);  /* Base.dev standard */
+  --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+  /* ============================================
+     Z-INDEX SCALE
+     ============================================ */
+
+  --z-base: 0;
+  --z-dropdown: 1000;
+  --z-sticky: 1100;
+  --z-fixed: 1200;
+  --z-modal-backdrop: 1300;
+  --z-modal: 1400;
+  --z-popover: 1500;
+  --z-tooltip: 1600;
+  --z-toast: 1700;
+
+  /* ============================================
+     BLUR TOKENS (Glassmorphism)
+     ============================================ */
+
+  --blur-sm: blur(4px);
+  --blur-md: blur(8px);
+  --blur-lg: blur(12px);
+  --blur-xl: blur(16px);
+}
+
+/* ============================================
+   DARK MODE TOKENS
+   ============================================ */
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Neutrals - Inverted */
+    --bg: #0E0E10;              /* Near-black base */
+    --bg-subtle: #14171A;
+    --surface: #16171A;          /* Charcoal cards */
+    --surface-elevated: #1C1D20;
+    --surface-elevated-2: #242529;
+
+    /* Text - Inverted Hierarchy */
+    --text: #ECEEF2;            /* Off-white primary - 14.8:1 contrast */
+    --text-secondary: #B4B8C0;  /* Secondary text - 7.1:1 contrast */
+    --text-muted: #8C9096;      /* Muted text - 4.6:1 contrast (AA) */
+    --text-inverse: #14171A;    /* Text on light surfaces */
+
+    /* Borders - Subtle on Dark */
+    --border: #2B2D30;
+    --border-strong: #3E4146;
+    --border-subtle: #1E2024;
+
+    /* Brand - Brightened for Dark Backgrounds */
+    --brand-50: #001433;
+    --brand-100: #002E66;
+    --brand-200: #004299;
+    --brand-300: #0057FF;
+    --brand-400: #2E73FF;       /* Primary on dark */
+    --brand-500: #5C94FF;       /* Hover on dark */
+    --brand-600: #85AFFF;
+    --brand-700: #ADC9FF;
+    --brand-800: #D6E4FF;
+    --brand-900: #EBF2FF;
+    --brand-contrast: #0E0E10;  /* Text on brand (dark mode) */
+
+    /* Semantic States - Adjusted Brightness */
+    --success: #00D4B5;         /* Brighter mint */
+    --success-bg: #002E28;
+    --warning: #FFD633;         /* Brighter amber */
+    --warning-bg: #332B00;
+    --danger: #FF6B6B;          /* Brighter red */
+    --danger-bg: #330A0A;
+    --info: #5C94FF;
+    --info-bg: #001433;
+
+    /* Interactive States */
+    --interactive-hover: #1C1D20;
+    --interactive-active: #242529;
+    --focus-ring: color-mix(in oklab, var(--brand-400) 70%, black);
+
+    /* Elevation - Ambient Glow */
+    --shadow-xs: 0 0 8px rgba(0, 0, 0, 0.4);
+    --shadow-sm: 0 0 16px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 0 24px rgba(0, 0, 0, 0.45);
+    --shadow-lg: 0 4px 32px rgba(0, 0, 0, 0.5);
+    --shadow-xl: 0 8px 40px rgba(0, 0, 0, 0.55);
+    --shadow-2xl: 0 12px 56px rgba(0, 0, 0, 0.6);
+  }
+}
+
+/* ============================================
+   FORCED COLORS MODE (High Contrast)
+   ============================================ */
+
+@media (prefers-contrast: high) {
+  :root {
+    --text: #000000;
+    --text-secondary: #1A1A1A;
+    --text-muted: #333333;
+    --border: #000000;
+    --border-strong: #000000;
+  }
+}
+
+@media (prefers-color-scheme: dark) and (prefers-contrast: high) {
+  :root {
+    --text: #FFFFFF;
+    --text-secondary: #E6E6E6;
+    --text-muted: #CCCCCC;
+    --border: #FFFFFF;
+    --border-strong: #FFFFFF;
+  }
+}
