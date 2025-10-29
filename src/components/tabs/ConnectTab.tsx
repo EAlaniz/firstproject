@@ -58,22 +58,10 @@ export const ConnectTab: React.FC<ConnectTabProps> = ({
     >
       {/* Page Header */}
       <div className="mb-6">
-        <h1
-          style={{
-            fontSize: 'var(--text-3xl)',
-            fontWeight: 600,
-            color: 'var(--gray-900)',
-            marginBottom: 'var(--space-1)',
-          }}
-        >
+        <h1 className="text-3xl font-semibold text-white mb-2">
           Connect
         </h1>
-        <p
-          style={{
-            fontSize: 'var(--text-sm)',
-            color: 'var(--gray-500)',
-          }}
-        >
+        <p className="text-sm text-neutral-400">
           Share your progress and chat with the community
         </p>
       </div>
@@ -101,23 +89,10 @@ export const ConnectTab: React.FC<ConnectTabProps> = ({
               <MessageCircle size={24} color="white" />
             </div>
             <div className="flex-1">
-              <h3
-                style={{
-                  fontSize: 'var(--text-lg)',
-                  fontWeight: 600,
-                  color: 'var(--gray-900)',
-                  marginBottom: 'var(--space-1)',
-                }}
-              >
+              <h3 className="text-lg font-semibold text-white mb-2">
                 Secure Messaging
               </h3>
-              <p
-                style={{
-                  fontSize: 'var(--text-sm)',
-                  color: 'var(--gray-600)',
-                  marginBottom: 'var(--space-4)',
-                }}
-              >
+              <p className="text-sm text-neutral-400 mb-4">
                 {isInitializing
                   ? 'Setting up your encrypted messaging...'
                   : 'Enable XMTP to chat securely with other users on Base'}

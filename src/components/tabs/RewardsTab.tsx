@@ -62,15 +62,7 @@ export const RewardsTab: React.FC<RewardsTabProps> = ({
             background: 'var(--gradient-mesh)',
           }}
         >
-          <div
-            style={{
-              fontSize: 'var(--text-xs)',
-              color: 'var(--gray-600)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-              marginBottom: 'var(--space-3)',
-            }}
-          >
+          <div className="text-xs text-neutral-400 uppercase tracking-wider mb-3">
             Total Tokens Earned
           </div>
           <div

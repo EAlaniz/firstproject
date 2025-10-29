@@ -70,22 +70,10 @@ export const TodayTab: React.FC<TodayTabProps> = ({
     >
       {/* Page Header */}
       <div className="mb-6">
-        <h1
-          style={{
-            fontSize: 'var(--text-3xl)',
-            fontWeight: 600,
-            color: 'var(--gray-900)',
-            marginBottom: 'var(--space-1)',
-          }}
-        >
+        <h1 className="text-3xl font-semibold text-white mb-2">
           Today's Activity
         </h1>
-        <p
-          style={{
-            fontSize: 'var(--text-sm)',
-            color: 'var(--gray-500)',
-          }}
-        >
+        <p className="text-sm text-neutral-400">
           Track your progress and stay motivated
         </p>
       </div>
@@ -98,19 +86,19 @@ export const TodayTab: React.FC<TodayTabProps> = ({
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={springConfig}
-            className="p-4 bg-blue-50 border border-blue-200 rounded-xl"
+            className="card p-4 bg-brand-500/10 border border-brand-500/30 rounded-xl"
           >
             <div className="flex items-start space-x-3">
-              <Activity className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              <Activity className="w-5 h-5 text-brand-500 flex-shrink-0 mt-0.5" />
               <div className="flex-1">
-                <h4 className="font-medium text-blue-900 mb-1">Enable Step Tracking</h4>
-                <p className="text-sm text-blue-700 mb-3">
+                <h4 className="font-medium text-white mb-1">Enable Step Tracking</h4>
+                <p className="text-sm text-neutral-300 mb-3">
                   Connect to {stepDataSource === 'healthkit' ? 'Apple Health' : 'Health Connect'} to
                   automatically track your daily steps.
                 </p>
                 <button
                   onClick={requestPermissions}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                  className="bg-brand-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-brand-600 transition-colors"
                 >
                   Enable Tracking
                 </button>
@@ -125,11 +113,11 @@ export const TodayTab: React.FC<TodayTabProps> = ({
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={springConfig}
-            className="p-4 bg-amber-50 border border-amber-200 rounded-xl"
+            className="card p-4 bg-warning/10 border border-warning/30 rounded-xl"
           >
             <div className="flex items-start space-x-3">
               <svg
-                className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5"
+                className="w-5 h-5 text-warning flex-shrink-0 mt-0.5"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -142,11 +130,11 @@ export const TodayTab: React.FC<TodayTabProps> = ({
                 />
               </svg>
               <div className="flex-1">
-                <h4 className="font-medium text-amber-900 mb-1">Health Permission Required</h4>
-                <p className="text-sm text-amber-700 mb-3">{healthError}</p>
+                <h4 className="font-medium text-white mb-1">Health Permission Required</h4>
+                <p className="text-sm text-neutral-300 mb-3">{healthError}</p>
                 <button
                   onClick={openHealthSettings}
-                  className="bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-700 transition-colors"
+                  className="bg-warning text-black px-4 py-2 rounded-lg text-sm font-medium hover:bg-warning/90 transition-colors"
                 >
                   Open Health Settings
                 </button>
@@ -161,18 +149,18 @@ export const TodayTab: React.FC<TodayTabProps> = ({
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={springConfig}
-            className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-xl"
+            className="p-4 bg-gradient-to-r from-brand-500/5 to-brand-500/10 border border-brand-500/30 rounded-xl"
           >
             <div className="flex items-start space-x-3">
-              <Zap className="w-5 h-5 text-purple-600 flex-shrink-0 mt-0.5" />
+              <Zap className="w-5 h-5 text-brand-500 flex-shrink-0 mt-0.5" />
               <div className="flex-1">
-                <h4 className="font-medium text-purple-900 mb-1">Connect Your Whoop</h4>
-                <p className="text-sm text-purple-700 mb-3">
+                <h4 className="font-medium text-white mb-1">Connect Your Whoop</h4>
+                <p className="text-sm text-neutral-300 mb-3">
                   Track recovery, sleep, and strain data. Get rewarded for optimal health!
                 </p>
                 <button
                   onClick={connectWhoop}
-                  className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors flex items-center space-x-2"
+                  className="bg-brand-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-brand-600 transition-colors flex items-center space-x-2"
                 >
                   <Zap className="w-4 h-4" />
                   <span>Connect Whoop</span>
@@ -184,10 +172,10 @@ export const TodayTab: React.FC<TodayTabProps> = ({
 
         {/* Whoop Connecting State */}
         {isWhoopConnecting && (
-          <div className="p-4 bg-purple-50 border border-purple-200 rounded-xl">
+          <div className="p-4 bg-brand-500/10 border border-brand-500/30 rounded-xl">
             <div className="flex items-center space-x-3">
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-purple-600"></div>
-              <p className="text-sm text-purple-700 font-medium">Connecting to Whoop...</p>
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-brand-500"></div>
+              <p className="text-sm text-neutral-300 font-medium">Connecting to Whoop...</p>
             </div>
           </div>
         )}
@@ -198,14 +186,14 @@ export const TodayTab: React.FC<TodayTabProps> = ({
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={springConfig}
-            className="p-4 bg-green-50 border border-green-200 rounded-xl"
+            className="p-4 bg-success/10 border border-success/30 rounded-xl"
           >
             <div className="flex items-start justify-between">
               <div className="flex items-start space-x-3 flex-1">
-                <Zap className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                <Zap className="w-5 h-5 text-success flex-shrink-0 mt-0.5" />
                 <div className="flex-1">
-                  <h4 className="font-medium text-green-900 mb-1">Whoop Connected</h4>
-                  <div className="text-sm text-green-700 space-y-1">
+                  <h4 className="font-medium text-white mb-1">Whoop Connected</h4>
+                  <div className="text-sm text-neutral-300 space-y-1">
                     {whoopData.profile && (
                       <p>
                         Connected as {whoopData.profile.first_name} {whoopData.profile.last_name}
@@ -222,13 +210,13 @@ export const TodayTab: React.FC<TodayTabProps> = ({
                   <div className="flex items-center space-x-2 mt-3">
                     <button
                       onClick={refreshWhoopData}
-                      className="text-xs text-green-600 hover:text-green-700 flex items-center space-x-1"
+                      className="text-xs text-success hover:text-neutral-300 flex items-center space-x-1"
                     >
                       <RefreshCw className="w-3 h-3" />
                       <span>Refresh Data</span>
                     </button>
-                    <span className="text-gray-300">•</span>
-                    <button onClick={disconnectWhoop} className="text-xs text-red-600 hover:text-red-700">
+                    <span className="text-neutral-500">•</span>
+                    <button onClick={disconnectWhoop} className="text-xs text-danger hover:text-neutral-300">
                       Disconnect
                     </button>
                   </div>
@@ -240,10 +228,10 @@ export const TodayTab: React.FC<TodayTabProps> = ({
 
         {/* Whoop Error Banner */}
         {whoopError && (
-          <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
+          <div className="p-4 bg-danger/10 border border-danger/30 rounded-xl">
             <div className="flex items-start space-x-3">
               <svg
-                className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5"
+                className="w-5 h-5 text-danger flex-shrink-0 mt-0.5"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -256,8 +244,8 @@ export const TodayTab: React.FC<TodayTabProps> = ({
                 />
               </svg>
               <div className="flex-1">
-                <h4 className="font-medium text-red-900 mb-1">Whoop Connection Error</h4>
-                <p className="text-sm text-red-700">{whoopError}</p>
+                <h4 className="font-medium text-white mb-1">Whoop Connection Error</h4>
+                <p className="text-sm text-neutral-300">{whoopError}</p>
               </div>
             </div>
           </div>
@@ -275,7 +263,7 @@ export const TodayTab: React.FC<TodayTabProps> = ({
 
         {/* Step Data Source Indicator & Refresh */}
         <div className="flex justify-center items-center mt-4 space-x-3">
-          <span className="text-xs text-gray-500">
+          <span className="text-xs text-neutral-400">
             {stepDataSource === 'healthkit' && '📱 Apple Health'}
             {stepDataSource === 'health-connect' && '📱 Health Connect'}
             {stepDataSource === 'mock' && '🌐 Demo Mode'}
@@ -285,7 +273,7 @@ export const TodayTab: React.FC<TodayTabProps> = ({
             <button
               onClick={refreshSteps}
               disabled={isLoadingSteps}
-              className="text-xs text-blue-600 hover:text-blue-700 flex items-center space-x-1 disabled:opacity-50"
+              className="text-xs text-brand-500 hover:text-neutral-300 flex items-center space-x-1 disabled:opacity-50"
             >
               <RefreshCw className={`w-3 h-3 ${isLoadingSteps ? 'animate-spin' : ''}`} />
               <span>Refresh</span>
@@ -298,7 +286,7 @@ export const TodayTab: React.FC<TodayTabProps> = ({
           <select
             value={dailyGoal}
             onChange={(e) => onGoalChange(Number(e.target.value))}
-            className="bg-gray-100 border-0 rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
+            className="bg-neutral-800 border-0 rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
           >
             <option value={5000}>5K Steps</option>
             <option value={7500}>7.5K Steps</option>
