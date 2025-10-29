@@ -91,14 +91,14 @@ export const SmartWalletCreator: React.FC<SmartWalletCreatorProps> = ({
                 style={{
                   width: 'var(--avatar-xl)',
                   height: 'var(--avatar-xl)',
-                  backgroundColor: 'var(--brand-100)',
+                  backgroundColor: 'rgba(87, 139, 250, 0.1)',
                 }}
               >
                 <Sparkles
                   style={{
                     width: 'var(--icon-m)',
                     height: 'var(--icon-m)',
-                    color: 'var(--brand-500)',
+                    color: 'rgb(87, 139, 250)',
                   }}
                 />
               </div>
@@ -167,7 +167,7 @@ export const SmartWalletCreator: React.FC<SmartWalletCreatorProps> = ({
                       style={{
                         width: 'var(--icon-s)',
                         height: 'var(--icon-s)',
-                        color: 'var(--brand-500)',
+                        color: 'rgb(87, 139, 250)',
                         flexShrink: 0,
                         marginTop: '2px',
                       }}
@@ -270,7 +270,7 @@ export const SmartWalletCreator: React.FC<SmartWalletCreatorProps> = ({
                 style={{
                   width: 'var(--avatar-xl)',
                   height: 'var(--avatar-xl)',
-                  color: 'var(--brand-500)',
+                  color: 'rgb(87, 139, 250)',
                 }}
               />
             </div>
