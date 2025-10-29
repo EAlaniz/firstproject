@@ -12,9 +12,8 @@ import { setupCoinbaseWalletFix, setupCoinbaseWalletSDKFix } from './utils/coinb
 import { ErrorBoundary } from './components/ErrorBoundary';
 import App from './App';
 import './index.css';
-import './styles/design-system.css';
-import './styles/refined-design.css';
-import './styles/obsidian-noir.css';
+import './styles/tokens.css';
+import './styles/global.css';
 
 // Initialize Farcaster compatibility fixes early
 farcasterCompatibility.init();

@@ -35,9 +35,9 @@ const tabs: TabConfig[] = [
 
 export const BottomTabNav: React.FC<BottomTabNavProps> = ({ activeTab, onTabChange }) => {
   return (
-    <nav className="nav-noir">
+    <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-neutral-700 border-t border-neutral-200 dark:border-neutral-600 z-50">
       <div className="max-w-6xl mx-auto px-4">
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-3">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;
 
@@ -45,46 +45,27 @@ export const BottomTabNav: React.FC<BottomTabNavProps> = ({ activeTab, onTabChan
               <button
                 key={tab.id}
                 onClick={() => onTabChange(tab.id)}
-                className={`nav-noir-item ${isActive ? 'active' : ''}`}
+                className={`relative flex flex-col items-center justify-center py-3 transition-colors duration-fast ${
+                  isActive ? 'text-brand-500' : 'text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'
+                }`}
               >
-                {/* Active indicator with glow */}
+                {/* Active indicator */}
                 {isActive && (
                   <motion.div
                     layoutId="activeTab"
-                    className="absolute top-0 left-0 right-0 h-0.5"
-                    style={{
-                      background: 'var(--gradient-blue-to-mint)',
-                      boxShadow: 'var(--glow-blue-soft)',
-                    }}
+                    className="absolute top-0 left-0 right-0 h-0.5 bg-brand-500"
                     transition={{
-                      duration: 0.3,
+                      duration: 0.25,
                       ease: [0.4, 0, 0.2, 1],
                     }}
                   />
                 )}
 
-                {/* Icon with subtle illuminate animation */}
-                <motion.div
-                  animate={{
-                    filter: isActive ? 'brightness(1.15)' : 'brightness(1)',
-                  }}
-                  transition={{
-                    duration: 0.15,
-                    ease: [0.4, 0, 0.2, 1],
-                  }}
-                  className="mb-1"
-                >
-                  {tab.icon}
-                </motion.div>
+                {/* Icon */}
+                <div className="mb-1">{tab.icon}</div>
 
                 {/* Label */}
-                <span
-                  className="text-xs"
-                  style={{
-                    fontWeight: isActive ? 600 : 400,
-                    color: isActive ? 'var(--accent-blue)' : 'var(--text-secondary)',
-                  }}
-                >
+                <span className={`text-xs ${isActive ? 'font-semibold' : 'font-normal'}`}>
                   {tab.label}
                 </span>
               </button>

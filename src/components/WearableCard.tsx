@@ -32,50 +32,29 @@ export const WearableCard: React.FC<WearableCardProps> = ({
 
   return (
     <div
-      className={`wearable-card card-elevated fade-in-up ${comingSoon ? '' : 'interactive'}`}
+      className={`card card-elevated p-6 rounded-lg relative transition-all duration-base ${comingSoon ? 'opacity-60' : ''}`}
       style={{
         border: `2px solid ${isConnected ? color : 'transparent'}`,
-        borderRadius: 'var(--radius-lg)',
-        padding: 'var(--space-6)',
         background: isConnected
           ? `linear-gradient(135deg, ${color}12 0%, ${color}08 100%)`
-          : 'white',
-        position: 'relative',
-        opacity: comingSoon ? 0.6 : 1,
-        transition: 'all var(--transition-base)',
+          : undefined,
       }}
     >
       {/* Coming Soon Badge */}
       {comingSoon && (
-        <div
-          className="scale-in"
-          style={{
-            position: 'absolute',
-            top: 'var(--space-3)',
-            right: 'var(--space-3)',
-            background: 'var(--gradient-primary)',
-            color: 'white',
-            padding: '6px 14px',
-            borderRadius: 'var(--radius-full)',
-            fontSize: '11px',
-            fontWeight: '700',
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px',
-            boxShadow: 'var(--shadow-md)',
-          }}
-        >
+        <div className="absolute top-3 right-3 bg-gradient-to-r from-brand-500 to-brand-600 text-white px-3.5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide shadow-md">
           Coming Soon
         </div>
       )}
 
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
-        <div style={{ fontSize: '32px', marginRight: '12px' }}>{icon}</div>
-        <div style={{ flex: 1 }}>
-          <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>
+      <div className="flex items-center mb-3">
+        <div className="text-3xl mr-3">{icon}</div>
+        <div className="flex-1">
+          <h3 className="m-0 text-lg font-semibold text-neutral-700 dark:text-neutral-100">
             {name}
           </h3>
-          <p style={{ margin: 0, fontSize: '13px', color: '#666', marginTop: '2px' }}>
+          <p className="m-0 text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
             {description}
           </p>
         </div>
@@ -84,25 +63,15 @@ export const WearableCard: React.FC<WearableCardProps> = ({
       {/* Status */}
       {!comingSoon && (
         <>
-          <div style={{ marginBottom: '12px' }}>
+          <div className="mb-3">
             {isConnected && stepData && (
-              <div
-                className="glass scale-in"
-                style={{
-                  padding: 'var(--space-4)',
-                  borderRadius: 'var(--radius-md)',
-                  marginBottom: 'var(--space-2)',
-                  boxShadow: 'var(--shadow-sm)',
-                }}
-              >
-                <div style={{ fontSize: '12px', color: 'var(--color-gray-600)', marginBottom: '4px', fontWeight: '500' }}>
+              <div className="card p-4 rounded-md mb-2 shadow-sm">
+                <div className="text-xs text-neutral-500 dark:text-neutral-400 mb-1 font-medium">
                   Today's Steps
                 </div>
                 <div
-                  className="text-gradient"
+                  className="text-3xl font-extrabold"
                   style={{
-                    fontSize: '28px',
-                    fontWeight: '800',
                     background: `linear-gradient(135deg, ${color} 0%, ${color}AA 100%)`,
                     WebkitBackgroundClip: 'text',
                     WebkitTextFillColor: 'transparent',
@@ -115,34 +84,14 @@ export const WearableCard: React.FC<WearableCardProps> = ({
             )}
 
             {isConnected && lastSyncTime && (
-              <div
-                className="pulse"
-                style={{
-                  fontSize: '12px',
-                  color: 'var(--color-gray-500)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 'var(--space-1)',
-                  fontWeight: '500',
-                }}
-              >
-                <span style={{ fontSize: '14px' }}>🔄</span>
+              <div className="text-xs text-neutral-500 dark:text-neutral-400 flex items-center gap-1 font-medium">
+                <span className="text-sm">🔄</span>
                 Last synced: {formatLastSync(lastSyncTime)}
               </div>
             )}
 
             {error && (
-              <div
-                style={{
-                  backgroundColor: '#FFF3E0',
-                  border: '1px solid #FFB74D',
-                  padding: '8px 12px',
-                  borderRadius: '6px',
-                  fontSize: '12px',
-                  color: '#E65100',
-                  marginTop: '8px',
-                }}
-              >
+              <div className="bg-warning/10 border border-warning/50 p-2 px-3 rounded-md text-xs text-warning mt-2">
                 ⚠️ {error}
               </div>
             )}
@@ -152,57 +101,24 @@ export const WearableCard: React.FC<WearableCardProps> = ({
           <button
             onClick={isConnected ? onDisconnect : onConnect}
             disabled={isConnecting || comingSoon}
-            className="btn-enhanced"
+            className={`btn w-full ${
+              isConnected
+                ? 'btn-secondary'
+                : 'text-white font-bold text-sm shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all duration-base'
+            } ${isConnecting ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
             style={{
-              width: '100%',
-              padding: 'var(--space-3)',
-              borderRadius: 'var(--radius-md)',
-              border: 'none',
-              background: isConnected
-                ? 'var(--color-gray-100)'
-                : `linear-gradient(135deg, ${color} 0%, ${color}DD 100%)`,
-              color: isConnected ? 'var(--color-gray-700)' : 'white',
-              fontWeight: '700',
-              fontSize: '14px',
-              cursor: isConnecting || comingSoon ? 'not-allowed' : 'pointer',
-              opacity: isConnecting ? 0.6 : 1,
-              transition: 'all var(--transition-base)',
-              boxShadow: isConnected ? 'none' : 'var(--shadow-md)',
-              transform: 'translateZ(0)',
-            }}
-            onMouseEnter={(e) => {
-              if (!isConnecting && !comingSoon && !isConnected) {
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = 'var(--shadow-lg)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!isConnecting && !comingSoon) {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = isConnected ? 'none' : 'var(--shadow-md)';
-              }
+              background: !isConnected
+                ? `linear-gradient(135deg, ${color} 0%, ${color}DD 100%)`
+                : undefined,
             }}
           >
-            {isConnecting ? (
-              <span className="shimmer">Connecting...</span>
-            ) : isConnected ? (
-              'Disconnect'
-            ) : (
-              'Connect'
-            )}
+            {isConnecting ? 'Connecting...' : isConnected ? 'Disconnect' : 'Connect'}
           </button>
         </>
       )}
 
       {comingSoon && (
-        <div
-          style={{
-            textAlign: 'center',
-            padding: '16px',
-            fontSize: '13px',
-            color: '#999',
-          }}
-        >
+        <div className="text-center p-4 text-xs text-neutral-400">
           We're working on adding {name} integration soon!
         </div>
       )}

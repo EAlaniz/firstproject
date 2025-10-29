@@ -43,38 +43,24 @@ export const StepsCard: React.FC<StepsCardProps> = React.memo(({
 
   return (
     <motion.div
-      className="steps-card-noir"
+      className="card card-elevated p-8 rounded-xl relative overflow-visible"
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{
         duration: 0.45,
         ease: [0.4, 0, 0.2, 1],
       }}
-      style={{
-        padding: '32px',
-        borderRadius: '16px',
-        position: 'relative',
-        overflow: 'visible',
-      }}
     >
       {/* Header Label */}
-      <div style={{ marginBottom: '24px', textAlign: 'center' }}>
-        <p className="text-meta" style={{ margin: 0 }}>
+      <div className="mb-6 text-center">
+        <p className="text-sm text-neutral-500 dark:text-neutral-400 m-0">
           Today's Activity
         </p>
       </div>
 
       {/* Circular Progress with Step Count */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: '32px',
-        position: 'relative',
-      }}>
-        <div className="circular-progress-noir">
-          <CircularProgress value={progress} size={240} strokeWidth={14} />
-        </div>
+      <div className="flex justify-center items-center mb-8 relative">
+        <CircularProgress value={progress} size={240} strokeWidth={14} />
 
         {/* Step count overlay */}
         <motion.div
@@ -85,39 +71,15 @@ export const StepsCard: React.FC<StepsCardProps> = React.memo(({
             ease: [0.4, 0, 0.2, 1],
             delay: 0.2,
           }}
-          style={{
-            position: 'absolute',
-            textAlign: 'center',
-          }}
+          className="absolute text-center"
         >
-          <div
-            className="text-gradient-blue-mint"
-            style={{
-              fontSize: '72px',
-              fontWeight: 600,
-              lineHeight: 1,
-              marginBottom: '8px',
-              letterSpacing: '-2px',
-            }}
-          >
+          <div className="text-6xl font-semibold text-brand-500 leading-none mb-2 tracking-tighter">
             {displaySteps.toLocaleString()}
           </div>
-          <div
-            className="text-meta"
-            style={{
-              fontSize: '13px',
-              marginBottom: '4px',
-            }}
-          >
+          <div className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">
             / {dailyGoal.toLocaleString()} steps
           </div>
-          <div
-            style={{
-              fontSize: '20px',
-              fontWeight: 600,
-              color: isGoalReached ? 'var(--accent-mint)' : 'var(--accent-blue)',
-            }}
-          >
+          <div className={`text-xl font-semibold ${isGoalReached ? 'text-success' : 'text-brand-500'}`}>
             {Math.round(progress)}%
           </div>
         </motion.div>
@@ -133,38 +95,19 @@ export const StepsCard: React.FC<StepsCardProps> = React.memo(({
             ease: [0.4, 0, 0.2, 1],
             delay: 0.4,
           }}
-          className="satisfaction-pulse"
-          style={{
-            background: 'rgba(0, 191, 166, 0.1)',
-            border: '1px solid var(--accent-mint)',
-            borderRadius: '12px',
-            padding: '16px',
-            marginBottom: '24px',
-            textAlign: 'center',
-            boxShadow: 'var(--glow-mint-soft)',
-          }}
+          className="bg-success/10 border border-success rounded-lg p-4 mb-6 text-center"
         >
-          <p style={{
-            fontSize: '16px',
-            fontWeight: 500,
-            color: 'var(--accent-mint)',
-            margin: 0,
-            letterSpacing: '0.5px',
-          }}>
+          <p className="text-base font-medium text-success m-0 tracking-wide">
             Goal reached.
           </p>
         </motion.div>
       )}
 
       {/* Stats Pills */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: '16px',
-      }}>
+      <div className="grid grid-cols-2 gap-4">
         {/* Streak Pill */}
         <motion.div
-          className="card-noir hover-illuminate"
+          className="card p-4 flex items-center gap-3 hover:shadow-md transition-shadow duration-base"
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{
@@ -172,32 +115,17 @@ export const StepsCard: React.FC<StepsCardProps> = React.memo(({
             ease: [0.4, 0, 0.2, 1],
             delay: 0.3,
           }}
-          style={{
-            padding: '16px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-          }}
         >
-          <div style={{
-            width: '40px',
-            height: '40px',
-            borderRadius: '8px',
-            background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 0 20px rgba(245, 158, 11, 0.2)',
-          }}>
+          <div className="w-10 h-10 rounded-md bg-gradient-to-br from-warning to-warning/80 flex items-center justify-center shadow-sm">
             <Trophy size={20} color="white" />
           </div>
-          <div className="stat-noir">
-            <div className="stat-noir-label">
+          <div>
+            <div className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">
               Streak
             </div>
-            <div className="stat-noir-value" style={{ fontSize: '24px' }}>
+            <div className="text-2xl font-semibold text-neutral-700 dark:text-neutral-100">
               {currentStreak}
-              <span style={{ fontSize: '13px', fontWeight: 300, marginLeft: '4px', color: 'var(--text-secondary)' }}>
+              <span className="text-xs font-light ml-1 text-neutral-500">
                 days
               </span>
             </div>
@@ -206,7 +134,7 @@ export const StepsCard: React.FC<StepsCardProps> = React.memo(({
 
         {/* Tokens Pill */}
         <motion.div
-          className="card-noir hover-illuminate"
+          className="card p-4 flex items-center gap-3 hover:shadow-md transition-shadow duration-base"
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{
@@ -214,30 +142,15 @@ export const StepsCard: React.FC<StepsCardProps> = React.memo(({
             ease: [0.4, 0, 0.2, 1],
             delay: 0.35,
           }}
-          style={{
-            padding: '16px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-          }}
         >
-          <div style={{
-            width: '40px',
-            height: '40px',
-            borderRadius: '8px',
-            background: 'var(--gradient-blue-to-mint)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: 'var(--glow-blue-soft)',
-          }}>
+          <div className="w-10 h-10 rounded-md bg-gradient-to-br from-brand-500 to-success flex items-center justify-center shadow-sm">
             <Coins size={20} color="white" />
           </div>
-          <div className="stat-noir">
-            <div className="stat-noir-label">
+          <div>
+            <div className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">
               Tokens
             </div>
-            <div className="stat-noir-value" style={{ fontSize: '24px' }}>
+            <div className="text-2xl font-semibold text-neutral-700 dark:text-neutral-100">
               {totalTokens.toLocaleString()}
             </div>
           </div>

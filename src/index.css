@@ -1,18 +1,3 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* Obsidian Noir Base Styles */
-body {
-  font-family: 'Satoshi', 'Neue Haas Grotesk', 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-  background: #0E0E10;
-  color: #ECEEF2;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  letter-spacing: -0.5px;
-}
-
-#root {
-  min-height: 100vh;
-  background: #0E0E10;
-}

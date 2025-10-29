@@ -8,89 +8,52 @@ export const WearablesManager: React.FC = () => {
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
-    <div
-      className="card-noir"
-      style={{
-        padding: '32px',
-        position: 'relative',
-        overflow: 'hidden',
-      }}
-    >
-      {/* Decorative background gradient */}
-      <div
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: '200px',
-          background: 'var(--gradient-radial-glow)',
-          opacity: 0.5,
-          pointerEvents: 'none',
-        }}
-      />
+    <div className="card p-8 relative overflow-hidden">
       {/* Header */}
-      <div style={{ marginBottom: 'var(--space-6)', position: 'relative', zIndex: 1 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-2)' }}>
-          <h2 className="text-h3" style={{ margin: 0 }}>
+      <div className="mb-6 relative z-10">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-3xl font-semibold text-neutral-700 dark:text-neutral-100 m-0">
             Wearables & Devices
           </h2>
           {connectedDevice && (
             <button
               onClick={refreshData}
               disabled={isLoading}
-              className="btn-noir-secondary"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                opacity: isLoading ? 0.6 : 1,
-                cursor: isLoading ? 'not-allowed' : 'pointer',
-              }}
+              className={`btn btn-secondary flex items-center gap-2 ${
+                isLoading ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'
+              }`}
             >
               {isLoading ? 'Refreshing...' : 'Refresh'}
             </button>
           )}
         </div>
-        <p className="text-body" style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '15px' }}>
+        <p className="m-0 text-neutral-500 dark:text-neutral-400 text-sm">
           Connect your fitness tracker to sync step data and earn rewards.
         </p>
       </div>
 
       {/* Connection Status Summary */}
       {connectedDevice ? (
-        <div
-          className="glass scale-in"
-          style={{
-            background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(59, 130, 246, 0.05) 100%)',
-            border: '2px solid var(--color-primary-500)',
-            borderRadius: 'var(--radius-lg)',
-            padding: 'var(--space-4)',
-            marginBottom: 'var(--space-6)',
-            position: 'relative',
-            zIndex: 1,
-            boxShadow: 'var(--shadow-md)',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{ fontSize: '28px' }}>{connectedDevice.icon}</div>
+        <div className="card bg-brand-500/5 border-2 border-brand-500 rounded-lg p-4 mb-6 relative z-10 shadow-md">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="text-3xl">{connectedDevice.icon}</div>
               <div>
-                <div style={{ fontSize: '14px', fontWeight: '600', color: '#1E40AF' }}>
+                <div className="text-sm font-semibold text-brand-600 dark:text-brand-400">
                   Connected to {connectedDevice.name}
                 </div>
-                <div style={{ fontSize: '13px', color: '#64748B', marginTop: '2px' }}>
+                <div className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
                   {connectedDevice.stepData ? (
                     connectedDevice.id === 'whoop' ? (
                       <>
-                        <span style={{ fontWeight: '600' }}>
+                        <span className="font-semibold">
                           {connectedDevice.stepData.steps.toLocaleString()}
                         </span>{' '}
                         estimated steps
                       </>
                     ) : (
                       <>
-                        <span style={{ fontWeight: '600' }}>
+                        <span className="font-semibold">
                           {connectedDevice.stepData.steps.toLocaleString()}
                         </span>{' '}
                         steps today
@@ -106,37 +69,19 @@ export const WearablesManager: React.FC = () => {
             </div>
             <button
               onClick={() => setIsExpanded(!isExpanded)}
-              style={{
-                padding: '8px 12px',
-                borderRadius: '6px',
-                border: '1px solid #3B82F6',
-                backgroundColor: 'white',
-                color: '#3B82F6',
-                fontSize: '13px',
-                fontWeight: '600',
-                cursor: 'pointer',
-              }}
+              className="px-3 py-2 rounded-md border border-brand-500 bg-white dark:bg-neutral-700 text-brand-500 text-xs font-semibold cursor-pointer hover:bg-brand-50 dark:hover:bg-neutral-600 transition-colors duration-fast"
             >
               {isExpanded ? 'Hide' : 'Manage'}
             </button>
           </div>
         </div>
       ) : (
-        <div
-          style={{
-            backgroundColor: '#FFF7ED',
-            border: '2px solid #FB923C',
-            borderRadius: '12px',
-            padding: '16px',
-            marginBottom: '20px',
-            textAlign: 'center',
-          }}
-        >
-          <div style={{ fontSize: '32px', marginBottom: '8px' }}>⚠️</div>
-          <div style={{ fontSize: '14px', fontWeight: '600', color: '#9A3412', marginBottom: '4px' }}>
+        <div className="bg-warning/10 border-2 border-warning rounded-lg p-4 mb-5 text-center">
+          <div className="text-3xl mb-2">⚠️</div>
+          <div className="text-sm font-semibold text-warning mb-1">
             No wearable connected
           </div>
-          <div style={{ fontSize: '13px', color: '#78350F' }}>
+          <div className="text-xs text-warning/80">
             Connect a device below to start tracking your steps
           </div>
         </div>
@@ -145,16 +90,10 @@ export const WearablesManager: React.FC = () => {
       {/* Device Grid - Only show if expanded or no device connected */}
       {(!connectedDevice || isExpanded) && (
         <>
-          <div style={{ fontSize: '14px', fontWeight: '600', marginBottom: '12px', color: '#374151' }}>
+          <div className="text-sm font-semibold mb-3 text-neutral-700 dark:text-neutral-100">
             Available Devices
           </div>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-              gap: '16px',
-            }}
-          >
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4">
             {devices.map((device) => (
               <WearableCard
                 key={device.id}
@@ -166,18 +105,8 @@ export const WearablesManager: React.FC = () => {
           </div>
 
           {/* Info Footer */}
-          <div
-            style={{
-              marginTop: '20px',
-              padding: '16px',
-              backgroundColor: '#F9FAFB',
-              borderRadius: '8px',
-              fontSize: '13px',
-              color: '#6B7280',
-              lineHeight: '1.6',
-            }}
-          >
-            <strong>Note:</strong> Currently, you can connect one device at a time. More devices will be supported soon!
+          <div className="mt-5 p-4 bg-neutral-50 dark:bg-neutral-700/50 rounded-md text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed">
+            <strong className="font-semibold">Note:</strong> Currently, you can connect one device at a time. More devices will be supported soon!
             Step data is refreshed automatically every hour.
           </div>
         </>
