@@ -125,17 +125,45 @@ export const EnhancedWalletConnector: React.FC<EnhancedWalletConnectorProps> = (
   }
 
   return (
-    <div className="relative flex flex-col items-center">
-      <button 
+    <div className="relative flex flex-col items-center w-full">
+      <button
         onClick={handleConnect}
         disabled={isPending}
-        className={`bg-gray-100 text-black px-4 py-2 rounded-full hover:bg-gray-200 transition-colors flex items-center space-x-2 ${className} ${isPending ? 'opacity-50 cursor-not-allowed' : ''}`}
+        className={`w-full transition-all duration-base flex items-center justify-center ${className} ${isPending ? 'opacity-50 cursor-not-allowed' : ''}`}
+        style={{
+          gap: 'var(--space-1)',
+          padding: 'var(--space-2) var(--space-4)',
+          fontSize: 'var(--fs-label-1)',
+          fontWeight: 'var(--fw-label-heavy)',
+          backgroundColor: 'var(--brand-500)',
+          color: 'white',
+          borderRadius: '12px',
+          border: '0px solid rgb(225, 226, 230)',
+          cursor: isPending ? 'not-allowed' : 'pointer',
+          minHeight: '32px',
+        }}
+        onMouseEnter={(e) => {
+          if (!isPending) {
+            e.currentTarget.style.opacity = '0.88';
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (!isPending) {
+            e.currentTarget.style.opacity = '1';
+          }
+        }}
       >
-        <User className="w-4 h-4" />
+        <User style={{ width: '16px', height: '16px' }} />
         <span>{isPending ? 'Connecting...' : 'Connect Wallet'}</span>
       </button>
       {!coinbaseConnector && (
-        <div className="mt-2 text-xs text-red-500 text-center">
+        <div
+          className="mt-2 text-center"
+          style={{
+            fontSize: 'var(--fs-caption)',
+            color: 'var(--danger)',
+          }}
+        >
           Coinbase Wallet not detected
         </div>
       )}

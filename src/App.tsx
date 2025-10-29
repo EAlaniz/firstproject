@@ -425,51 +425,142 @@ function AppContent() {
 
       {/* Wallet Connector Modal */}
       {showWalletConnector && (
-        <Modal
-          isOpen={showWalletConnector}
-          onClose={() => {
-            console.log('Closing wallet modal');
-            setShowWalletConnector(false);
+        <div
+          className="fixed inset-0 flex items-center justify-center p-4"
+          style={{
+            backgroundColor: 'var(--overlay)',
+            zIndex: 'var(--z-modal)',
           }}
-          title=""
-          noHeader={true}
+          onClick={() => setShowWalletConnector(false)}
         >
-          <div className="flex flex-col items-center justify-center min-h-[140px] py-4">
+          <div
+            className="w-full max-w-lg rounded border"
+            style={{
+              backgroundColor: 'var(--bg)',
+              borderColor: 'var(--border)',
+              padding: 'var(--space-6)',
+              boxShadow: 'var(--shadow-elevation-2)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
             {isConnected ? (
-              <div className="w-full space-y-3">
-                {/* Connected Wallet Info */}
-                <div className="bg-gray-50 p-3 rounded-xl">
-                  <div className="flex items-center space-x-3 mb-2">
-                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                      <User className="w-4 h-4 text-blue-600" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium text-sm">Connected Wallet</p>
-                      <p className="text-xs text-gray-600">
-                        {address?.slice(0, 6)}...{address?.slice(-4)}
-                      </p>
-                    </div>
+              <>
+                {/* Header */}
+                <div
+                  className="flex items-center"
+                  style={{
+                    gap: 'var(--space-2)',
+                    marginBottom: 'var(--space-4)',
+                  }}
+                >
+                  <div
+                    className="flex items-center justify-center rounded"
+                    style={{
+                      width: 'var(--avatar-xl)',
+                      height: 'var(--avatar-xl)',
+                      backgroundColor: 'var(--brand-100)',
+                    }}
+                  >
+                    <User
+                      style={{
+                        width: 'var(--icon-m)',
+                        height: 'var(--icon-m)',
+                        color: 'var(--brand-500)',
+                      }}
+                    />
                   </div>
-                  {balance && (
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600">Balance:</span>
-                      <span className="font-medium">
-                        {parseFloat(balance.formatted).toFixed(4)} {balance?.symbol}
-                      </span>
-                    </div>
-                  )}
+                  <div>
+                    <h2
+                      className="font-medium"
+                      style={{
+                        fontSize: 'var(--fs-title-3)',
+                        lineHeight: 'var(--lh-title-3)',
+                        fontWeight: 'var(--fw-title-heavy)',
+                        color: 'var(--text)',
+                        marginBottom: 'var(--space-0-5)',
+                      }}
+                    >
+                      Wallet Connected
+                    </h2>
+                    <p
+                      style={{
+                        fontSize: 'var(--fs-label-2)',
+                        lineHeight: 'var(--lh-label)',
+                        color: 'var(--text-muted)',
+                      }}
+                    >
+                      {address?.slice(0, 6)}...{address?.slice(-4)}
+                    </p>
+                  </div>
                 </div>
 
+                {/* Balance Card */}
+                {balance && (
+                  <div
+                    className="rounded border"
+                    style={{
+                      backgroundColor: 'var(--surface)',
+                      borderColor: 'var(--border)',
+                      padding: 'var(--space-4)',
+                      marginBottom: 'var(--space-4)',
+                    }}
+                  >
+                    <p
+                      className="font-medium"
+                      style={{
+                        fontSize: 'var(--fs-label-1)',
+                        lineHeight: 'var(--lh-label)',
+                        fontWeight: 'var(--fw-label-heavy)',
+                        color: 'var(--text-muted)',
+                        marginBottom: 'var(--space-1)',
+                      }}
+                    >
+                      Balance
+                    </p>
+                    <p
+                      style={{
+                        fontSize: 'var(--fs-title-3)',
+                        lineHeight: 'var(--lh-title-3)',
+                        fontWeight: 'var(--fw-title-heavy)',
+                        color: 'var(--text)',
+                      }}
+                    >
+                      {parseFloat(balance.formatted).toFixed(4)} {balance?.symbol}
+                    </p>
+                  </div>
+                )}
+
                 {/* Wallet Actions */}
-                <div className="space-y-2">
+                <div
+                  className="flex"
+                  style={{
+                    gap: 'var(--space-2)',
+                    flexDirection: 'column',
+                  }}
+                >
                   <button
                     onClick={() => {
                       window.open('https://keys.coinbase.com', '_blank');
                       setShowWalletConnector(false);
                     }}
-                    className="w-full flex items-center justify-center space-x-3 p-2 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors"
+                    className="w-full rounded transition-all duration-base flex items-center justify-center border"
+                    style={{
+                      gap: 'var(--space-1-5)',
+                      padding: 'var(--space-2) var(--space-4)',
+                      fontSize: 'var(--fs-label-1)',
+                      fontWeight: 'var(--fw-label)',
+                      backgroundColor: 'transparent',
+                      color: 'var(--text)',
+                      borderColor: 'var(--border)',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = 'var(--surface)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
                   >
-                    <ExternalLink className="w-4 h-4" />
+                    <ExternalLink style={{ width: 'var(--icon-s)', height: 'var(--icon-s)' }} />
                     <span>Manage Wallet</span>
                   </button>
 
@@ -478,9 +569,24 @@ function AppContent() {
                       window.open('https://www.coinbase.com/settings', '_blank');
                       setShowWalletConnector(false);
                     }}
-                    className="w-full flex items-center justify-center space-x-3 p-2 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors"
+                    className="w-full rounded transition-all duration-base flex items-center justify-center border"
+                    style={{
+                      gap: 'var(--space-1-5)',
+                      padding: 'var(--space-2) var(--space-4)',
+                      fontSize: 'var(--fs-label-1)',
+                      fontWeight: 'var(--fw-label)',
+                      backgroundColor: 'transparent',
+                      color: 'var(--text)',
+                      borderColor: 'var(--border)',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = 'var(--surface)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
                   >
-                    <Settings className="w-4 h-4" />
+                    <Settings style={{ width: 'var(--icon-s)', height: 'var(--icon-s)' }} />
                     <span>Account Settings</span>
                   </button>
 
@@ -489,9 +595,24 @@ function AppContent() {
                       window.open('https://www.coinbase.com/security', '_blank');
                       setShowWalletConnector(false);
                     }}
-                    className="w-full flex items-center justify-center space-x-3 p-2 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors"
+                    className="w-full rounded transition-all duration-base flex items-center justify-center border"
+                    style={{
+                      gap: 'var(--space-1-5)',
+                      padding: 'var(--space-2) var(--space-4)',
+                      fontSize: 'var(--fs-label-1)',
+                      fontWeight: 'var(--fw-label)',
+                      backgroundColor: 'transparent',
+                      color: 'var(--text)',
+                      borderColor: 'var(--border)',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = 'var(--surface)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
                   >
-                    <Lock className="w-4 h-4" />
+                    <Lock style={{ width: 'var(--icon-s)', height: 'var(--icon-s)' }} />
                     <span>Security</span>
                   </button>
 
@@ -500,36 +621,118 @@ function AppContent() {
                       disconnect();
                       setShowWalletConnector(false);
                     }}
-                    className="w-full flex items-center justify-center space-x-3 p-2 bg-red-50 text-red-600 border border-red-200 rounded-lg hover:bg-red-100 transition-colors"
+                    className="w-full rounded transition-all duration-base flex items-center justify-center border"
+                    style={{
+                      gap: 'var(--space-1-5)',
+                      padding: 'var(--space-2) var(--space-4)',
+                      fontSize: 'var(--fs-label-1)',
+                      fontWeight: 'var(--fw-label-heavy)',
+                      backgroundColor: 'var(--danger-bg)',
+                      color: 'var(--danger)',
+                      borderColor: 'var(--danger)',
+                      borderWidth: '1px',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = 'var(--danger-wash)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'var(--danger-bg)';
+                    }}
                   >
-                    <LogOut className="w-4 h-4" />
+                    <LogOut style={{ width: 'var(--icon-s)', height: 'var(--icon-s)' }} />
                     <span>Disconnect Wallet</span>
                   </button>
                 </div>
-              </div>
+              </>
             ) : (
               <>
-                {/* Not Connected - Minimal design */}
-                <div className="text-center w-full max-w-sm mx-auto">
-                  <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <User className="w-6 h-6 text-gray-400" />
-                  </div>
-                  <h3 className="text-lg font-medium mb-2 text-center">Connect Your Wallet</h3>
-                  <p className="text-gray-600 mb-4 text-center">Connect your wallet to access all features</p>
-
-                  <div className="flex justify-center">
-                    <EnhancedWalletConnector
-                      className="w-full max-w-xs"
-                      onWalletClientReady={(client) => {
-                        console.log('Wallet client ready:', client);
+                {/* Header */}
+                <div
+                  className="flex items-center"
+                  style={{
+                    gap: 'var(--space-2)',
+                    marginBottom: 'var(--space-4)',
+                  }}
+                >
+                  <div
+                    className="flex items-center justify-center rounded"
+                    style={{
+                      width: 'var(--avatar-xl)',
+                      height: 'var(--avatar-xl)',
+                      backgroundColor: 'var(--brand-100)',
+                    }}
+                  >
+                    <User
+                      style={{
+                        width: 'var(--icon-m)',
+                        height: 'var(--icon-m)',
+                        color: 'var(--brand-500)',
                       }}
                     />
                   </div>
+                  <div>
+                    <h2
+                      className="font-medium"
+                      style={{
+                        fontSize: 'var(--fs-title-3)',
+                        lineHeight: 'var(--lh-title-3)',
+                        fontWeight: 'var(--fw-title-heavy)',
+                        color: 'var(--text)',
+                        marginBottom: 'var(--space-0-5)',
+                      }}
+                    >
+                      Connect Wallet
+                    </h2>
+                    <p
+                      style={{
+                        fontSize: 'var(--fs-label-2)',
+                        lineHeight: 'var(--lh-label)',
+                        color: 'var(--text-muted)',
+                      }}
+                    >
+                      Get started with Base
+                    </p>
+                  </div>
+                </div>
+
+                {/* Connect Action */}
+                <div
+                  className="flex"
+                  style={{
+                    gap: 'var(--space-2)',
+                    flexDirection: 'column',
+                  }}
+                >
+                  <EnhancedWalletConnector
+                    onWalletClientReady={(client) => {
+                      console.log('Wallet client ready:', client);
+                    }}
+                  />
+
+                  <button
+                    onClick={() => setShowWalletConnector(false)}
+                    className="w-full rounded transition-all duration-base"
+                    style={{
+                      padding: 'var(--space-2) var(--space-4)',
+                      fontSize: 'var(--fs-label-1)',
+                      fontWeight: 'var(--fw-label)',
+                      backgroundColor: 'transparent',
+                      color: 'var(--text-muted)',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = 'var(--text)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = 'var(--text-muted)';
+                    }}
+                  >
+                    Cancel
+                  </button>
                 </div>
               </>
             )}
           </div>
-        </Modal>
+        </div>
       )}
 
       {/* Error/Success Messages */}
