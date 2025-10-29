@@ -33,7 +33,7 @@ export const LandingPage: React.FC<LandingPageProps> = React.memo(({
               style={{
                 width: 'var(--avatar-l)',
                 height: 'var(--avatar-l)',
-                backgroundColor: 'var(--brand-500)',
+                backgroundColor: 'rgb(87, 139, 250)',
               }}
             >
               <Activity

@@ -209,14 +209,20 @@ export const SmartWalletCreator: React.FC<SmartWalletCreatorProps> = ({
             >
               <button
                 onClick={createSmartWallet}
-                className="w-full rounded transition-all duration-base flex items-center justify-center"
+                className="w-full transition-all flex items-center justify-center"
                 style={{
                   gap: 'var(--space-1)',
-                  padding: 'var(--space-2) var(--space-4)',
-                  fontSize: 'var(--fs-label-1)',
-                  fontWeight: 'var(--fw-label-heavy)',
-                  backgroundColor: 'var(--brand-500)',
+                  padding: '6px 16px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  lineHeight: '20px',
+                  backgroundColor: 'rgb(87, 139, 250)',
                   color: 'white',
+                  borderRadius: '12px',
+                  border: '0px solid rgb(225, 226, 230)',
+                  cursor: 'pointer',
+                  minHeight: '32px',
+                  fontFamily: 'Inter, "Inter Fallback", ui-sans-serif, system-ui, -apple-system, sans-serif',
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.opacity = '0.88';
@@ -225,7 +231,7 @@ export const SmartWalletCreator: React.FC<SmartWalletCreatorProps> = ({
                   e.currentTarget.style.opacity = '1';
                 }}
               >
-                <Sparkles style={{ width: 'var(--icon-s)', height: 'var(--icon-s)' }} />
+                <Sparkles style={{ width: '16px', height: '16px' }} />
                 <span>Create Wallet</span>
               </button>
 
@@ -349,13 +355,19 @@ export const SmartWalletCreator: React.FC<SmartWalletCreatorProps> = ({
 
             <button
               onClick={onClose}
-              className="w-full rounded transition-all duration-base"
+              className="w-full transition-all"
               style={{
-                padding: 'var(--space-2) var(--space-4)',
-                fontSize: 'var(--fs-label-1)',
-                fontWeight: 'var(--fw-label-heavy)',
-                backgroundColor: 'var(--brand-500)',
+                padding: '6px 16px',
+                fontSize: '14px',
+                fontWeight: '500',
+                lineHeight: '20px',
+                backgroundColor: 'rgb(87, 139, 250)',
                 color: 'white',
+                borderRadius: '12px',
+                border: '0px solid rgb(225, 226, 230)',
+                cursor: 'pointer',
+                minHeight: '32px',
+                fontFamily: 'Inter, "Inter Fallback", ui-sans-serif, system-ui, -apple-system, sans-serif',
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.opacity = '0.88';
@@ -417,13 +429,19 @@ export const SmartWalletCreator: React.FC<SmartWalletCreatorProps> = ({
             >
               <button
                 onClick={() => setStep('intro')}
-                className="w-full rounded transition-all duration-base"
+                className="w-full transition-all"
                 style={{
-                  padding: 'var(--space-2) var(--space-4)',
-                  fontSize: 'var(--fs-label-1)',
-                  fontWeight: 'var(--fw-label-heavy)',
-                  backgroundColor: 'var(--brand-500)',
+                  padding: '6px 16px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  lineHeight: '20px',
+                  backgroundColor: 'rgb(87, 139, 250)',
                   color: 'white',
+                  borderRadius: '12px',
+                  border: '0px solid rgb(225, 226, 230)',
+                  cursor: 'pointer',
+                  minHeight: '32px',
+                  fontFamily: 'Inter, "Inter Fallback", ui-sans-serif, system-ui, -apple-system, sans-serif',
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.opacity = '0.88';

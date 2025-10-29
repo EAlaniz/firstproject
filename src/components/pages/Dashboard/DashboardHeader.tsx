@@ -35,7 +35,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = React.memo(({
           style={{
             width: 'var(--avatar-l)',
             height: 'var(--avatar-l)',
-            backgroundColor: 'var(--brand-500)',
+            backgroundColor: 'rgb(87, 139, 250)',
           }}
         >
           <Activity className="text-white" style={{ width: 'var(--icon-s)', height: 'var(--icon-s)' }} />
