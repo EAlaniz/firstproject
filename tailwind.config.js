@@ -5,87 +5,101 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Base.dev Purple-Blue Primary
         brand: {
-          50: '#EBF2FF',
-          100: '#D6E4FF',
-          200: '#ADC9FF',
-          300: '#85AFFF',
-          400: '#5C94FF',
-          500: '#0052FF',  // Official Base Blue from base.org
-          600: '#3D6FFF',
-          700: '#1A5AFF',
-          800: '#0042CC',
-          900: '#002E99',
+          50: 'rgba(117, 117, 255, 0.05)',
+          100: 'rgba(117, 117, 255, 0.1)',
+          200: 'rgba(117, 117, 255, 0.2)',
+          300: 'rgba(117, 117, 255, 0.4)',
+          400: 'rgba(117, 117, 255, 0.7)',
+          500: '#7575FF',         // base.dev --color-fgPrimary
+          600: 'rgb(87, 139, 250)', // base.dev --color-bgPrimary
+          700: '#6060FF',
+          800: '#4A4AFF',
+          900: '#3535FF',
         },
-        neutral: {
-          50: '#F7F8FA',     // Light grays
-          100: '#EEF0F3',
-          200: '#E5E7EB',
-          300: '#D1D5DB',
-          400: '#9CA3AF',
-          500: '#667085',
-          600: '#3E4852',
-          700: '#14171A',    // Near-black for text
-          800: '#0A0A0A',    // Dark surfaces
-          900: '#000000',    // Pure black background
-        },
-        success: '#00BFA6',
-        warning: '#FFC801',
-        danger: '#FF4D4D',
+        // Base.dev Semantic Colors
+        success: '#7FD057',       // base.dev --color-fgPositive
+        warning: 'rgb(248, 150, 86)', // base.dev --color-fgWarning
+        danger: '#F0616D',        // base.dev --color-fgNegative
       },
       fontFamily: {
-        sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        sans: ['ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+        mono: ['ui-monospace', 'SF Mono', 'Menlo', 'Monaco', 'Cascadia Code', 'Source Code Pro', 'monospace'],
       },
       fontSize: {
-        xs: ['12px', { lineHeight: '1.5' }],
-        sm: ['14px', { lineHeight: '1.5' }],
-        base: ['16px', { lineHeight: '1.5' }],
-        lg: ['18px', { lineHeight: '1.625' }],
-        xl: ['20px', { lineHeight: '1.625' }],
-        '2xl': ['24px', { lineHeight: '1.375' }],
-        '3xl': ['32px', { lineHeight: '1.2' }],
-        '4xl': ['44px', { lineHeight: '1.2' }],
-        '5xl': ['56px', { lineHeight: '1.2' }],
-        '6xl': ['72px', { lineHeight: '1.2' }],
+        // Base.dev Typography Scale
+        'caption': ['0.8125rem', '1rem'],      // 13px / 16px
+        'label-1': ['0.875rem', '1.25rem'],    // 14px / 20px
+        'label-2': ['0.875rem', '1.25rem'],    // 14px / 20px
+        'body': ['1rem', '1.5rem'],            // 16px / 24px
+        'headline': ['1rem', '1.5rem'],        // 16px / 24px
+        'title-4': ['1.25rem', '1.75rem'],     // 20px / 28px
+        'title-3': ['1.5rem', '1.75rem'],      // 24px / 28px
+        'title-2': ['1.75rem', '2.25rem'],     // 28px / 36px
+        'title-1': ['1.75rem', '2.25rem'],     // 28px / 36px
+        'display-3': ['2.5rem', '3rem'],       // 40px / 48px
+        'display-2': ['3rem', '3.5rem'],       // 48px / 56px
+        'display-1': ['4rem', '4.5rem'],       // 64px / 72px
       },
       spacing: {
-        1: '4px',
-        2: '8px',
-        3: '12px',
-        4: '16px',
-        5: '20px',
-        6: '24px',
-        8: '32px',
-        10: '40px',
-        12: '48px',
-        16: '64px',
-        20: '80px',
-        24: '96px',
-        32: '128px',
-        40: '160px',
+        // Base.dev 8px Grid System
+        '0': '0px',
+        '0.25': '2px',
+        '0.5': '4px',
+        '0.75': '6px',
+        '1': '8px',
+        '1.5': '12px',
+        '2': '16px',
+        '3': '24px',
+        '4': '32px',
+        '5': '40px',
+        '6': '48px',
+        '7': '56px',
+        '8': '64px',
+        '9': '72px',
+        '10': '80px',
       },
       borderRadius: {
-        sm: '4px',
-        md: '8px',
-        lg: '12px',
-        xl: '16px',
+        // Base.dev Border Radius System
+        'none': '0px',
+        '100': '2px',
+        '200': '4px',
+        '300': '6px',
+        '400': '8px',
+        '500': '12px',
+        '600': '16px',
+        '700': '20px',
+        '800': '24px',
+        '900': '28px',
+        '1000': '100000px',
+        // Aliases for common names
+        'sm': '4px',
+        'md': '8px',
+        'lg': '12px',
+        'xl': '16px',
         '2xl': '24px',
+        'full': '100000px',
       },
       boxShadow: {
-        xs: '0 1px 2px rgba(16,24,40,0.04)',
-        sm: '0 1px 2px rgba(16,24,40,0.06)',
-        md: '0 4px 12px rgba(16,24,40,0.08)',
-        lg: '0 8px 20px rgba(16,24,40,0.10)',
-        xl: '0 12px 32px rgba(16,24,40,0.12)',
-        '2xl': '0 20px 48px rgba(16,24,40,0.15)',
+        // Base.dev Elevation Shadows
+        'elevation-1': '0px 8px 12px rgba(0, 0, 0, 0.12)',
+        'elevation-2': '0px 8px 24px rgba(0, 0, 0, 0.12)',
       },
       transitionTimingFunction: {
-        base: 'cubic-bezier(0.4, 0, 0.2, 1)',
+        'base': 'cubic-bezier(0.4, 0, 0.2, 1)',
+        'in': 'cubic-bezier(0.4, 0, 1, 1)',
+        'out': 'cubic-bezier(0, 0, 0.2, 1)',
       },
       transitionDuration: {
-        fast: '150ms',
-        base: '250ms',
-        slow: '350ms',
+        'instant': '100ms',
+        'fast': '150ms',
+        'base': '250ms',
+        'slow': '350ms',
+      },
+      height: {
+        'nav': '60px',
+        'nav-mobile': '56px',
       },
     },
   },

@@ -2,17 +2,20 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Force base.org dark theme */
+/* Base.dev Dark Theme - Exact Colors */
 html {
-  background-color: #000000;
+  background-color: rgb(10, 11, 13); /* base.dev --color-bg */
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 body {
-  background-color: #000000 !important;
-  color: #FFFFFF !important;
+  background-color: rgb(10, 11, 13) !important; /* base.dev --color-bg */
+  color: rgb(255, 255, 255) !important; /* base.dev --color-fg */
+  margin: 0;
+  padding: 0;
 }
 
 #root {
-  background-color: #000000 !important;
+  background-color: rgb(10, 11, 13) !important; /* base.dev --color-bg */
   min-height: 100vh;
 }

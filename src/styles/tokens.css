@@ -1,192 +1,204 @@
 /**
- * BASE DESIGN SYSTEM - TOKENS
+ * BASE.DEV DESIGN SYSTEM - EXACT REPLICATION
  *
- * Design tokens inspired by base.dev visual language:
- * - Generous whitespace and bold hierarchy
- * - High-contrast neutrals with Base Blue accents
- * - Contemporary minimalist aesthetic
- * - Light mode primary, dark mode secondary
+ * This design system replicates the exact visual language from base.dev
+ * including colors, spacing, typography, and component patterns.
  *
- * Reference: base.dev design principles
- * Contrast: WCAG AA/AAA compliant
- *
- * DO NOT copy Base trademarks or proprietary assets.
- * These tokens emulate the visual language only.
+ * Source: https://www.base.dev/ CSS variables
  */
 
 :root {
   /* ============================================
-     COLOR TOKENS - LIGHT MODE (Primary)
+     BASE.DEV COLOR SYSTEM - EXACT VALUES
      ============================================ */
 
-  /* Neutrals - Base.org Dark Theme */
-  --bg: #000000;                /* Pure black like base.org */
-  --bg-subtle: #0A0A0A;         /* Subtle black variation */
-  --surface: #0A0A0A;           /* Card backgrounds */
-  --surface-elevated: #141414;  /* Elevated surfaces */
-  --surface-elevated-2: #1A1A1A;
+  /* Neutrals - Base.dev Exact */
+  --bg: rgb(10, 11, 13);              /* base.dev --color-bg */
+  --bg-subtle: rgb(20, 21, 25);       /* base.dev --color-bgAlternate */
+  --bg-secondary: rgb(40, 43, 49);    /* base.dev --color-bgSecondary */
+  --bg-tertiary: rgb(50, 53, 61);     /* base.dev --color-bgTertiary */
 
-  /* Text - Inverted for Dark Theme */
-  --text: #FFFFFF;              /* Headings, primary text - white on black */
-  --text-secondary: #E5E7EB;    /* Body text, descriptions */
-  --text-muted: #9CA3AF;        /* Metadata, captions */
-  --text-inverse: #000000;      /* Text on light surfaces */
+  --surface: rgb(20, 21, 25);         /* Cards use bgAlternate */
+  --surface-elevated: rgb(30, 32, 37); /* Elevated surfaces */
+  --surface-elevated-2: rgb(40, 43, 49);
 
-  /* Borders & Dividers - Dark Theme */
-  --border: #262626;            /* Dark borders */
-  --border-strong: #404040;     /* Emphasized borders */
-  --border-subtle: #171717;     /* Hairline dividers */
+  /* Text - Base.dev Exact */
+  --text: rgb(255, 255, 255);         /* base.dev --color-fg */
+  --text-secondary: rgb(202, 205, 213); /* base.dev --color-fgSecondary */
+  --text-muted: rgb(138, 145, 158);   /* base.dev --color-fgMuted */
+  --text-inverse: rgb(10, 11, 13);    /* base.dev --color-fgInverse */
 
-  /* Brand - Base Blue (Official #0052FF from base.org) */
-  --brand-50: #EBF2FF;
-  --brand-100: #D6E4FF;
-  --brand-200: #ADC9FF;
-  --brand-300: #85AFFF;
-  --brand-400: #5C94FF;
-  --brand-500: #0052FF;         /* Official Base Blue from base.org */
-  --brand-600: #3D6FFF;         /* Hover state */
-  --brand-700: #1A5AFF;         /* Active state */
-  --brand-800: #0042CC;
-  --brand-900: #002E99;
-  --brand-contrast: #FFFFFF;    /* Text on brand backgrounds */
+  /* Borders & Dividers - Base.dev Exact */
+  --border: rgba(138, 145, 158, 0.2); /* base.dev --color-bgLine */
+  --border-strong: rgba(138, 145, 158, 0.66); /* base.dev --color-bgLineHeavy */
+  --border-subtle: rgba(138, 145, 158, 0.1);
+  --border-primary: rgb(87, 139, 250); /* base.dev --color-bgLinePrimary */
 
-  /* Semantic States */
-  --success: #00BFA6;           /* Mint feedback - 3.2:1 on white */
-  --success-bg: #E6F9F5;
-  --warning: #FFC801;           /* Amber - 1.97:1 (use with caution) */
-  --warning-bg: #FFF8E1;
-  --danger: #FF4D4D;            /* Red - 4.1:1 on white (AA) */
-  --danger-bg: #FFEBEE;
-  --info: #0057FF;              /* Same as brand */
-  --info-bg: #EBF2FF;
+  /* Brand - Base.dev Purple-Blue Primary */
+  --brand-50: rgba(117, 117, 255, 0.05);
+  --brand-100: rgba(117, 117, 255, 0.1);
+  --brand-200: rgba(117, 117, 255, 0.2);
+  --brand-300: rgba(117, 117, 255, 0.4);
+  --brand-400: rgba(117, 117, 255, 0.7);
+  --brand-500: #7575FF;               /* base.dev --color-fgPrimary */
+  --brand-600: rgb(87, 139, 250);     /* base.dev --color-bgPrimary */
+  --brand-700: #6060FF;
+  --brand-800: #4A4AFF;
+  --brand-900: #3535FF;
+  --brand-contrast: #FFFFFF;
 
-  /* Interactive States */
-  --interactive-hover: #F7F8FA;
-  --interactive-active: #EEF0F3;
-  --focus-ring: color-mix(in oklab, var(--brand-500) 70%, white);
+  /* Semantic Colors - Base.dev Exact */
+  --success: #7FD057;                 /* base.dev --color-fgPositive */
+  --success-bg: rgba(127, 208, 87, 0.1);
+  --success-wash: rgb(0, 31, 18);     /* base.dev --color-bgPositiveWash */
 
-  /* Elevation (Shadows) - Subtle Depth */
-  --shadow-xs: 0 1px 2px rgba(16, 24, 40, 0.04);
-  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06);
-  --shadow-md: 0 4px 12px rgba(16, 24, 40, 0.08);
-  --shadow-lg: 0 8px 20px rgba(16, 24, 40, 0.10);
-  --shadow-xl: 0 12px 32px rgba(16, 24, 40, 0.12);
-  --shadow-2xl: 0 20px 48px rgba(16, 24, 40, 0.15);
+  --warning: rgb(248, 150, 86);       /* base.dev --color-fgWarning */
+  --warning-bg: rgba(248, 150, 86, 0.1);
+  --warning-wash: rgb(51, 13, 0);     /* base.dev --color-bgWarningWash */
+
+  --danger: #F0616D;                  /* base.dev --color-fgNegative */
+  --danger-bg: rgba(240, 97, 109, 0.1);
+  --danger-wash: rgb(51, 0, 4);       /* base.dev --color-bgNegativeWash */
+
+  --info: #7575FF;                    /* base.dev primary */
+  --info-bg: rgba(117, 117, 255, 0.05);
+
+  /* Elevation - Base.dev Exact */
+  --elevation-1: rgb(20, 21, 25);     /* base.dev --color-bgElevation1 */
+  --elevation-2: rgb(30, 32, 37);     /* base.dev --color-bgElevation2 */
+
+  /* Overlays */
+  --overlay: rgba(10, 11, 13, 0.33);  /* base.dev --color-bgOverlay */
 
   /* ============================================
-     TYPOGRAPHY TOKENS
+     BASE.DEV TYPOGRAPHY SYSTEM
      ============================================ */
 
-  /* Font Families */
-  --font-sans: ui-sans-serif, 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Code', 'Source Code Pro', Menlo, Consolas, 'DejaVu Sans Mono', monospace;
+  /* Font Families - System font stack */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, Monaco, 'Cascadia Code', 'Source Code Pro', monospace;
 
-  /* Type Scale - Modular Scale (1.250 - Major Third) */
-  --fs-xs: 12px;      /* 0.75rem - Micro copy, labels */
-  --fs-sm: 14px;      /* 0.875rem - Small text, captions */
-  --fs-base: 16px;    /* 1rem - Body text */
-  --fs-lg: 18px;      /* 1.125rem - Large body */
-  --fs-xl: 20px;      /* 1.25rem - Subheadings */
-  --fs-2xl: 24px;     /* 1.5rem - Section titles */
-  --fs-3xl: 32px;     /* 2rem - Page titles */
-  --fs-4xl: 44px;     /* 2.75rem - Hero subheadings */
-  --fs-5xl: 56px;     /* 3.5rem - Hero headlines */
-  --fs-6xl: 72px;     /* 4.5rem - Display headlines */
+  /* Base.dev Typography Scale */
+  --fs-display-1: 4rem;               /* 64px - base.dev --fontSize-display1 */
+  --fs-display-2: 3rem;               /* 48px - base.dev --fontSize-display2 */
+  --fs-display-3: 2.5rem;             /* 40px - base.dev --fontSize-display3 */
+  --fs-title-1: 1.75rem;              /* 28px - base.dev --fontSize-title1 */
+  --fs-title-2: 1.75rem;              /* 28px - base.dev --fontSize-title2 */
+  --fs-title-3: 1.5rem;               /* 24px - base.dev --fontSize-title3 */
+  --fs-title-4: 1.25rem;              /* 20px - base.dev --fontSize-title4 */
+  --fs-headline: 1rem;                /* 16px - base.dev --fontSize-headline */
+  --fs-body: 1rem;                    /* 16px - base.dev --fontSize-body */
+  --fs-label-1: 0.875rem;             /* 14px - base.dev --fontSize-label1 */
+  --fs-label-2: 0.875rem;             /* 14px - base.dev --fontSize-label2 */
+  --fs-caption: 0.8125rem;            /* 13px - base.dev --fontSize-caption */
+  --fs-legal: 0.8125rem;              /* 13px - base.dev --fontSize-legal */
 
-  /* Line Heights */
-  --lh-tight: 1.2;    /* Display, headings */
-  --lh-snug: 1.375;   /* Subheadings */
-  --lh-normal: 1.5;   /* Body text */
-  --lh-relaxed: 1.625; /* Large body */
+  /* Line Heights - Base.dev Exact */
+  --lh-display-1: 4.5rem;             /* 72px - base.dev --lineHeight-display1 */
+  --lh-display-2: 3.5rem;             /* 56px */
+  --lh-display-3: 3rem;               /* 48px */
+  --lh-title-1: 2.25rem;              /* 36px */
+  --lh-title-2: 2.25rem;              /* 36px */
+  --lh-title-3: 1.75rem;              /* 28px */
+  --lh-title-4: 1.75rem;              /* 28px */
+  --lh-headline: 1.5rem;              /* 24px */
+  --lh-body: 1.5rem;                  /* 24px */
+  --lh-label: 1.25rem;                /* 20px */
+  --lh-caption: 1rem;                 /* 16px */
 
-  /* Letter Spacing */
-  --ls-tighter: -0.02em;  /* Display text */
-  --ls-tight: -0.01em;    /* Headings */
-  --ls-normal: 0;         /* Body */
-  --ls-wide: 0.025em;     /* Labels */
-  --ls-wider: 0.05em;     /* Uppercase labels */
-
-  /* Font Weights */
-  --fw-normal: 400;
-  --fw-medium: 500;
-  --fw-semibold: 600;
-  --fw-bold: 700;
+  /* Font Weights - Base.dev */
+  --fw-display: 400;                  /* base.dev --fontWeight-display* */
+  --fw-title-heavy: 500;              /* base.dev --fontWeight-title1/title3 */
+  --fw-title: 400;                    /* base.dev --fontWeight-title2/title4 */
+  --fw-headline: 500;
+  --fw-body: 400;
+  --fw-label-heavy: 600;              /* base.dev --fontWeight-label1 */
+  --fw-label: 400;
+  --fw-caption: 600;                  /* base.dev uppercase captions */
 
   /* ============================================
-     SPACING TOKENS - 8px Base Grid
+     BASE.DEV SPACING SYSTEM (8px base)
      ============================================ */
 
-  --space-px: 1px;
-  --space-0: 0;
-  --space-1: 4px;     /* 0.25rem */
-  --space-2: 8px;     /* 0.5rem - Base unit */
-  --space-3: 12px;    /* 0.75rem */
-  --space-4: 16px;    /* 1rem */
-  --space-5: 20px;    /* 1.25rem */
-  --space-6: 24px;    /* 1.5rem */
-  --space-8: 32px;    /* 2rem */
-  --space-10: 40px;   /* 2.5rem */
-  --space-12: 48px;   /* 3rem */
-  --space-16: 64px;   /* 4rem - Section spacing */
-  --space-20: 80px;   /* 5rem */
-  --space-24: 96px;   /* 6rem - Hero spacing */
-  --space-32: 128px;  /* 8rem */
-  --space-40: 160px;  /* 10rem */
+  --space-0: 0px;                     /* base.dev --space-0 */
+  --space-0-25: 2px;                  /* base.dev --space-0_25 */
+  --space-0-5: 4px;                   /* base.dev --space-0_5 */
+  --space-0-75: 6px;                  /* base.dev --space-0_75 */
+  --space-1: 8px;                     /* base.dev --space-1 */
+  --space-1-5: 12px;                  /* base.dev --space-1_5 */
+  --space-2: 16px;                    /* base.dev --space-2 */
+  --space-3: 24px;                    /* base.dev --space-3 */
+  --space-4: 32px;                    /* base.dev --space-4 */
+  --space-5: 40px;                    /* base.dev --space-5 */
+  --space-6: 48px;                    /* base.dev --space-6 */
+  --space-7: 56px;                    /* base.dev --space-7 */
+  --space-8: 64px;                    /* base.dev --space-8 */
+  --space-9: 72px;                    /* base.dev --space-9 */
+  --space-10: 80px;                   /* base.dev --space-10 */
 
   /* ============================================
-     SIZING TOKENS
+     BASE.DEV BORDER SYSTEM
      ============================================ */
 
-  /* Container Widths */
-  --container-xs: 480px;
-  --container-sm: 640px;
-  --container-md: 768px;
-  --container-lg: 1024px;
-  --container-xl: 1200px;
-  --container-2xl: 1280px;
-  --container-max: 1440px;
+  --border-width-0: 0px;              /* base.dev --borderWidth-0 */
+  --border-width-100: 1px;            /* base.dev --borderWidth-100 */
+  --border-width-200: 2px;            /* base.dev --borderWidth-200 */
+  --border-width-300: 4px;            /* base.dev --borderWidth-300 */
 
-  /* Component Sizes */
-  --button-height-sm: 32px;
-  --button-height-md: 40px;
-  --button-height-lg: 48px;
-  --button-height-xl: 56px;
-
-  --input-height-sm: 32px;
-  --input-height-md: 40px;
-  --input-height-lg: 48px;
-
-  --tap-target-min: 40px;  /* Minimum touch target */
+  /* Border Radius - Base.dev */
+  --radius-0: 0px;                    /* base.dev --borderRadius-0 */
+  --radius-100: 2px;                  /* base.dev --borderRadius-100 */
+  --radius-200: 4px;                  /* base.dev --borderRadius-200 */
+  --radius-300: 6px;                  /* base.dev --borderRadius-300 */
+  --radius-400: 8px;                  /* base.dev --borderRadius-400 */
+  --radius-500: 12px;                 /* base.dev --borderRadius-500 */
+  --radius-600: 16px;                 /* base.dev --borderRadius-600 */
+  --radius-700: 20px;                 /* base.dev --borderRadius-700 */
+  --radius-800: 24px;                 /* base.dev --borderRadius-800 */
+  --radius-900: 28px;                 /* base.dev --borderRadius-900 */
+  --radius-1000: 100000px;            /* base.dev --borderRadius-1000 (full) */
 
   /* ============================================
-     BORDER RADIUS TOKENS
+     BASE.DEV SHADOWS
      ============================================ */
 
-  --radius-none: 0;
-  --radius-xs: 2px;
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
-  --radius-2xl: 24px;
-  --radius-full: 9999px;
+  --shadow-elevation-1: 0px 8px 12px rgba(0, 0, 0, 0.12); /* base.dev --shadow-elevation1 */
+  --shadow-elevation-2: 0px 8px 24px rgba(0, 0, 0, 0.12); /* base.dev --shadow-elevation2 */
+
+  /* ============================================
+     COMPONENT SIZES
+     ============================================ */
+
+  /* Icon Sizes - Base.dev */
+  --icon-xs: 12px;                    /* base.dev --iconSize-xs */
+  --icon-s: 16px;                     /* base.dev --iconSize-s */
+  --icon-m: 24px;                     /* base.dev --iconSize-m */
+  --icon-l: 32px;                     /* base.dev --iconSize-l */
+
+  /* Avatar Sizes - Base.dev */
+  --avatar-s: 16px;                   /* base.dev --avatarSize-s */
+  --avatar-m: 24px;                   /* base.dev --avatarSize-m */
+  --avatar-l: 32px;                   /* base.dev --avatarSize-l */
+  --avatar-xl: 40px;                  /* base.dev --avatarSize-xl */
+  --avatar-xxl: 48px;                 /* base.dev --avatarSize-xxl */
+  --avatar-xxxl: 56px;                /* base.dev --avatarSize-xxxl */
+
+  /* Navigation Height */
+  --nav-height: 60px;                 /* From base.dev nav structure */
+  --nav-height-mobile: 56px;          /* Mobile nav height */
 
   /* ============================================
      MOTION TOKENS
      ============================================ */
 
-  /* Durations */
   --duration-instant: 100ms;
   --duration-fast: 150ms;
   --duration-base: 250ms;
   --duration-slow: 350ms;
-  --duration-slower: 500ms;
 
-  /* Easing Functions */
-  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
   --ease-out: cubic-bezier(0, 0, 0.2, 1);
-  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);  /* Base.dev standard */
-  --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
 
   /* ============================================
      Z-INDEX SCALE
@@ -200,100 +212,4 @@
   --z-modal: 1400;
   --z-popover: 1500;
   --z-tooltip: 1600;
-  --z-toast: 1700;
-
-  /* ============================================
-     BLUR TOKENS (Glassmorphism)
-     ============================================ */
-
-  --blur-sm: blur(4px);
-  --blur-md: blur(8px);
-  --blur-lg: blur(12px);
-  --blur-xl: blur(16px);
-}
-
-/* ============================================
-   DARK MODE TOKENS
-   ============================================ */
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* Neutrals - Inverted */
-    --bg: #0E0E10;              /* Near-black base */
-    --bg-subtle: #14171A;
-    --surface: #16171A;          /* Charcoal cards */
-    --surface-elevated: #1C1D20;
-    --surface-elevated-2: #242529;
-
-    /* Text - Inverted Hierarchy */
-    --text: #ECEEF2;            /* Off-white primary - 14.8:1 contrast */
-    --text-secondary: #B4B8C0;  /* Secondary text - 7.1:1 contrast */
-    --text-muted: #8C9096;      /* Muted text - 4.6:1 contrast (AA) */
-    --text-inverse: #14171A;    /* Text on light surfaces */
-
-    /* Borders - Subtle on Dark */
-    --border: #2B2D30;
-    --border-strong: #3E4146;
-    --border-subtle: #1E2024;
-
-    /* Brand - Brightened for Dark Backgrounds */
-    --brand-50: #001433;
-    --brand-100: #002E66;
-    --brand-200: #004299;
-    --brand-300: #0057FF;
-    --brand-400: #2E73FF;       /* Primary on dark */
-    --brand-500: #5C94FF;       /* Hover on dark */
-    --brand-600: #85AFFF;
-    --brand-700: #ADC9FF;
-    --brand-800: #D6E4FF;
-    --brand-900: #EBF2FF;
-    --brand-contrast: #0E0E10;  /* Text on brand (dark mode) */
-
-    /* Semantic States - Adjusted Brightness */
-    --success: #00D4B5;         /* Brighter mint */
-    --success-bg: #002E28;
-    --warning: #FFD633;         /* Brighter amber */
-    --warning-bg: #332B00;
-    --danger: #FF6B6B;          /* Brighter red */
-    --danger-bg: #330A0A;
-    --info: #5C94FF;
-    --info-bg: #001433;
-
-    /* Interactive States */
-    --interactive-hover: #1C1D20;
-    --interactive-active: #242529;
-    --focus-ring: color-mix(in oklab, var(--brand-400) 70%, black);
-
-    /* Elevation - Ambient Glow */
-    --shadow-xs: 0 0 8px rgba(0, 0, 0, 0.4);
-    --shadow-sm: 0 0 16px rgba(0, 0, 0, 0.4);
-    --shadow-md: 0 0 24px rgba(0, 0, 0, 0.45);
-    --shadow-lg: 0 4px 32px rgba(0, 0, 0, 0.5);
-    --shadow-xl: 0 8px 40px rgba(0, 0, 0, 0.55);
-    --shadow-2xl: 0 12px 56px rgba(0, 0, 0, 0.6);
-  }
-}
-
-/* ============================================
-   FORCED COLORS MODE (High Contrast)
-   ============================================ */
-
-@media (prefers-contrast: high) {
-  :root {
-    --text: #000000;
-    --text-secondary: #1A1A1A;
-    --text-muted: #333333;
-    --border: #000000;
-    --border-strong: #000000;
-  }
-}
-
-@media (prefers-color-scheme: dark) and (prefers-contrast: high) {
-  :root {
-    --text: #FFFFFF;
-    --text-secondary: #E6E6E6;
-    --text-muted: #CCCCCC;
-    --border: #FFFFFF;
-    --border-strong: #FFFFFF;
-  }
 }
