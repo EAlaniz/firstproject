@@ -35,12 +35,7 @@ const tabs: TabConfig[] = [
 
 export const BottomTabNav: React.FC<BottomTabNavProps> = ({ activeTab, onTabChange }) => {
   return (
-    <nav
-      className="nav-minimal"
-      style={{
-        transition: 'all 150ms cubic-bezier(0.4, 0, 0.2, 1)',
-      }}
-    >
+    <nav className="nav-noir">
       <div className="max-w-6xl mx-auto px-4">
         <div className="grid grid-cols-3 gap-2">
           {tabs.map((tab) => {
@@ -50,36 +45,32 @@ export const BottomTabNav: React.FC<BottomTabNavProps> = ({ activeTab, onTabChan
               <button
                 key={tab.id}
                 onClick={() => onTabChange(tab.id)}
-                className="relative flex flex-col items-center justify-center py-3 transition-colors"
-                style={{
-                  color: isActive ? 'var(--color-base-blue)' : 'var(--gray-500)',
-                }}
+                className={`nav-noir-item ${isActive ? 'active' : ''}`}
               >
-                {/* Active indicator */}
+                {/* Active indicator with glow */}
                 {isActive && (
                   <motion.div
                     layoutId="activeTab"
                     className="absolute top-0 left-0 right-0 h-0.5"
                     style={{
-                      background: 'var(--gradient-base)',
+                      background: 'var(--gradient-blue-to-mint)',
+                      boxShadow: 'var(--glow-blue-soft)',
                     }}
                     transition={{
-                      type: 'spring',
-                      damping: 25,
-                      stiffness: 300,
+                      duration: 0.3,
+                      ease: [0.4, 0, 0.2, 1],
                     }}
                   />
                 )}
 
-                {/* Icon with scale animation */}
+                {/* Icon with subtle illuminate animation */}
                 <motion.div
                   animate={{
-                    scale: isActive ? 1.1 : 1,
+                    filter: isActive ? 'brightness(1.15)' : 'brightness(1)',
                   }}
                   transition={{
-                    type: 'spring',
-                    damping: 25,
-                    stiffness: 300,
+                    duration: 0.15,
+                    ease: [0.4, 0, 0.2, 1],
                   }}
                   className="mb-1"
                 >
@@ -90,7 +81,8 @@ export const BottomTabNav: React.FC<BottomTabNavProps> = ({ activeTab, onTabChan
                 <span
                   className="text-xs"
                   style={{
-                    fontWeight: isActive ? 600 : 500,
+                    fontWeight: isActive ? 600 : 400,
+                    color: isActive ? 'var(--accent-blue)' : 'var(--text-secondary)',
                   }}
                 >
                   {tab.label}

@@ -14,7 +14,7 @@ import App from './App';
 import './index.css';
 import './styles/design-system.css';
 import './styles/refined-design.css';
-import './styles/expensive-minimalism.css';
+import './styles/obsidian-noir.css';
 
 // Initialize Farcaster compatibility fixes early
 farcasterCompatibility.init();
