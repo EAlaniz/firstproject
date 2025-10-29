@@ -139,19 +139,19 @@ export const LandingPage: React.FC<LandingPageProps> = React.memo(({
                 fontSize: '14px',
                 fontWeight: '500',
                 lineHeight: '20px',
-                backgroundColor: 'transparent',
-                color: 'rgb(161, 162, 166)',
-                border: '1px solid rgba(138, 145, 158, 0.2)',
+                backgroundColor: 'rgb(87, 139, 250)',
+                color: 'white',
                 borderRadius: '12px',
+                border: '0px solid rgb(225, 226, 230)',
                 cursor: 'pointer',
                 minHeight: '32px',
                 whiteSpace: 'nowrap',
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = 'var(--surface)';
+                e.currentTarget.style.opacity = '0.88';
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent';
+                e.currentTarget.style.opacity = '1';
               }}
             >
               <Sparkles style={{ width: '16px', height: '16px' }} />
@@ -167,27 +167,50 @@ export const LandingPage: React.FC<LandingPageProps> = React.memo(({
               marginTop: 'var(--space-8)',
             }}
           >
-            {[
-              { label: 'Powered by Base Chain', icon: '⚡' },
-              { label: 'Low fees', icon: '💰' },
-              { label: 'Fast transactions', icon: '🚀' },
-            ].map((feature, index) => (
-              <div
-                key={index}
-                className="flex items-center"
-                style={{
-                  gap: 'var(--space-1)',
-                  fontSize: 'var(--fs-caption)',
-                  fontWeight: 'var(--fw-caption)',
-                  color: 'var(--text-muted)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                }}
-              >
-                <span>{feature.icon}</span>
-                <span>{feature.label}</span>
-              </div>
-            ))}
+            <div
+              className="flex items-center"
+              style={{
+                gap: 'var(--space-1)',
+                fontSize: 'var(--fs-caption)',
+                fontWeight: 'var(--fw-caption)',
+                color: 'var(--text-muted)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+              }}
+            >
+              <img
+                src="/base-logo.svg"
+                alt="Base"
+                style={{ width: '16px', height: '16px' }}
+              />
+              <span>Powered by Base Chain</span>
+            </div>
+            <div
+              className="flex items-center"
+              style={{
+                gap: 'var(--space-1)',
+                fontSize: 'var(--fs-caption)',
+                fontWeight: 'var(--fw-caption)',
+                color: 'var(--text-muted)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+              }}
+            >
+              <span>Low fees</span>
+            </div>
+            <div
+              className="flex items-center"
+              style={{
+                gap: 'var(--space-1)',
+                fontSize: 'var(--fs-caption)',
+                fontWeight: 'var(--fw-caption)',
+                color: 'var(--text-muted)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+              }}
+            >
+              <span>Fast transactions</span>
+            </div>
           </div>
         </div>
       </main>
