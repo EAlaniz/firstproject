@@ -104,15 +104,20 @@ export const LandingPage: React.FC<LandingPageProps> = React.memo(({
             {/* Primary CTA - Connect Existing Wallet */}
             <button
               onClick={onGetStarted}
-              className="w-full sm:w-auto relative transition-all duration-base flex items-center justify-center"
+              className="relative transition-all flex items-center justify-center"
               style={{
                 gap: 'var(--space-1)',
-                padding: 'var(--space-2) var(--space-4)',
-                fontSize: 'var(--fs-label-1)',
-                fontWeight: 'var(--fw-label-heavy)',
-                backgroundColor: 'rgb(var(--primary-dark) / 1)',
+                padding: '6px 16px',
+                fontSize: '14px',
+                fontWeight: '500',
+                lineHeight: '20px',
+                backgroundColor: 'rgb(87, 139, 250)',
                 color: 'white',
-                borderRadius: 'var(--rounded-xl)',
+                borderRadius: '12px',
+                border: '0px solid rgb(225, 226, 230)',
+                cursor: 'pointer',
+                minHeight: '32px',
+                whiteSpace: 'nowrap',
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.opacity = '0.88';
@@ -127,16 +132,20 @@ export const LandingPage: React.FC<LandingPageProps> = React.memo(({
             {/* Secondary CTA - Create Smart Wallet */}
             <button
               onClick={onCreateWallet}
-              className="w-full sm:w-auto relative transition-all duration-base flex items-center justify-center border"
+              className="relative transition-all flex items-center justify-center"
               style={{
                 gap: 'var(--space-1)',
-                padding: 'var(--space-2) var(--space-4)',
-                fontSize: 'var(--fs-label-1)',
-                fontWeight: 'var(--fw-label)',
+                padding: '6px 16px',
+                fontSize: '14px',
+                fontWeight: '500',
+                lineHeight: '20px',
                 backgroundColor: 'transparent',
-                color: 'var(--text)',
-                borderColor: 'var(--border)',
-                borderRadius: 'var(--rounded-xl)',
+                color: 'rgb(161, 162, 166)',
+                border: '1px solid rgba(138, 145, 158, 0.2)',
+                borderRadius: '12px',
+                cursor: 'pointer',
+                minHeight: '32px',
+                whiteSpace: 'nowrap',
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.backgroundColor = 'var(--surface)';
@@ -145,7 +154,7 @@ export const LandingPage: React.FC<LandingPageProps> = React.memo(({
                 e.currentTarget.style.backgroundColor = 'transparent';
               }}
             >
-              <Sparkles style={{ width: 'var(--icon-s)', height: 'var(--icon-s)' }} />
+              <Sparkles style={{ width: '16px', height: '16px' }} />
               <span>Create Smart Wallet</span>
             </button>
           </div>
