@@ -120,9 +120,7 @@ export const LandingPage: React.FC<LandingPageProps> = React.memo(({
                 borderRadius: '12px',
                 border: '0px solid rgb(225, 226, 230)',
                 cursor: 'pointer',
-                height: '32px',
                 minHeight: '32px',
-                minWidth: '188px',
                 whiteSpace: 'nowrap',
               }}
               onMouseEnter={(e) => {

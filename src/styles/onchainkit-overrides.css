@@ -5,9 +5,7 @@
 
 /* Connect Wallet Button - Match base.dev specifications */
 .onchainkit-connect-wallet button,
-.ockConnectWallet_Container button,
-.onchainkit-connect-wallet [class*="ock"],
-.ockConnectWallet_Container [class*="ock"] {
+.ockConnectWallet_Container button {
   background-color: rgb(87, 139, 250) !important;
   border-radius: 12px !important;
   border: 0px solid rgb(225, 226, 230) !important;
@@ -18,18 +16,14 @@
   font-weight: 500 !important;
   line-height: 20px !important;
   min-height: 32px !important;
-  height: 32px !important;
   padding: 6px 16px !important;
-  min-width: 188px !important;
   white-space: nowrap !important;
   -webkit-font-smoothing: antialiased !important;
   transition: opacity 0.25s ease !important;
 }
 
 .onchainkit-connect-wallet button:hover,
-.ockConnectWallet_Container button:hover,
-.onchainkit-connect-wallet [class*="ock"]:hover,
-.ockConnectWallet_Container [class*="ock"]:hover {
+.ockConnectWallet_Container button:hover {
   opacity: 0.88 !important;
   background-color: rgb(87, 139, 250) !important;
 }
