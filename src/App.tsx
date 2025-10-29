@@ -311,11 +311,12 @@ function AppContent() {
               />
             )}
 
-            {/* Mobile Menu */}
+            {/* Mobile Menu - Wallet Only */}
             {isMobileMenuOpen && (
               <div
                 className="fixed inset-0 z-50 sm:hidden"
                 style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+                onClick={() => setIsMobileMenuOpen(false)}
               >
                 <div
                   className="absolute top-0 right-0 h-full w-80 shadow-xl"
@@ -323,6 +324,7 @@ function AppContent() {
                     backgroundColor: 'var(--bg)',
                     borderLeft: '1px solid var(--border)',
                   }}
+                  onClick={(e) => e.stopPropagation()}
                 >
                   <div
                     className="p-4"
@@ -336,7 +338,7 @@ function AppContent() {
                           color: 'var(--text)',
                         }}
                       >
-                        Menu
+                        Wallet
                       </h2>
                       <button
                         onClick={() => setIsMobileMenuOpen(false)}
@@ -355,154 +357,47 @@ function AppContent() {
                       </button>
                     </div>
                   </div>
-                  <div className="p-4 space-y-4">
+                  <div className="p-4">
+                    {/* Wallet Info Card */}
                     <div
-                      className="flex items-center space-x-3 p-3 rounded-lg"
+                      className="rounded-lg p-4 mb-4"
                       style={{
                         backgroundColor: 'var(--surface)',
                         border: '1px solid var(--border)',
                       }}
                     >
-                      <User
-                        className="w-5 h-5"
-                        style={{ color: 'rgb(87, 139, 250)' }}
-                      />
-                      <div>
+                      <div className="flex items-center space-x-3 mb-3">
                         <div
-                          className="font-medium"
-                          style={{ color: 'var(--text)' }}
+                          className="rounded-full flex items-center justify-center"
+                          style={{
+                            width: '40px',
+                            height: '40px',
+                            backgroundColor: 'rgb(87, 139, 250)',
+                          }}
                         >
-                          {address?.slice(0, 6)}...{address?.slice(-4)}
+                          <User className="w-5 h-5 text-white" />
                         </div>
-                        <div
-                          className="text-sm"
-                          style={{ color: 'var(--text-muted)' }}
-                        >
-                          {balance?.formatted} {balance?.symbol}
+                        <div className="flex-1">
+                          <div
+                            className="font-medium mb-1"
+                            style={{ color: 'var(--text)', fontSize: '14px' }}
+                          >
+                            {address?.slice(0, 6)}...{address?.slice(-4)}
+                          </div>
+                          <div
+                            className="text-sm"
+                            style={{ color: 'var(--text-muted)', fontSize: '12px' }}
+                          >
+                            {balance?.formatted ? `${balance.formatted.slice(0, 6)} ${balance.symbol}` : '0 ETH'}
+                          </div>
                         </div>
                       </div>
+
+                      {/* OnchainKit Wallet Component for Settings & Disconnect */}
+                      <div className="onchainkit-wallet-mobile">
+                        <OnchainKitWallet />
+                      </div>
                     </div>
-                    <button
-                      onClick={() => {
-                        setIsMobileMenuOpen(false);
-                        setShowWalletConnector(true);
-                      }}
-                      className="w-full flex items-center space-x-3 p-3 rounded-lg transition-colors"
-                      style={{ color: 'var(--text)' }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = 'var(--surface)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'transparent';
-                      }}
-                    >
-                      <Settings className="w-5 h-5" />
-                      <span>Wallet Settings</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        setActiveTab('today');
-                        setIsMobileMenuOpen(false);
-                      }}
-                      className="w-full flex items-center space-x-3 p-3 rounded-lg transition-colors"
-                      style={{
-                        backgroundColor: activeTab === 'today' ? 'rgb(87, 139, 250)' : 'transparent',
-                        color: activeTab === 'today' ? 'white' : 'var(--text)',
-                      }}
-                      onMouseEnter={(e) => {
-                        if (activeTab !== 'today') {
-                          e.currentTarget.style.backgroundColor = 'var(--surface)';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (activeTab !== 'today') {
-                          e.currentTarget.style.backgroundColor = 'transparent';
-                        }
-                      }}
-                    >
-                      <Activity className="w-5 h-5" />
-                      <span>Today</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (xmtpClient) {
-                          setActiveTab('connect');
-                          setIsMobileMenuOpen(false);
-                        } else {
-                          handleXMTPInitialization();
-                          setIsMobileMenuOpen(false);
-                        }
-                      }}
-                      disabled={isInitializing}
-                      className="w-full flex items-center space-x-3 p-3 rounded-lg transition-colors"
-                      style={{
-                        backgroundColor: isInitializing
-                          ? 'var(--surface)'
-                          : activeTab === 'connect'
-                          ? 'rgb(87, 139, 250)'
-                          : 'transparent',
-                        color: isInitializing
-                          ? 'var(--text-muted)'
-                          : activeTab === 'connect'
-                          ? 'white'
-                          : 'var(--text)',
-                        cursor: isInitializing ? 'not-allowed' : 'pointer',
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!isInitializing && activeTab !== 'connect') {
-                          e.currentTarget.style.backgroundColor = 'var(--surface)';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!isInitializing && activeTab !== 'connect') {
-                          e.currentTarget.style.backgroundColor = 'transparent';
-                        }
-                      }}
-                    >
-                      <MessageCircle className="w-5 h-5" />
-                      <span>{isInitializing ? 'Initializing...' : xmtpClient ? 'Connect' : 'Enable Messages'}</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        setActiveTab('rewards');
-                        setIsMobileMenuOpen(false);
-                      }}
-                      className="w-full flex items-center space-x-3 p-3 rounded-lg transition-colors"
-                      style={{
-                        backgroundColor: activeTab === 'rewards' ? 'rgb(87, 139, 250)' : 'transparent',
-                        color: activeTab === 'rewards' ? 'white' : 'var(--text)',
-                      }}
-                      onMouseEnter={(e) => {
-                        if (activeTab !== 'rewards') {
-                          e.currentTarget.style.backgroundColor = 'var(--surface)';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (activeTab !== 'rewards') {
-                          e.currentTarget.style.backgroundColor = 'transparent';
-                        }
-                      }}
-                    >
-                      <Trophy className="w-5 h-5" />
-                      <span>Rewards</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        disconnect();
-                        setIsMobileMenuOpen(false);
-                      }}
-                      className="w-full flex items-center space-x-3 p-3 rounded-lg transition-colors"
-                      style={{ color: 'rgb(239, 68, 68)' }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'transparent';
-                      }}
-                    >
-                      <LogOut className="w-5 h-5" />
-                      <span>Disconnect</span>
-                    </button>
                   </div>
                 </div>
               </div>

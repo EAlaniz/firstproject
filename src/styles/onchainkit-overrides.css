@@ -145,3 +145,17 @@
 [class*="ockWalletDropdownDisconnect"]:hover {
   background-color: rgba(239, 68, 68, 0.1) !important;
 }
+
+/* Mobile Wallet Styling */
+.onchainkit-wallet-mobile {
+  width: 100%;
+}
+
+.onchainkit-wallet-mobile [class*="ockWallet"] {
+  width: 100% !important;
+}
+
+.onchainkit-wallet-mobile button {
+  width: 100% !important;
+  justify-content: center !important;
+}
