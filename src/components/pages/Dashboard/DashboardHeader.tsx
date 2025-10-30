@@ -1,5 +1,5 @@
 import React from 'react';
-import { Activity, MessageCircle } from 'lucide-react';
+import { Activity } from 'lucide-react';
 import { OnchainKitWallet } from '../../OnchainKitWallet';
 
 interface DashboardHeaderProps {
@@ -10,20 +10,16 @@ interface DashboardHeaderProps {
   onInitializeXMTP: () => void;
 }
 
-export const DashboardHeader: React.FC<DashboardHeaderProps> = React.memo(({
-  activeView,
-  isInitialized,
-  isInitializing,
-  onMessagesClick,
-  onInitializeXMTP,
-}) => {
+export const DashboardHeader: React.FC<DashboardHeaderProps> = React.memo(() => {
   return (
     <header
       className="flex items-center justify-between px-4 sm:px-6 border-b transition-colors"
       style={{
-        height: '56px', // Mobile height
+        height: '56px',
         backgroundColor: 'var(--bg)',
         borderColor: 'var(--border)',
+        position: 'relative',
+        zIndex: 'var(--z-sticky)', // Ensure wallet dropdown appears above content
       }}
     >
       {/* Logo Section */}
@@ -51,65 +47,8 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = React.memo(({
         </span>
       </div>
 
-      {/* Navigation - Desktop and Mobile */}
-      <div className="flex items-center" style={{ gap: 'var(--space-1)' }}>
-        {isInitialized ? (
-          <button
-            onClick={onMessagesClick}
-            className="hidden sm:flex items-center rounded transition-all duration-fast"
-            style={{
-              gap: 'var(--space-1)',
-              padding: 'var(--space-1) var(--space-2)',
-              fontSize: 'var(--fs-label-1)',
-              fontWeight: 'var(--fw-label)',
-              backgroundColor: activeView === 'messages' ? 'var(--brand-500)' : 'transparent',
-              color: activeView === 'messages' ? 'white' : 'var(--text-muted)',
-              opacity: activeView === 'messages' ? 1 : 0.88,
-            }}
-            onMouseEnter={(e) => {
-              if (activeView !== 'messages') {
-                e.currentTarget.style.opacity = '1';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (activeView !== 'messages') {
-                e.currentTarget.style.opacity = '0.88';
-              }
-            }}
-          >
-            <MessageCircle style={{ width: 'var(--icon-s)', height: 'var(--icon-s)' }} />
-            <span>Messages</span>
-          </button>
-        ) : (
-          <button
-            onClick={onInitializeXMTP}
-            disabled={isInitializing}
-            className="hidden sm:flex items-center rounded transition-all duration-fast"
-            style={{
-              gap: 'var(--space-1)',
-              padding: 'var(--space-1) var(--space-2)',
-              fontSize: 'var(--fs-label-1)',
-              fontWeight: 'var(--fw-label)',
-              backgroundColor: 'transparent',
-              color: isInitializing ? 'var(--text-muted)' : 'var(--text-muted)',
-              opacity: isInitializing ? 0.5 : 0.88,
-              cursor: isInitializing ? 'not-allowed' : 'pointer',
-            }}
-            onMouseEnter={(e) => {
-              if (!isInitializing) {
-                e.currentTarget.style.opacity = '1';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!isInitializing) {
-                e.currentTarget.style.opacity = '0.88';
-              }
-            }}
-          >
-            <MessageCircle style={{ width: 'var(--icon-s)', height: 'var(--icon-s)' }} />
-            <span>{isInitializing ? 'Initializing...' : 'Enable Messages'}</span>
-          </button>
-        )}
+      {/* Wallet Only - Messages UI removed per user request */}
+      <div className="flex items-center">
         <OnchainKitWallet />
       </div>
     </header>
