@@ -8,7 +8,13 @@ import {
   WalletDropdownLink,
   WalletDropdownDisconnect,
 } from '@coinbase/onchainkit/wallet';
-import { Address, Avatar, Name, Identity, EthBalance } from '@coinbase/onchainkit/identity';
+import {
+  Address,
+  Avatar,
+  Name,
+  Identity,
+  EthBalance,
+} from '@coinbase/onchainkit/identity';
 
 export const OnchainKitWallet: React.FC = () => {
   return (
@@ -21,7 +27,7 @@ export const OnchainKitWallet: React.FC = () => {
         <Identity className="px-4 pt-3 pb-2" hasCopyAddressOnClick>
           <Avatar />
           <Name />
-          <Address />
+          <Address className="text-[var(--text-muted)]" />
           <EthBalance />
         </Identity>
         <WalletDropdownBasename />
