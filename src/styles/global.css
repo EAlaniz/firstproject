@@ -85,8 +85,8 @@ select {
   color: inherit;
 }
 
-/* Remove default button styles */
-button {
+/* Remove default button styles (but not for OnchainKit) */
+button:not([class*="ock"]) {
   background: none;
   border: none;
   cursor: pointer;
