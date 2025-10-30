@@ -1,12 +1,11 @@
 import React from 'react';
-import { Activity, MessageCircle, Menu } from 'lucide-react';
+import { Activity, MessageCircle } from 'lucide-react';
 import { OnchainKitWallet } from '../../OnchainKitWallet';
 
 interface DashboardHeaderProps {
   activeView: 'dashboard' | 'messages';
   isInitialized: boolean;
   isInitializing: boolean;
-  onMenuClick: () => void;
   onMessagesClick: () => void;
   onInitializeXMTP: () => void;
 }
@@ -15,7 +14,6 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = React.memo(({
   activeView,
   isInitialized,
   isInitializing,
-  onMenuClick,
   onMessagesClick,
   onInitializeXMTP,
 }) => {
@@ -53,12 +51,12 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = React.memo(({
         </span>
       </div>
 
-      {/* Desktop Navigation */}
-      <div className="hidden sm:flex items-center" style={{ gap: 'var(--space-1)' }}>
+      {/* Navigation - Desktop and Mobile */}
+      <div className="flex items-center" style={{ gap: 'var(--space-1)' }}>
         {isInitialized ? (
           <button
             onClick={onMessagesClick}
-            className="flex items-center rounded transition-all duration-fast"
+            className="hidden sm:flex items-center rounded transition-all duration-fast"
             style={{
               gap: 'var(--space-1)',
               padding: 'var(--space-1) var(--space-2)',
@@ -86,7 +84,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = React.memo(({
           <button
             onClick={onInitializeXMTP}
             disabled={isInitializing}
-            className="flex items-center rounded transition-all duration-fast"
+            className="hidden sm:flex items-center rounded transition-all duration-fast"
             style={{
               gap: 'var(--space-1)',
               padding: 'var(--space-1) var(--space-2)',
@@ -114,26 +112,6 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = React.memo(({
         )}
         <OnchainKitWallet />
       </div>
-
-      {/* Mobile Menu Button */}
-      <button
-        onClick={onMenuClick}
-        className="sm:hidden rounded transition-all duration-fast"
-        style={{
-          padding: 'var(--space-1)',
-          backgroundColor: 'transparent',
-          color: 'var(--text)',
-          opacity: 0.88,
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.opacity = '1';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.opacity = '0.88';
-        }}
-      >
-        <Menu style={{ width: 'var(--icon-m)', height: 'var(--icon-m)' }} />
-      </button>
     </header>
   );
 });

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useAccount, useBalance, useWalletClient } from 'wagmi';
-import { OnchainKitWallet } from './components/OnchainKitWallet';
 import { XMTPProvider } from './xmtp/contexts/XMTPContext';
 import { useXMTP } from './xmtp/contexts/useXMTPContext';
 import { useXMTPClient } from './xmtp/hooks/useXMTP';
@@ -12,12 +11,10 @@ import { BottomTabNav, type TabView } from './components/BottomTabNav';
 import { TodayTab } from './components/tabs/TodayTab';
 import { ConnectTab } from './components/tabs/ConnectTab';
 import { RewardsTab } from './components/tabs/RewardsTab';
-import { X, User } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 
 function AppContent() {
   const [showSmartWalletCreator, setShowSmartWalletCreator] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<'dashboard' | 'messages'>('dashboard');
@@ -194,7 +191,6 @@ function AppContent() {
             activeView={activeView}
             isInitialized={xmtpClient !== null}
             isInitializing={isInitializing}
-            onMenuClick={() => setIsMobileMenuOpen(true)}
             onMessagesClick={() => setActiveView('messages')}
             onInitializeXMTP={handleXMTPInitialization}
           />
@@ -245,98 +241,6 @@ function AppContent() {
                 address={address}
                 balance={balance}
               />
-            )}
-
-            {/* Mobile Menu - Wallet Only */}
-            {isMobileMenuOpen && (
-              <div
-                className="fixed inset-0 z-50 sm:hidden"
-                style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                <div
-                  className="absolute top-0 right-0 h-full w-80 shadow-xl"
-                  style={{
-                    backgroundColor: 'var(--bg)',
-                    borderLeft: '1px solid var(--border)',
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div
-                    className="p-4"
-                    style={{ borderBottom: '1px solid var(--border)' }}
-                  >
-                    <div className="flex items-center justify-between">
-                      <h2
-                        className="font-medium"
-                        style={{
-                          fontSize: 'var(--fs-title-4)',
-                          color: 'var(--text)',
-                        }}
-                      >
-                        Wallet
-                      </h2>
-                      <button
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className="p-2 rounded-full transition-colors"
-                        style={{
-                          color: 'var(--text)',
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = 'var(--surface)';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = 'transparent';
-                        }}
-                      >
-                        <X className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </div>
-                  <div className="p-4">
-                    {/* Wallet Info Card */}
-                    <div
-                      className="rounded-lg p-4 mb-4"
-                      style={{
-                        backgroundColor: 'var(--surface)',
-                        border: '1px solid var(--border)',
-                      }}
-                    >
-                      <div className="flex items-center space-x-3 mb-3">
-                        <div
-                          className="rounded-full flex items-center justify-center"
-                          style={{
-                            width: '40px',
-                            height: '40px',
-                            backgroundColor: 'rgb(87, 139, 250)',
-                          }}
-                        >
-                          <User className="w-5 h-5 text-white" />
-                        </div>
-                        <div className="flex-1">
-                          <div
-                            className="font-medium mb-1"
-                            style={{ color: 'var(--text)', fontSize: '14px' }}
-                          >
-                            {address?.slice(0, 6)}...{address?.slice(-4)}
-                          </div>
-                          <div
-                            className="text-sm"
-                            style={{ color: 'var(--text-muted)', fontSize: '12px' }}
-                          >
-                            {balance?.formatted ? `${balance.formatted.slice(0, 6)} ${balance.symbol}` : '0 ETH'}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* OnchainKit Wallet Component for Settings & Disconnect */}
-                      <div className="onchainkit-wallet-mobile">
-                        <OnchainKitWallet />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
             )}
           </main>
 
