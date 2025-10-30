@@ -1,6 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { MiniKitProvider } from '@coinbase/onchainkit/minikit';
+import { OnchainKitProvider } from '@coinbase/onchainkit';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider } from 'wagmi';
 import { wagmiConfig } from '../wagmi.config';
@@ -29,7 +29,7 @@ createRoot(rootElement).render(
     <ErrorBoundary>
       <WagmiProvider config={wagmiConfig}>
         <QueryClientProvider client={queryClient}>
-          <MiniKitProvider
+          <OnchainKitProvider
             apiKey={import.meta.env.VITE_ONCHAINKIT_API_KEY || ''}
             chain={base}
             config={{
@@ -41,7 +41,7 @@ createRoot(rootElement).render(
             }}
           >
             <App />
-          </MiniKitProvider>
+          </OnchainKitProvider>
         </QueryClientProvider>
       </WagmiProvider>
     </ErrorBoundary>
