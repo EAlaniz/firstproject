@@ -8,8 +8,7 @@ import { base } from 'wagmi/chains';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import App from './App';
 import './index.css';
-import './styles/tokens.css';
-// REMOVED: global.css - wildcard resets were blocking OnchainKit
+// REMOVED: tokens.css and global.css - interfere with OnchainKit
 
 const queryClient = new QueryClient({
   defaultOptions: {

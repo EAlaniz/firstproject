@@ -2,20 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Base theme colors - let OnchainKit handle its own theming */
+/* Absolute minimal - only dark background */
 html {
-  background-color: var(--bg);
-  font-family: var(--font-sans);
+  background-color: rgb(10, 11, 13);
 }
 
 body {
-  background-color: var(--bg);
-  color: var(--text);
+  background-color: rgb(10, 11, 13);
+  color: rgb(255, 255, 255);
   margin: 0;
   padding: 0;
 }
 
 #root {
-  background-color: var(--bg);
+  background-color: rgb(10, 11, 13);
   min-height: 100vh;
 }
