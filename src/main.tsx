@@ -7,6 +7,7 @@ import { wagmiConfig } from '../wagmi.config';
 import { base } from 'wagmi/chains';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import App from './App';
+import '@coinbase/onchainkit/dist/assets/style.css'; // OnchainKit compiled styles - CRITICAL!
 import './index.css';
 import './styles/tokens.css';
 import './styles/global.css';
