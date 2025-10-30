@@ -1,7 +1,11 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
-  darkMode: 'media',
+  content: [
+    './index.html',
+    './src/**/*.{js,ts,jsx,tsx}',
+    './node_modules/@coinbase/onchainkit/**/*.js',
+  ],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
