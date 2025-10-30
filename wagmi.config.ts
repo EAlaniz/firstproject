@@ -40,8 +40,7 @@ export const wagmiConfig = createConfig({
   transports: {
     [base.id]: http(rpcUrl),
   },
-  pollingInterval: 4000,
-  ssr: false,
+  ssr: true,
   // Farcaster-specific configuration
   ...(isFarcaster && {
     // Reduce polling to avoid excessive API calls
