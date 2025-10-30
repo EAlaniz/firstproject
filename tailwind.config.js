@@ -6,6 +6,9 @@ export default {
     './node_modules/@coinbase/onchainkit/**/*.js',
   ],
   darkMode: 'class',
+  corePlugins: {
+    preflight: false, // Disable Tailwind's CSS reset - it conflicts with OnchainKit
+  },
   theme: {
     extend: {
       colors: {
