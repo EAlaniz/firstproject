@@ -1,6 +1,8 @@
 import React from 'react';
 import { Activity } from 'lucide-react';
 import { OnchainKitWallet } from '../../OnchainKitWallet';
+import { useIsBaseMiniApp } from '../../../hooks/useIsBaseMiniApp';
+import { useBaseAccountCapabilities } from '../../../hooks/useBaseAccountCapabilities';
 
 interface DashboardHeaderProps {
   activeView: 'dashboard' | 'messages';
@@ -11,6 +13,8 @@ interface DashboardHeaderProps {
 }
 
 export const DashboardHeader: React.FC<DashboardHeaderProps> = React.memo(() => {
+  const { isMiniApp, ready } = useIsBaseMiniApp();
+  const { loading } = useBaseAccountCapabilities();
   return (
     <header
       className="flex items-center justify-between px-4 sm:px-6 border-b transition-colors"
@@ -49,7 +53,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = React.memo(() => 
 
       {/* Wallet Only - Messages UI removed per user request */}
       <div className="flex items-center">
-        <OnchainKitWallet />
+        {(!isMiniApp || (ready && !loading)) && <OnchainKitWallet />}
       </div>
     </header>
   );

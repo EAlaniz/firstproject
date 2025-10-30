@@ -1,6 +1,7 @@
 import React from 'react';
 import { Activity } from 'lucide-react';
 import { ConnectWallet } from '@coinbase/onchainkit/wallet';
+import { useIsBaseMiniApp } from '../../hooks/useIsBaseMiniApp';
 
 interface LandingPageProps {
   onCreateWallet: () => void;
@@ -9,6 +10,7 @@ interface LandingPageProps {
 export const LandingPage: React.FC<LandingPageProps> = React.memo(({
   onCreateWallet
 }) => {
+  const { isMiniApp } = useIsBaseMiniApp();
   return (
     <div
       className="min-h-screen flex flex-col"
@@ -100,10 +102,12 @@ export const LandingPage: React.FC<LandingPageProps> = React.memo(({
               paddingRight: 'var(--space-2)',
             }}
           >
-            {/* Primary CTA - Connect Existing Wallet */}
-            <div className="onchainkit-connect-wallet">
-              <ConnectWallet />
-            </div>
+            {/* Primary CTA */}
+            {!isMiniApp && (
+              <div className="onchainkit-connect-wallet">
+                <ConnectWallet />
+              </div>
+            )}
 
             {/* Secondary CTA removed: OnchainKit ConnectWallet supports onboarding/creation if needed */}
           </div>
