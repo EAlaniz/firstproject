@@ -7,6 +7,7 @@ import { wagmiConfig } from '../wagmi.config';
 import { base } from 'wagmi/chains';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import App from './App';
+// OnchainKit CSS loaded via HTML link tag to avoid Tailwind v3/v4 PostCSS conflict
 import './index.css';
 
 const queryClient = new QueryClient({
@@ -29,6 +30,7 @@ createRoot(rootElement).render(
           <OnchainKitProvider
             apiKey={import.meta.env.VITE_ONCHAINKIT_API_KEY || ''}
             chain={base}
+            miniKit={{ enabled: true }}
             config={{
               appearance: {
                 mode: 'dark',

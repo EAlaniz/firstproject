@@ -13,6 +13,11 @@ export default defineConfig({
           src: 'public/.well-known',
           dest: '.well-known',
         },
+        {
+          src: 'node_modules/@coinbase/onchainkit/dist/assets/style.css',
+          dest: 'assets',
+          rename: 'onchainkit.css',
+        },
       ],
     }),
     nodePolyfills({
