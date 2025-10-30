@@ -1,3 +1,5 @@
+@import './styles/tokens.css';
+@import './styles/global.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -17,4 +19,14 @@ body {
 #root {
   background-color: rgb(10, 11, 13);
   min-height: 100vh;
+}
+
+/* OnchainKit styles are managed by its own CSS. Avoid overrides here. */
+
+/* No OnchainKit overrides - use stock styles */
+
+/* Normalize vertical centering for OCK link rows (Wallet, etc.) */
+[data-ock-theme] a.ock\:flex > div.ock\:absolute.ock\:top-1\/2 {
+  top: 50% !important;
+  transform: translateY(-50%) !important;
 }

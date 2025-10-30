@@ -2,8 +2,6 @@ import {
   ConnectWallet,
   Wallet,
   WalletDropdown,
-  WalletDropdownBasename,
-  WalletDropdownFundLink,
   WalletDropdownLink,
   WalletDropdownDisconnect,
 } from '@coinbase/onchainkit/wallet';
@@ -12,7 +10,6 @@ import {
   Avatar,
   Name,
   Identity,
-  EthBalance,
 } from '@coinbase/onchainkit/identity';
 
 export const OnchainKitWallet = () => {
@@ -27,14 +24,11 @@ export const OnchainKitWallet = () => {
           <Identity className="px-4 pt-3 pb-2" hasCopyAddressOnClick>
             <Avatar />
             <Name />
-            <Address />
-            <EthBalance />
+            <Address className="ock:text-ock-foreground-muted" />
           </Identity>
-          <WalletDropdownBasename />
           <WalletDropdownLink icon="wallet" href="https://keys.coinbase.com">
             Wallet
           </WalletDropdownLink>
-          <WalletDropdownFundLink />
           <WalletDropdownDisconnect />
         </WalletDropdown>
       </Wallet>

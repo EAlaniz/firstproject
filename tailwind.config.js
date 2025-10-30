@@ -6,6 +6,9 @@ export default {
     './node_modules/@coinbase/onchainkit/**/*.js',
   ],
   darkMode: 'class',
+  corePlugins: {
+    preflight: false, // Avoid overriding OnchainKit component styles
+  },
   theme: {
     extend: {
       colors: {
