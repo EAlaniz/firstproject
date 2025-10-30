@@ -8,7 +8,6 @@ import { base } from 'wagmi/chains';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import App from './App';
 import './index.css';
-// REMOVED: tokens.css and global.css - interfere with OnchainKit
 
 const queryClient = new QueryClient({
   defaultOptions: {
