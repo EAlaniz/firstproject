@@ -2,7 +2,6 @@ import {
   ConnectWallet,
   Wallet,
   WalletDropdown,
-  WalletDropdownLink,
   WalletDropdownDisconnect,
 } from '@coinbase/onchainkit/wallet';
 import {
@@ -26,9 +25,6 @@ export const OnchainKitWallet = () => {
             <Name />
             <Address className="ock:text-ock-foreground-muted" />
           </Identity>
-          <WalletDropdownLink icon="wallet" href="https://keys.coinbase.com">
-            Wallet
-          </WalletDropdownLink>
           <WalletDropdownDisconnect />
         </WalletDropdown>
       </Wallet>
