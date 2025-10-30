@@ -1,37 +1,21 @@
-// Cache bust 1738088258
 import React, { useState, useEffect } from 'react';
-import { useAccount, useBalance, useWalletClient, useDisconnect } from 'wagmi';
-import { ENV_CONFIG } from './constants';
+import { useAccount, useBalance, useWalletClient } from 'wagmi';
 import { OnchainKitWallet } from './components/OnchainKitWallet';
-import { XMTPMessenger } from './xmtp/components/XMTPMessenger';
 import { XMTPProvider } from './xmtp/contexts/XMTPContext';
 import { useXMTP } from './xmtp/contexts/useXMTPContext';
 import { useXMTPClient } from './xmtp/hooks/useXMTP';
 import { useHealthData } from './hooks/useHealthData';
 import { useWhoop } from './hooks/useWhoop';
-import { LandingPage, DashboardHeader, StepsCard } from './components/pages';
-import { WearablesManager } from './components/WearablesManager';
+import { LandingPage, DashboardHeader } from './components/pages';
 import { SmartWalletCreator } from './components/SmartWalletCreator';
 import { BottomTabNav, type TabView } from './components/BottomTabNav';
 import { TodayTab } from './components/tabs/TodayTab';
 import { ConnectTab } from './components/tabs/ConnectTab';
 import { RewardsTab } from './components/tabs/RewardsTab';
-import { Activity, Circle, MessageCircle, X, User, ExternalLink, Settings, Lock, LogOut, RefreshCw, Zap, Trophy } from 'lucide-react';
-// Import the Farcaster Mini App SDK
-import { sdk } from '@farcaster/miniapp-sdk';
+import { X, User } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 
 function AppContent() {
-  // Debug: Check environment variables on component mount
-  useEffect(() => {
-    console.log('🔍 Environment Variables Check:');
-    console.log('VITE_WHOOP_CLIENT_ID:', import.meta.env.VITE_WHOOP_CLIENT_ID || 'NOT SET');
-    console.log('VITE_WHOOP_CLIENT_SECRET:', import.meta.env.VITE_WHOOP_CLIENT_SECRET ? 'SET (hidden)' : 'NOT SET');
-    console.log('VITE_WHOOP_REDIRECT_URI:', import.meta.env.VITE_WHOOP_REDIRECT_URI || 'NOT SET');
-  }, []);
-
-  // your existing state hooks
-  const [showWalletConnector, setShowWalletConnector] = useState(false);
   const [showSmartWalletCreator, setShowSmartWalletCreator] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,7 +29,6 @@ function AppContent() {
   const { address, isConnected } = useAccount();
   const { data: balance } = useBalance({ address: address });
   const { data: walletClient } = useWalletClient();
-  const { disconnect } = useDisconnect();
 
   // Health data integration - replaces mock step counter
   const {
@@ -71,49 +54,12 @@ function AppContent() {
     refreshData: refreshWhoopData,
   } = useWhoop();
 
-  // Add this useEffect near the top inside your component
-  useEffect(() => {
-    // Dev-only mock for window.farcaster.isMiniApp if undefined
-    if (!window.farcaster) {
-      window.farcaster = { isMiniApp: true };
-      console.warn('Mocking window.farcaster.isMiniApp for local dev');
-    }
-
-    (async () => {
-      try {
-        await sdk.actions.ready();
-        sdk.back.enableWebNavigation();
-        console.log('✅ Farcaster sdk.actions.ready() and sdk.back.enableWebNavigation() called successfully');
-      } catch (err) {
-        console.error('❌ Failed to call Farcaster SDK ready or navigation enable', err);
-      }
-    })();
-  }, []);
   // Use XMTP context
   const {
     initialize: initializeClient,
     isConnecting: isInitializing
   } = useXMTP();
   const xmtpClient = useXMTPClient();
-
-  // Debug modal state
-  useEffect(() => {
-    console.log('Modal state changed:', { showWalletConnector, isConnected });
-  }, [showWalletConnector, isConnected]);
-
-  // Update wallet connection state
-  useEffect(() => {
-    console.log('Wallet state updated:', { isConnected, address, walletClient: !!walletClient });
-  }, [isConnected, address, walletClient]);
-
-  const prevIsConnected = React.useRef(isConnected);
-
-  useEffect(() => {
-    if (!prevIsConnected.current && isConnected && showWalletConnector) {
-      setShowWalletConnector(false); // Only close on new connection
-    }
-    prevIsConnected.current = isConnected;
-  }, [isConnected, showWalletConnector]);
 
   // Clear messages after timeout
   useEffect(() => {
@@ -208,20 +154,10 @@ function AppContent() {
   useEffect(() => {
     // Only switch when client transitions from null to initialized
     if (!prevXmtpClient.current && xmtpClient && isConnected) {
-      console.log('✅ XMTP client is ready, switching to messages view');
       setActiveView('messages');
     }
     prevXmtpClient.current = xmtpClient;
   }, [xmtpClient, isConnected]);
-
-  // Debug logging for configuration verification
-  useEffect(() => {
-    console.log('🔧 App Debug Info:');
-    console.log('  - RPC URL:', ENV_CONFIG.RPC_URL);
-    console.log('  - Is Connected:', isConnected);
-    console.log('  - Address:', address);
-  }, [isConnected, address]);
-
 
   // Handler for smart wallet creation
   const handleSmartWalletCreated = (address: string) => {

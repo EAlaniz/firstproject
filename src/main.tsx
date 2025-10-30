@@ -1,14 +1,10 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { OnchainKitProvider } from '@coinbase/onchainkit';
+import { MiniKitProvider } from '@coinbase/onchainkit/minikit';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider } from 'wagmi';
 import { wagmiConfig } from '../wagmi.config';
 import { base } from 'wagmi/chains';
-import { AuthKitProvider } from '@farcaster/auth-kit';
-import { http } from 'viem';
-import { isFarcasterMiniApp, farcasterCompatibility } from './utils/farcasterCompatibility';
-import { setupCoinbaseWalletFix, setupCoinbaseWalletSDKFix } from './utils/coinbaseWalletFix';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import App from './App';
 import './index.css';
@@ -16,42 +12,12 @@ import './styles/tokens.css';
 import './styles/global.css';
 import './styles/onchainkit-overrides.css';
 
-// Initialize Farcaster compatibility fixes early
-farcasterCompatibility.init();
-
-// NEW: Setup Coinbase Wallet fix
-setupCoinbaseWalletFix();
-setupCoinbaseWalletSDKFix();
-
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 3,
       retryDelay: 1000,
     },
-  },
-});
-
-const RPC_URL = import.meta.env.VITE_RPC_URL || (() => {
-  if (import.meta.env.PROD) {
-    throw new Error('VITE_RPC_URL environment variable is required in production');
-  }
-  console.warn('⚠️ VITE_RPC_URL not set, using public Base RPC endpoint');
-  return 'https://mainnet.base.org';
-})();
-
-// Create viem transport instance for wagmi
-const viemTransport = http(RPC_URL);
-
-// Log RPC configuration for debugging
-console.log('🔧 RPC Configuration:', {
-  rpcUrl: RPC_URL ? 'Configured ✓' : 'Missing ✗',
-  viemTransport: viemTransport,
-  authKitConfig: {
-    domain: 'www.move10k.xyz',
-    redirectUrl: window.location.origin,
-    chainId: base.id,
-    viemTransport: viemTransport,
   },
 });
 
@@ -63,19 +29,19 @@ createRoot(rootElement).render(
     <ErrorBoundary>
       <WagmiProvider config={wagmiConfig}>
         <QueryClientProvider client={queryClient}>
-          <AuthKitProvider
+          <MiniKitProvider
+            apiKey={import.meta.env.VITE_ONCHAINKIT_API_KEY || ''}
+            chain={base}
             config={{
-              domain: 'www.move10k.xyz',
-              redirectUrl: window.location.origin,
+              appearance: {
+                mode: 'dark',
+                theme: 'base',
+                name: '10K',
+              },
             }}
           >
-            <OnchainKitProvider
-              apiKey={import.meta.env.VITE_ONCHAINKIT_API_KEY || ''}
-              chain={base}
-            >
-              <App />
-            </OnchainKitProvider>
-          </AuthKitProvider>
+            <App />
+          </MiniKitProvider>
         </QueryClientProvider>
       </WagmiProvider>
     </ErrorBoundary>
