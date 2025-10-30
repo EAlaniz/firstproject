@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAccount } from 'wagmi';
-import { publicClient } from 'viem';
+import { getPublicClient } from '@wagmi/core';
+import { wagmiConfig } from '../../wagmi.config';
 
 export type BaseCapabilities = {
   atomicBatch?: boolean;
@@ -23,7 +24,8 @@ export function useBaseAccountCapabilities(): { capabilities: BaseCapabilities; 
       }
       setLoading(true);
       try {
-        const resp = await publicClient.request({
+        const client = getPublicClient(wagmiConfig) as unknown as { request: (args: { method: string; params?: unknown[] }) => Promise<any> };
+        const resp = await client.request({
           method: 'wallet_getCapabilities',
           params: [address],
         });

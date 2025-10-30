@@ -27,22 +27,22 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = React.memo(() => 
       }}
     >
       {/* Logo Section */}
-      <div className="flex items-center" style={{ gap: 'var(--space-1-5)' }}>
+      <div className="flex items-center" style={{ gap: isMiniApp ? 'var(--space-1)' : 'var(--space-1-5)' }}>
         <div
           className="flex items-center justify-center rounded-full"
           style={{
-            width: 'var(--avatar-l)',
-            height: 'var(--avatar-l)',
+            width: isMiniApp ? 'var(--avatar-m)' : 'var(--avatar-l)',
+            height: isMiniApp ? 'var(--avatar-m)' : 'var(--avatar-l)',
             backgroundColor: 'rgb(87, 139, 250)',
           }}
         >
-          <Activity className="text-white" style={{ width: 'var(--icon-s)', height: 'var(--icon-s)' }} />
+          <Activity className="text-white" style={{ width: isMiniApp ? 'var(--icon-xs)' : 'var(--icon-s)', height: isMiniApp ? 'var(--icon-xs)' : 'var(--icon-s)' }} />
         </div>
         <span
           className="font-medium"
           style={{
-            fontSize: 'var(--fs-title-4)',
-            lineHeight: 'var(--lh-title-4)',
+            fontSize: isMiniApp ? 'var(--fs-label-1)' : 'var(--fs-title-4)',
+            lineHeight: isMiniApp ? 'var(--lh-label)' : 'var(--lh-title-4)',
             fontWeight: 'var(--fw-title-heavy)',
             color: 'var(--text)',
           }}

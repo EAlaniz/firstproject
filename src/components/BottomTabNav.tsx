@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Activity, MessageCircle, Trophy } from 'lucide-react';
+import { useIsBaseMiniApp } from '../hooks/useIsBaseMiniApp';
 
 export type TabView = 'today' | 'connect' | 'rewards';
 
@@ -34,6 +35,7 @@ const tabs: TabConfig[] = [
 ];
 
 export const BottomTabNav: React.FC<BottomTabNavProps> = ({ activeTab, onTabChange }) => {
+  const { isMiniApp } = useIsBaseMiniApp();
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-neutral-900 border-t border-neutral-800 z-50">
       <div className="max-w-6xl mx-auto px-4">
@@ -45,7 +47,9 @@ export const BottomTabNav: React.FC<BottomTabNavProps> = ({ activeTab, onTabChan
               <button
                 key={tab.id}
                 onClick={() => onTabChange(tab.id)}
-                className={`relative flex flex-col items-center justify-center py-3 transition-colors duration-fast ${
+                className={`relative flex flex-col items-center justify-center transition-colors duration-fast ${
+                  isMiniApp ? 'py-2' : 'py-3'
+                } ${
                   isActive ? 'text-brand-500' : 'text-neutral-400 hover:text-neutral-200'
                 }`}
               >
@@ -62,10 +66,14 @@ export const BottomTabNav: React.FC<BottomTabNavProps> = ({ activeTab, onTabChan
                 )}
 
                 {/* Icon */}
-                <div className="mb-1">{tab.icon}</div>
+                <div className={isMiniApp ? "mb-0.5" : "mb-1"}>
+                  {React.cloneElement(tab.icon as React.ReactElement, {
+                    className: isMiniApp ? "w-4 h-4" : "w-5 h-5"
+                  })}
+                </div>
 
                 {/* Label */}
-                <span className={`text-xs ${isActive ? 'font-semibold' : 'font-normal'}`}>
+                <span className={`${isMiniApp ? 'text-[10px]' : 'text-xs'} ${isActive ? 'font-semibold' : 'font-normal'}`}>
                   {tab.label}
                 </span>
               </button>

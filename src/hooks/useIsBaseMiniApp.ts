@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAccount } from 'wagmi';
-import { publicClient } from 'viem';
+import { getPublicClient } from '@wagmi/core';
+import { wagmiConfig } from '../../wagmi.config';
 
 // Lightweight detector for Base App Mini App environment
 // Prefers capability availability; falls back to UA or global hints
@@ -26,7 +27,8 @@ export function useIsBaseMiniApp(): { isMiniApp: boolean; ready: boolean } {
         // Heuristic 2: capability request succeeds quickly in Base App
         if (address) {
           try {
-            const caps = await publicClient.request({
+            const client = getPublicClient(wagmiConfig) as unknown as { request: (args: { method: string; params?: unknown[] }) => Promise<any> };
+            const caps = await client.request({
               method: 'wallet_getCapabilities',
               params: [address],
             });
