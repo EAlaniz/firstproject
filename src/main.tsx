@@ -10,7 +10,6 @@ import App from './App';
 import './index.css';
 import './styles/tokens.css';
 import './styles/global.css';
-import './styles/onchainkit-overrides.css';
 
 const queryClient = new QueryClient({
   defaultOptions: {
