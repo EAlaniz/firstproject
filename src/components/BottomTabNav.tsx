@@ -37,7 +37,7 @@ const tabs: TabConfig[] = [
 export const BottomTabNav: React.FC<BottomTabNavProps> = ({ activeTab, onTabChange }) => {
   const { isMiniApp } = useIsBaseMiniApp();
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-neutral-900 border-t border-neutral-800 z-50">
+    <nav className="fixed bottom-0 left-0 right-0 bg-neutral-900 border-t border-neutral-800 z-40">
       <div className="max-w-6xl mx-auto px-4">
         <div className="grid grid-cols-3" style={{ minHeight: isMiniApp ? '48px' : '56px' }}>
           {tabs.map((tab) => {

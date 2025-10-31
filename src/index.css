@@ -31,12 +31,16 @@ body:has([data-testid="ockSheet"]) {
 }
 
 /* Ensure the bottom sheet dialog is properly sized and scrollable */
-[data-testid="ockSheet"][role="dialog"] {
+/* Ensure it appears above bottom navigation */
+[data-testid="ockSheet"][role="dialog"],
+[data-radix-portal] [role="dialog"] {
   /* Ensure sheet can display all content */
   max-height: 90vh !important;
   overflow-y: auto !important;
   -webkit-overflow-scrolling: touch !important;
   overscroll-behavior: contain !important;
+  /* Ensure wallet dropdown appears above bottom nav (z-40) */
+  z-index: 50 !important;
 }
 
 /* Fix the inner content wrapper to show all children */
