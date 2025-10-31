@@ -14,6 +14,7 @@
     "iconUrl": "https://www.move10k.xyz/10k-icon.png",
     "splashImageUrl": "https://www.move10k.xyz/opengraph-image.png",
     "splashBackgroundColor": "#0A0B0D",
+    "webhookUrl": "",
     "primaryCategory": "health-fitness",
     "tags": ["fitness", "health", "rewards", "social", "base"],
     "subtitle": "Move. Earn. Connect.",
