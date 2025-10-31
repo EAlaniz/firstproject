@@ -23,37 +23,5 @@ body {
 
 /* OnchainKit styles are managed by its own CSS. Avoid overrides here. */
 
-/* No OnchainKit overrides - use stock styles */
-
-/* Match exact ConnectWallet button styling from landing page, but height adjusted for header symmetry */
-.wallet-button-wrapper [data-ock-theme] button,
-.wallet-button-wrapper [data-ock-theme] button[aria-expanded="true"],
-.wallet-button-wrapper button.ock\:bg-ock-background,
-.wallet-button-wrapper button[class*="ock:bg-ock-background"],
-.wallet-button-wrapper button[class*="ock:bg-ock-primary"],
-.wallet-button-wrapper [data-ock-theme] button[class*="primary"],
-.wallet-button-wrapper .onchainkit-connect-wallet button {
-  background-color: rgb(87, 139, 250) !important;
-  border: 0 !important;
-  border-radius: 8px !important;
-  height: 32px !important;
-  padding: 6px 16px !important;
-  font-size: 16px !important;
-  font-weight: 400 !important;
-  color: rgb(255, 255, 255) !important;
-  min-width: 153px !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  font-family: ui-sans-serif, system-ui, -apple-system, "system-ui", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
-  line-height: 24px !important;
-}
-
-.wallet-button-wrapper [data-ock-theme] button:hover,
-.wallet-button-wrapper [data-ock-theme] button[aria-expanded="true"]:hover,
-.wallet-button-wrapper .onchainkit-connect-wallet button:hover {
-  background-color: rgb(87, 139, 250) !important;
-  opacity: 0.9 !important;
-}
-
-/* Rely on OnchainKit's default bottom sheet. No forced overrides. */
+/* Rely on OnchainKit's default styling and behavior for wallet components. */
+/* The WalletDropdown uses Radix UI portals which render correctly in mini apps. */

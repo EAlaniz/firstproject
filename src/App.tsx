@@ -8,6 +8,7 @@ import { TodayTab } from './components/tabs/TodayTab';
 import { ConnectTab } from './components/tabs/ConnectTab';
 import { RewardsTab } from './components/tabs/RewardsTab';
 import { Toaster } from 'react-hot-toast';
+import { MiniAppReady } from './components/MiniAppReady';
 
 function AppContent() {
   const [error, setError] = useState<string | null>(null);
@@ -160,6 +161,7 @@ function App() {
   return (
     <>
       <Toaster position="top-center" />
+      <MiniAppReady />
       <AppContent />
     </>
   );

@@ -11,22 +11,22 @@ import {
   Identity,
 } from '@coinbase/onchainkit/identity';
 
+/**
+ * OnchainKit Wallet component - matches Base docs pattern exactly
+ * https://docs.base.org/onchainkit/wallet/wallet
+ */
 export const OnchainKitWallet = () => {
   return (
-    <div className="flex justify-end items-center h-full wallet-button-wrapper">
-      <Wallet>
-        <div className="onchainkit-connect-wallet">
-          <ConnectWallet />
-        </div>
-        <WalletDropdown>
-          <Identity className="px-4 pt-3 pb-2" hasCopyAddressOnClick>
-            <Avatar />
-            <Name />
-            <Address className="text-gray-400" />
-          </Identity>
-          <WalletDropdownDisconnect />
-        </WalletDropdown>
-      </Wallet>
-    </div>
+    <Wallet>
+      <ConnectWallet />
+      <WalletDropdown>
+        <Identity className="px-4 pt-3 pb-2" hasCopyAddressOnClick>
+          <Avatar />
+          <Name />
+          <Address className="text-gray-400" />
+        </Identity>
+        <WalletDropdownDisconnect />
+      </WalletDropdown>
+    </Wallet>
   );
 };
