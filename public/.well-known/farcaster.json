@@ -10,9 +10,9 @@
   "miniapp": {
     "version": "1",
     "name": "10K - Move. Earn. Connect.",
-    "homeUrl": "https://www.move10k.xyz",
-    "iconUrl": "https://www.move10k.xyz/10k-icon.png",
-    "splashImageUrl": "https://www.move10k.xyz/opengraph-image.png",
+    "homeUrl": "https://move10k.xyz",
+    "iconUrl": "https://move10k.xyz/10k-icon.png",
+    "splashImageUrl": "https://move10k.xyz/opengraph-image.png",
     "splashBackgroundColor": "#0A0B0D",
     "webhookUrl": "",
     "primaryCategory": "health-fitness",
@@ -20,13 +20,13 @@
     "subtitle": "Move. Earn. Connect.",
     "description": "Inclusive wellness app that rewards your daily movement on Base.",
     "screenshotUrls": [
-      "https://www.move10k.xyz/opengraph-image.png"
+      "https://move10k.xyz/opengraph-image.png"
     ],
-    "heroImageUrl": "https://www.move10k.xyz/opengraph-image.png",
+    "heroImageUrl": "https://move10k.xyz/opengraph-image.png",
     "tagline": "Rewards for your movement",
     "ogTitle": "10K - Move. Earn. Connect.",
     "ogDescription": "Earn tokens for steps and connect with friends on Base.",
-    "ogImageUrl": "https://www.move10k.xyz/opengraph-image.png",
+    "ogImageUrl": "https://move10k.xyz/opengraph-image.png",
     "noindex": true
   }
 }
