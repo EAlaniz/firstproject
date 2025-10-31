@@ -1,4 +1,19 @@
 {
+  "name": "10K - Move. Earn. Connect.",
+  "version": "vNext",
+  "iconUrl": "https://www.move10k.xyz/10k-icon.png",
+  "homeUrl": "https://www.move10k.xyz",
+  "splashImageUrl": "https://www.move10k.xyz/opengraph-image.png",
+  "splashBackgroundColor": "#0A0B0D",
+  "primaryCategory": "health_fitness",
+  "tags": ["fitness", "health", "rewards", "social", "base"],
+  "accountAssociation": {
+    "header": "",
+    "payload": "",
+    "signature": ""
+  }
+}
+{
   "frame": {
     "version": "vNext"
   }
