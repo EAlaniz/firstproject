@@ -6,7 +6,6 @@ import { useXMTPClient } from './xmtp/hooks/useXMTP';
 import { useHealthData } from './hooks/useHealthData';
 import { useWhoop } from './hooks/useWhoop';
 import { LandingPage, DashboardHeader } from './components/pages';
-import { SmartWalletCreator } from './components/SmartWalletCreator';
 import { BottomTabNav, type TabView } from './components/BottomTabNav';
 import { TodayTab } from './components/tabs/TodayTab';
 import { ConnectTab } from './components/tabs/ConnectTab';
@@ -14,7 +13,6 @@ import { RewardsTab } from './components/tabs/RewardsTab';
 import { Toaster } from 'react-hot-toast';
 
 function AppContent() {
-  const [showSmartWalletCreator, setShowSmartWalletCreator] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<'dashboard' | 'messages'>('dashboard');
@@ -156,34 +154,12 @@ function AppContent() {
     prevXmtpClient.current = xmtpClient;
   }, [xmtpClient, isConnected]);
 
-  // Handler for smart wallet creation
-  const handleSmartWalletCreated = (address: string) => {
-    console.log('✅ Smart wallet created:', address);
-    setSuccess('Smart wallet created successfully!');
-    setShowSmartWalletCreator(false);
-    // The wallet should now be connected automatically
-  };
 
   // Main return with conditional rendering
   return (
     <div className="min-h-screen bg-black text-white">
       {!isConnected ? (
-        <>
-          <LandingPage
-            onCreateWallet={() => {
-              console.log('Create Smart Wallet button clicked');
-              setShowSmartWalletCreator(true);
-            }}
-          />
-
-          {/* Smart Wallet Creator Modal */}
-          {showSmartWalletCreator && (
-            <SmartWalletCreator
-              onClose={() => setShowSmartWalletCreator(false)}
-              onWalletCreated={handleSmartWalletCreated}
-            />
-          )}
-        </>
+        <LandingPage />
       ) : (
         // Main dashboard for connected users
         <>

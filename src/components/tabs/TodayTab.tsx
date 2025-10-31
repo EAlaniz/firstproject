@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { motion } from 'framer-motion';
 import { Activity, RefreshCw, Zap } from 'lucide-react';
 import { StepsCard } from '../pages/Dashboard/StepsCard';
-import { WearablesManager } from '../WearablesManager';
+
+// Lazy load WearablesManager for better initial load performance
+const WearablesManager = lazy(() => import('../WearablesManager').then(module => ({ default: module.WearablesManager })));
 
 interface TodayTabProps {
   // Steps data
@@ -299,7 +301,13 @@ export const TodayTab: React.FC<TodayTabProps> = ({
 
       {/* Wearables Section */}
       <section className="mb-8">
-        <WearablesManager />
+        <Suspense fallback={
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+          </div>
+        }>
+          <WearablesManager />
+        </Suspense>
       </section>
     </motion.div>
   );

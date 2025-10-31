@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { motion } from 'framer-motion';
 import { MessageCircle, Share2, Users, TrendingUp } from 'lucide-react';
-import { XMTPMessenger } from '../../xmtp/components/XMTPMessenger';
+
+// Lazy load XMTPMessenger for better initial load performance
+const XMTPMessenger = lazy(() => import('../../xmtp/components/XMTPMessenger').then(module => ({ default: module.XMTPMessenger })));
 
 interface ConnectTabProps {
   // XMTP
@@ -42,7 +44,13 @@ export const ConnectTab: React.FC<ConnectTabProps> = ({
         className="pb-24"
         style={{ height: 'calc(100vh - 180px)' }}
       >
-        <XMTPMessenger />
+        <Suspense fallback={
+          <div className="flex items-center justify-center h-full">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+          </div>
+        }>
+          <XMTPMessenger />
+        </Suspense>
       </motion.div>
     );
   }

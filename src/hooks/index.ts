@@ -1,2 +1,2 @@
 // Custom React hooks
-export { usePrevious } from './usePrevious';
+export { useIsBaseMiniApp } from './useIsBaseMiniApp';

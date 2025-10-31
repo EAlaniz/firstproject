@@ -3,13 +3,7 @@ import { Activity } from 'lucide-react';
 import { ConnectWallet } from '@coinbase/onchainkit/wallet';
 import { useIsBaseMiniApp } from '../../hooks/useIsBaseMiniApp';
 
-interface LandingPageProps {
-  onCreateWallet: () => void;
-}
-
-export const LandingPage: React.FC<LandingPageProps> = React.memo(({
-  onCreateWallet
-}) => {
+export const LandingPage: React.FC = React.memo(() => {
   const { isMiniApp } = useIsBaseMiniApp();
   return (
     <div
