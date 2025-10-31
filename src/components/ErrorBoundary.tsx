@@ -30,10 +30,7 @@ export class ErrorBoundary extends Component<Props, State> {
       { duration: 5000 }
     );
 
-    // Ensure Base Mini App splash is cleared even on error
-    try {
-      (window as any).BaseMiniKit?.actions?.ready?.();
-    } catch {/* no-op */}
+    // No manual readiness dispatch; follow Base minimal provider pattern.
   }
 
   private handleReset = () => {
