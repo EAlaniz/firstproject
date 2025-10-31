@@ -55,3 +55,42 @@ body {
   background-color: rgb(87, 139, 250) !important;
   opacity: 0.9 !important;
 }
+
+/* Force wallet dropdown to open downward in mini app */
+/* Target OnchainKit's dropdown structure */
+.wallet-button-wrapper [data-ock-theme] [role="menu"],
+.wallet-button-wrapper [data-ock-theme] [role="dialog"],
+.wallet-button-wrapper [data-ock-theme] [class*="dropdown"],
+.wallet-button-wrapper [data-ock-theme] [class*="popover"],
+.wallet-button-wrapper [data-ock-theme] [class*="menu"],
+.wallet-button-wrapper [data-radix-popper-content-wrapper],
+.wallet-button-wrapper [data-radix-portal] > div[class*="dropdown"],
+.wallet-button-wrapper [data-radix-portal] > div[class*="popover"],
+/* More specific OnchainKit selectors */
+.wallet-button-wrapper [class*="ock"] [class*="dropdown"],
+.wallet-button-wrapper [class*="ock"] [class*="menu"],
+/* Target elements that might be positioned at bottom */
+body [data-ock-theme] [role="menu"],
+body [data-ock-theme] [role="dialog"] {
+  top: 56px !important;
+  bottom: auto !important;
+  transform-origin: top center !important;
+}
+
+/* Override any flip/placement logic */
+.wallet-button-wrapper [data-ock-theme] [data-side="bottom"],
+.wallet-button-wrapper [data-ock-theme] [data-side="top"],
+body [data-ock-theme] [data-side="top"] {
+  position: fixed !important;
+  top: 56px !important;
+  bottom: auto !important;
+}
+
+/* Ensure dropdown portal renders below button */
+[data-radix-portal] [data-ock-theme] [role="menu"],
+[data-radix-portal] [data-ock-theme] [role="dialog"],
+[data-radix-portal] [class*="ock"] [class*="dropdown"] {
+  top: 56px !important;
+  bottom: auto !important;
+  position: fixed !important;
+}
