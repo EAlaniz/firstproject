@@ -12,6 +12,16 @@
       "destination": "/.well-known/$1"
     }
   ],
+  "redirects": [
+    {
+      "source": "/(.*)",
+      "has": [
+        { "type": "host", "value": "www.move10k.xyz" }
+      ],
+      "destination": "https://move10k.xyz/:splat",
+      "permanent": true
+    }
+  ],
   "headers": [
     {
       "source": "/assets/(.*)",
