@@ -23,7 +23,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = React.memo(() => 
         backgroundColor: 'var(--bg)',
         borderColor: 'var(--border)',
         position: 'relative',
-        zIndex: 'var(--z-sticky)', // Ensure wallet dropdown appears above content
+        zIndex: 999, // Ensure header is above content but below dropdown portal
       }}
     >
       {/* Logo Section */}

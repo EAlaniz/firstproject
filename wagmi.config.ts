@@ -12,11 +12,13 @@ if (!rpcUrl) {
 
 console.log('🔧 Wagmi Config RPC URL:', rpcUrl ? 'Configured ✓' : 'Missing ✗');
 
-// Check if running in Farcaster environment
+// Check if running in Farcaster/Mini App environment
 const isFarcaster = typeof window !== 'undefined' && (
   window.location.hostname.includes('warpcast.com') ||
   window.location.hostname.includes('farcaster.xyz') ||
-  window.location.hostname.includes('farcaster.com')
+  window.location.hostname.includes('farcaster.com') ||
+  window.location.hostname.includes('base.org') ||
+  window.self !== window.top // Check if embedded in iframe (mini app)
 );
 
 export const wagmiConfig = createConfig({
@@ -28,7 +30,7 @@ export const wagmiConfig = createConfig({
       jsonRpcUrl: rpcUrl, // ✅ MUST BE PROVIDED for Base network
       // FIXED: Add explicit chain configuration to prevent ethereum-mainnet fallback
       chainId: 8453, // Base mainnet
-      // Farcaster-specific options
+      // Farcaster/Mini App-specific options
       ...(isFarcaster && {
         // Disable WalletConnect explorer API calls in Farcaster
         disableExplorer: true,
@@ -41,7 +43,7 @@ export const wagmiConfig = createConfig({
     [base.id]: http(rpcUrl),
   },
   ssr: true,
-  // Farcaster-specific configuration
+  // Farcaster/Mini App-specific configuration
   ...(isFarcaster && {
     // Reduce polling to avoid excessive API calls
     pollingInterval: 8000,
