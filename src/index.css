@@ -23,52 +23,58 @@ body {
 
 /* OnchainKit styles are managed by its own CSS. Avoid overrides here. */
 
-/* WalletDropdown: Ensure all content is visible and scrollable in mini apps */
-/* The WalletDropdown uses Radix UI Sheet component - ensure full content is visible */
-[data-testid="ockSheet"],
-[data-testid="ockSheet"] [role="dialog"] {
-  /* Ensure the sheet container allows scrolling */
+/* WalletDropdown in Mini Apps: Bottom sheet needs specific fixes */
+/* The WalletDropdown uses Radix UI Sheet component in mini apps */
+/* Target only when in mini app context (iframe) */
+body:has([data-testid="ockSheet"]) {
+  /* Mini app specific - ensure sheet works correctly */
+}
+
+/* Ensure the bottom sheet dialog is properly sized and scrollable */
+[data-testid="ockSheet"][role="dialog"] {
+  /* Ensure sheet can display all content */
+  max-height: 90vh !important;
   overflow-y: auto !important;
   -webkit-overflow-scrolling: touch !important;
   overscroll-behavior: contain !important;
 }
 
-/* Ensure the content wrapper inside the sheet allows all content */
+/* Fix the inner content wrapper to show all children */
 [data-testid="ockSheet"] > div {
-  /* Make sure the wrapper displays all children */
+  /* Ensure wrapper doesn't clip content */
   display: flex !important;
   flex-direction: column !important;
   min-height: fit-content !important;
+  height: auto !important;
 }
 
-/* Ensure the max-h-120 container allows content to flow */
+/* Fix max-height constraint on content container */
 [data-testid="ockSheet"] > div > div[class*="max-h-120"],
 [data-testid="ockSheet"] > div > div[class*="max-h"] {
-  /* Remove or increase max-height constraint to show all content */
-  max-height: 85vh !important;
-  /* Ensure content can scroll if needed */
-  overflow-y: auto !important;
-  /* Display all children */
-  display: flex !important;
-  flex-direction: column !important;
+  /* Increase max-height to show all content including disconnect button */
+  max-height: none !important;
+  /* Use min-height instead to ensure all content shows */
+  min-height: fit-content !important;
+  /* Allow scrolling if content is tall */
+  overflow-y: visible !important;
 }
 
-/* Ensure Identity and Disconnect button are both visible */
-[data-testid="ockSheet"] > div > div > [data-testid="ockIdentityLayout_container"],
-[data-testid="ockSheet"] > div > div > button {
-  /* Prevent flex shrinking that might hide content */
+/* Ensure Identity container doesn't clip following content */
+[data-testid="ockSheet"] [data-testid="ockIdentityLayout_container"] {
   flex-shrink: 0 !important;
-  /* Ensure proper visibility */
-  visibility: visible !important;
-  display: block !important;
 }
 
-/* Ensure disconnect button is always visible */
-[data-testid="ockSheet"] button[type="button"][class*="disconnect"],
-[data-testid="ockSheet"] button:has(svg[aria-label*="disconnect"]) {
-  /* Ensure button is visible and clickable */
+/* Ensure disconnect button is visible and clickable */
+[data-testid="ockSheet"] button[type="button"]:not([aria-expanded]) {
+  /* Ensure button is visible */
   visibility: visible !important;
   display: flex !important;
   opacity: 1 !important;
+  /* Ensure it doesn't shrink out of view */
   flex-shrink: 0 !important;
+  /* Ensure pointer events work */
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  /* Ensure proper spacing */
+  margin-top: auto !important;
 }
