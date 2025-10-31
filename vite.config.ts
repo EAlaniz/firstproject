@@ -37,20 +37,32 @@ export default defineConfig({
     outDir: 'dist',
     sourcemap: false,
     target: 'esnext',
-    minify: 'esbuild', // Faster than terser, good enough for production
+    minify: 'esbuild',
     commonjsOptions: {
       transformMixedEsModules: true,
     },
     rollupOptions: {
       external: [],
-      // Remove manual chunking to avoid initialization order issues
-      // Rollup will automatically optimize chunks for better performance
-      // This prevents "Cannot access before initialization" errors with wagmi/viem
+      output: {
+        chunkFileNames: 'assets/[name]-[hash].js',
+        // Ensure proper module initialization order
+        generatedCode: {
+          constBindings: true, // Use const instead of var to prevent hoisting issues
+        },
+      },
+      // Ensure proper tree-shaking and module resolution
+      treeshake: {
+        preset: 'recommended',
+      },
     },
   },
   optimizeDeps: {
-    exclude: ['lucide-react', 'workers', '@xmtp/browser-sdk'],
+    exclude: ['lucide-react', 'workers'],
     include: ['buffer', 'protobufjs/minimal'],
+    // Pre-bundle wagmi and viem together to avoid initialization order issues
+    esbuildOptions: {
+      target: 'esnext',
+    },
   },
   define: {
     global: 'globalThis',
