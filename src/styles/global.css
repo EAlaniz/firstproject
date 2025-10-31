@@ -62,6 +62,12 @@ svg {
   height: auto;
 }
 
+/* Don't override OnchainKit SVG display - let it handle its own layout */
+[data-ock-theme] svg,
+[data-testid*="ock"] svg {
+  display: revert;
+}
+
 /* Inherit fonts for inputs and buttons */
 input,
 button,

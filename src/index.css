@@ -83,21 +83,5 @@ body:has([data-testid="ockSheet"]) {
   margin-top: auto !important;
 }
 
-/* Fix WalletDropdownLink icon alignment with text */
-[data-testid="ockSheet"] a[href*="keys.coinbase.com"],
-[data-testid="ockSheet"] a[href*="coinbase.com"] {
-  /* Ensure icon and text are properly aligned */
-  display: flex !important;
-  align-items: center !important;
-  gap: 0.75rem !important;
-}
-
-/* Ensure Base symbol/icon is vertically centered with text */
-[data-testid="ockSheet"] a svg,
-[data-testid="ockSheet"] a [class*="icon"],
-[data-testid="ockSheet"] a > div:first-child {
-  /* Align icon with text baseline */
-  display: flex !important;
-  align-items: center !important;
-  flex-shrink: 0 !important;
-}
+/* Remove any overrides that might interfere with OnchainKit's default WalletDropdownLink layout */
+/* OnchainKit handles icon/text alignment internally - don't override it */
