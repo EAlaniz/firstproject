@@ -44,8 +44,8 @@ createRoot(rootElement).render(
             chain={base}
             miniKit={{ 
               enabled: true,
-              // Provide RPC URL to avoid public endpoint warnings (must be set via env)
-              rpcUrl: import.meta.env.VITE_RPC_URL,
+              // Always provide an RPC URL to silence public-endpoint warnings
+              rpcUrl: import.meta.env.VITE_RPC_URL || 'https://mainnet.base.org',
             }}
             config={{
               appearance: {
