@@ -5,6 +5,7 @@ import { useXMTP } from './xmtp/contexts/useXMTPContext';
 import { useXMTPClient } from './xmtp/hooks/useXMTP';
 import { useHealthData } from './hooks/useHealthData';
 import { useWhoop } from './hooks/useWhoop';
+import { useIsBaseMiniApp } from './hooks/useIsBaseMiniApp';
 import { LandingPage, DashboardHeader } from './components/pages';
 import { BottomTabNav, type TabView } from './components/BottomTabNav';
 import { TodayTab } from './components/tabs/TodayTab';
@@ -21,9 +22,10 @@ function AppContent() {
   const [currentStreak] = useState(12);
   const [totalTokens] = useState(156);
 
-  const { address, isConnected } = useAccount();
+  const { address, isConnected, isConnecting } = useAccount();
   const { data: balance } = useBalance({ address: address });
   const { data: walletClient } = useWalletClient();
+  const { isMiniApp, ready: miniAppReady } = useIsBaseMiniApp();
 
   // Health data integration - replaces mock step counter
   const {
@@ -155,12 +157,15 @@ function AppContent() {
   }, [xmtpClient, isConnected]);
 
 
+  // In mini apps, OnchainKit's miniKit auto-connects the wallet
+  // Show dashboard immediately in mini apps (wallet will auto-connect)
+  // On web, show landing page if not connected
+  const shouldShowDashboard = isMiniApp ? true : isConnected;
+
   // Main return with conditional rendering
   return (
     <div className="min-h-screen bg-black text-white">
-      {!isConnected ? (
-        <LandingPage />
-      ) : (
+      {shouldShowDashboard ? (
         // Main dashboard for connected users
         <>
           <DashboardHeader
