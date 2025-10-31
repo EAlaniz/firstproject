@@ -30,7 +30,11 @@ createRoot(rootElement).render(
           <OnchainKitProvider
             apiKey={import.meta.env.VITE_ONCHAINKIT_API_KEY || ''}
             chain={base}
-            miniKit={{ enabled: true }}
+            miniKit={{ 
+              enabled: true,
+              // Provide RPC URL to avoid public endpoint warnings
+              rpcUrl: import.meta.env.VITE_RPC_URL,
+            }}
             config={{
               appearance: {
                 mode: 'dark',
