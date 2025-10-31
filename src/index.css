@@ -56,41 +56,39 @@ body {
   opacity: 0.9 !important;
 }
 
-/* Force wallet dropdown to open downward in mini app */
-/* Target OnchainKit's dropdown structure */
-.wallet-button-wrapper [data-ock-theme] [role="menu"],
-.wallet-button-wrapper [data-ock-theme] [role="dialog"],
-.wallet-button-wrapper [data-ock-theme] [class*="dropdown"],
-.wallet-button-wrapper [data-ock-theme] [class*="popover"],
-.wallet-button-wrapper [data-ock-theme] [class*="menu"],
-.wallet-button-wrapper [data-radix-popper-content-wrapper],
-.wallet-button-wrapper [data-radix-portal] > div[class*="dropdown"],
-.wallet-button-wrapper [data-radix-portal] > div[class*="popover"],
-/* More specific OnchainKit selectors */
-.wallet-button-wrapper [class*="ock"] [class*="dropdown"],
-.wallet-button-wrapper [class*="ock"] [class*="menu"],
-/* Target elements that might be positioned at bottom */
-body [data-ock-theme] [role="menu"],
-body [data-ock-theme] [role="dialog"] {
-  top: 56px !important;
-  bottom: auto !important;
-  transform-origin: top center !important;
+/* Ensure bottom sheet is functional and scrollable in mini apps */
+/* Make bottom sheet content accessible and scrollable */
+[data-ock-theme] [role="menu"],
+[data-ock-theme] [role="dialog"],
+[data-ock-theme] [class*="sheet"],
+[data-radix-portal] [role="menu"],
+[data-radix-portal] [role="dialog"] {
+  /* Ensure content is scrollable */
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior: contain !important;
+  /* Allow proper touch interaction */
+  touch-action: pan-y !important;
+  /* Ensure content can expand beyond viewport */
+  max-height: 90vh !important;
 }
 
-/* Override any flip/placement logic */
-.wallet-button-wrapper [data-ock-theme] [data-side="bottom"],
-.wallet-button-wrapper [data-ock-theme] [data-side="top"],
-body [data-ock-theme] [data-side="top"] {
-  position: fixed !important;
-  top: 56px !important;
-  bottom: auto !important;
+/* Make sure bottom sheet content wrapper is scrollable */
+[data-ock-theme] [class*="sheet"] > div,
+[data-ock-theme] [role="menu"] > *,
+[data-ock-theme] [role="dialog"] > * {
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
 }
 
-/* Ensure dropdown portal renders below button */
-[data-radix-portal] [data-ock-theme] [role="menu"],
-[data-radix-portal] [data-ock-theme] [role="dialog"],
-[data-radix-portal] [class*="ock"] [class*="dropdown"] {
-  top: 56px !important;
-  bottom: auto !important;
-  position: fixed !important;
+/* Ensure drag handle/indicator is visible and functional */
+[data-ock-theme] [class*="sheet"] [class*="handle"],
+[data-ock-theme] [class*="sheet"] [class*="indicator"] {
+  cursor: grab !important;
+  touch-action: pan-y !important;
+}
+
+/* Prevent content from being clipped */
+[data-ock-theme] [class*="sheet"] [class*="content"] {
+  padding-bottom: env(safe-area-inset-bottom, 0) !important;
 }
