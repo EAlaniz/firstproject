@@ -14,14 +14,45 @@ export function useIsBaseMiniApp(): { isMiniApp: boolean; ready: boolean } {
     let cancelled = false;
     (async () => {
       try {
-        // Heuristic 1: global hint from Base App or MiniKit
-        const hinted = typeof window !== 'undefined' &&
-          (Boolean((window as any).__BASEAPP__) || Boolean((window as any).__MINIAPP__));
+        // Heuristic 1: Check if embedded in iframe (strongest signal for Mini Apps)
+        if (typeof window !== 'undefined') {
+          const isEmbedded = window.self !== window.top;
+          
+          if (isEmbedded) {
+            if (!cancelled) {
+              console.log('🔍 Mini App detected: iframe embedded');
+              setIsMiniApp(true);
+              setReady(true);
+              return;
+            }
+          }
 
-        if (hinted && !cancelled) {
-          setIsMiniApp(true);
-          setReady(true);
-          return;
+          // Heuristic 1b: Check for OnchainKit MiniKit context or Base App hints
+          const win = window as any;
+          const isMiniKit = Boolean(
+            win.__FARCASTER__ || 
+            win.__MINIAPP__ || 
+            win.__BASEAPP__ ||
+            win.farcaster ||
+            win.baseApp
+          );
+          
+          // Check URL params or referrer
+          const urlParams = new URLSearchParams(window.location.search);
+          const isFromBase = urlParams.has('miniApp') || 
+                             window.location.hostname.includes('warpcast.com') ||
+                             window.location.hostname.includes('base.org') ||
+                             document.referrer?.includes('base.org') ||
+                             document.referrer?.includes('warpcast.com');
+          
+          if (isMiniKit || isFromBase) {
+            if (!cancelled) {
+              console.log('🔍 Mini App detected:', { isMiniKit, isFromBase });
+              setIsMiniApp(true);
+              setReady(true);
+              return;
+            }
+          }
         }
 
         // Heuristic 2: capability request succeeds quickly in Base App
@@ -44,14 +75,28 @@ export function useIsBaseMiniApp(): { isMiniApp: boolean; ready: boolean } {
           }
         }
 
-        // Heuristic 3: user agent
-        const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+        // Heuristic 3: user agent or window properties
+        if (typeof window !== 'undefined') {
+          const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+          const win = window as any;
+          const detected = /BaseApp/i.test(ua) || 
+                          /Farcaster/i.test(ua) ||
+                          Boolean(win.farcaster || win.baseApp);
+          if (!cancelled) {
+            setIsMiniApp(detected);
+            setReady(true);
+            return;
+          }
+        }
+
         if (!cancelled) {
-          setIsMiniApp(/BaseApp/i.test(ua));
           setReady(true);
         }
-      } finally {
-        if (!cancelled) setReady(true);
+      } catch (err) {
+        console.warn('Mini App detection error:', err);
+        if (!cancelled) {
+          setReady(true);
+        }
       }
     })();
     return () => { cancelled = true; };

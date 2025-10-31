@@ -10,22 +10,19 @@ import {
   Name,
   Identity,
 } from '@coinbase/onchainkit/identity';
-import { useIsBaseMiniApp } from '../hooks/useIsBaseMiniApp';
 
 export const OnchainKitWallet = () => {
-  const { isMiniApp } = useIsBaseMiniApp();
   return (
-    <div className="flex justify-end">
+    <div className="flex justify-end items-center h-full wallet-button-wrapper">
       <Wallet>
-        <ConnectWallet>
-          <Avatar className={isMiniApp ? "h-7 w-7" : "h-6 w-6"} />
-          {!isMiniApp && <Name />}
-        </ConnectWallet>
+        <div className="onchainkit-connect-wallet">
+          <ConnectWallet />
+        </div>
         <WalletDropdown>
           <Identity className="px-4 pt-3 pb-2" hasCopyAddressOnClick>
             <Avatar />
             <Name />
-            <Address className="ock:text-ock-foreground-muted" />
+            <Address className="text-gray-400" />
           </Identity>
           <WalletDropdownDisconnect />
         </WalletDropdown>

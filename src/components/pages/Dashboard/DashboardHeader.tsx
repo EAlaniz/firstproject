@@ -52,7 +52,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = React.memo(() => 
       </div>
 
       {/* Wallet Only - Messages UI removed per user request */}
-      <div className="flex items-center">
+      <div className="flex items-center h-full">
         {(!isMiniApp || (ready && !loading)) && <OnchainKitWallet />}
       </div>
     </header>

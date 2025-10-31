@@ -43,7 +43,7 @@ export const StepsCard: React.FC<StepsCardProps> = React.memo(({
 
   return (
     <motion.div
-      className="card card-elevated p-8 rounded-xl relative overflow-visible"
+      className="card card-elevated p-6 rounded-xl relative overflow-visible"
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{
@@ -52,15 +52,15 @@ export const StepsCard: React.FC<StepsCardProps> = React.memo(({
       }}
     >
       {/* Header Label */}
-      <div className="mb-6 text-center">
+      <div className="mb-4 text-center">
         <p className="text-sm text-neutral-500 dark:text-neutral-400 m-0">
           Today's Activity
         </p>
       </div>
 
       {/* Circular Progress with Step Count */}
-      <div className="flex justify-center items-center mb-8 relative">
-        <CircularProgress value={progress} size={240} strokeWidth={14} />
+      <div className="flex justify-center items-center mb-6 relative">
+        <CircularProgress value={progress} size={160} strokeWidth={8} />
 
         {/* Step count overlay */}
         <motion.div
@@ -73,13 +73,13 @@ export const StepsCard: React.FC<StepsCardProps> = React.memo(({
           }}
           className="absolute text-center"
         >
-          <div className="text-6xl font-semibold text-brand-500 leading-none mb-2 tracking-tighter">
+          <div className="text-4xl font-semibold text-brand-500 leading-none mb-1 tracking-tighter">
             {displaySteps.toLocaleString()}
           </div>
-          <div className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">
+          <div className="text-xs text-neutral-500 dark:text-neutral-400 mb-0.5">
             / {dailyGoal.toLocaleString()} steps
           </div>
-          <div className={`text-xl font-semibold ${isGoalReached ? 'text-success' : 'text-brand-500'}`}>
+          <div className={`text-base font-semibold ${isGoalReached ? 'text-success' : 'text-brand-500'}`}>
             {Math.round(progress)}%
           </div>
         </motion.div>
@@ -95,16 +95,16 @@ export const StepsCard: React.FC<StepsCardProps> = React.memo(({
             ease: [0.4, 0, 0.2, 1],
             delay: 0.4,
           }}
-          className="bg-success/10 border border-success rounded-lg p-4 mb-6 text-center"
+          className="bg-success/10 border border-success rounded-lg p-3 mb-4 text-center"
         >
-          <p className="text-base font-medium text-success m-0 tracking-wide">
+          <p className="text-sm font-medium text-success m-0 tracking-wide">
             Goal reached.
           </p>
         </motion.div>
       )}
 
       {/* Stats Pills */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-3">
         {/* Streak Pill */}
         <motion.div
           className="card p-4 flex items-center gap-3 hover:shadow-md transition-shadow duration-base"
