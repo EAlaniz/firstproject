@@ -1,7 +1,0 @@
-<?xml version='1.0' encoding='utf-8'?>
-<resources>
-    <string name="app_name">10K Steps</string>
-    <string name="title_activity_main">10K Steps</string>
-    <string name="package_name">com.move10k.app</string>
-    <string name="custom_url_scheme">com.move10k.app</string>
-</resources>

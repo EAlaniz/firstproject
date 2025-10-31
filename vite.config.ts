@@ -1,7 +1,6 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
-import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import path from 'path';
 
 export default defineConfig({
@@ -19,13 +18,6 @@ export default defineConfig({
           rename: 'onchainkit.css',
         },
       ],
-    }),
-    nodePolyfills({
-      protocolImports: true,
-      globals: {
-        Buffer: true,
-        process: true,
-      },
     }),
   ],
   server: {
@@ -58,8 +50,7 @@ export default defineConfig({
   },
   optimizeDeps: {
     exclude: ['lucide-react', 'workers'],
-    include: ['buffer', 'protobufjs/minimal'],
-    // Pre-bundle wagmi and viem together to avoid initialization order issues
+    include: ['protobufjs/minimal'],
     esbuildOptions: {
       target: 'esnext',
     },
@@ -69,7 +60,6 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      buffer: 'buffer',
       'protobufjs/minimal': path.resolve(__dirname, 'node_modules/protobufjs/minimal.js'),
       'eventemitter3': path.resolve(__dirname, 'node_modules/eventemitter3/index.js'),
     },

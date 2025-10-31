@@ -22,27 +22,13 @@ const queryClient = new QueryClient({
 // Ensure client-side requests to our serverless API use absolute URLs
 // This fixes Base Preview loading where relative paths resolve against base.dev
 if (typeof window !== 'undefined') {
-  const originalFetch = window.fetch.bind(window);
-  // Scope the override to Base Preview environments only to avoid global side effects
-  if (window.location.hostname.endsWith('base.dev')) {
-    window.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
-      try {
-        const inputUrl = typeof input === 'string' ? input : input instanceof URL ? input.toString() : '';
-        if (typeof inputUrl === 'string' && inputUrl.startsWith('/api/')) {
-          const absolute = new URL(inputUrl, window.location.origin).toString();
-          return originalFetch(absolute, init);
-        }
-      } catch {
-        // fall through to original fetch
-      }
-      return originalFetch(input as any, init);
-    };
-  }
 
   // Surface a clear warning in development if RPC URL is missing
   if (!import.meta.env.VITE_RPC_URL) {
     console.warn('[OnchainKit] VITE_RPC_URL is not set. Configure a Base RPC in your environment to avoid public endpoint fallbacks.');
   }
+
+  // No iframe shims; rely on provider config only for Base-native behavior
 }
 
 const rootElement = document.getElementById('root');
@@ -80,3 +66,17 @@ createRoot(rootElement).render(
     </ErrorBoundary>
   </StrictMode>
 );
+
+// Notify Base Mini App host that the app is ready to display
+if (typeof window !== 'undefined') {
+  const markReady = () => {
+    try {
+      (window as any).BaseMiniKit?.actions?.ready?.();
+    } catch {/* no-op */}
+  };
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    requestAnimationFrame(markReady);
+  } else {
+    window.addEventListener('DOMContentLoaded', () => requestAnimationFrame(markReady), { once: true });
+  }
+}

@@ -1,10 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAccount, useBalance, useWalletClient } from 'wagmi';
-import { XMTPProvider } from './xmtp/contexts/XMTPContext';
-import { useXMTP } from './xmtp/contexts/useXMTPContext';
-import { useXMTPClient } from './xmtp/hooks/useXMTP';
 import { useHealthData } from './hooks/useHealthData';
-import { useWhoop } from './hooks/useWhoop';
 import { useIsBaseMiniApp } from './hooks/useIsBaseMiniApp';
 import { LandingPage, DashboardHeader } from './components/pages';
 import { BottomTabNav, type TabView } from './components/BottomTabNav';
@@ -40,23 +36,7 @@ function AppContent() {
     openHealthSettings,
   } = useHealthData();
 
-  // Whoop integration
-  const {
-    isConnected: isWhoopConnected,
-    isConnecting: isWhoopConnecting,
-    error: whoopError,
-    userData: whoopData,
-    connectWhoop,
-    disconnectWhoop,
-    refreshData: refreshWhoopData,
-  } = useWhoop();
-
-  // Use XMTP context
-  const {
-    initialize: initializeClient,
-    isConnecting: isInitializing
-  } = useXMTP();
-  const xmtpClient = useXMTPClient();
+  // Whoop removed for lean foundation
 
   // Clear messages after timeout
   useEffect(() => {
@@ -95,66 +75,7 @@ function AppContent() {
     }
   };
 
-  // Function to handle XMTP initialization when user clicks Messages
-  const handleXMTPInitialization = async () => {
-    if (!isConnected || !address || !walletClient) {
-      setError('Please connect your wallet first');
-      return;
-    }
-
-    if (xmtpClient) {
-      // XMTP already initialized, just show the messaging interface
-      console.log('✅ XMTP client already initialized, switching to messages view');
-      setActiveView('messages');
-      return;
-    }
-
-    if (isInitializing) {
-      setError('XMTP initialization already in progress...');
-      return;
-    }
-
-    console.log('🚀 User initiated XMTP initialization');
-    console.log('🔍 Current wallet state:', {
-      address,
-      chainId: walletClient.chain?.id,
-      chainName: walletClient.chain?.name
-    });
-
-    // Check if wallet is on Base network
-    if (walletClient.chain?.id !== 8453) {
-      console.log('⚠️  Wallet not on Base network. Current:', walletClient.chain?.id, 'Expected: 8453');
-      setError('Please switch your Coinbase Wallet to Base network before enabling XMTP messaging. You can do this by: 1) Opening Coinbase Wallet extension, 2) Clicking the network selector, 3) Selecting "Base"');
-      return;
-    }
-
-    setError(null);
-
-    try {
-      console.log('🔄 Starting XMTP initialization process...');
-      console.log('🔄 XMTP is requesting your signature to enable messaging...');
-
-      await initializeClient(walletClient);
-      console.log('✅ XMTP initialized successfully');
-      setSuccess('XMTP messaging enabled successfully!');
-
-      // Don't switch view immediately - wait for client to be ready
-      console.log('⏳ Waiting for XMTP client to be ready...');
-    } catch (error) {
-      console.error('❌ XMTP initialization failed:', error);
-      setError('XMTP setup failed. Please try again.');
-    }
-  };
-
-  // Auto-switch to messages view after XMTP client is initialized
-  const prevXmtpClient = React.useRef(xmtpClient);
-  useEffect(() => {
-    // Only switch when client transitions from null to initialized
-    if (!prevXmtpClient.current && xmtpClient && isConnected) {
-      setActiveView('messages');
-    }
-    prevXmtpClient.current = xmtpClient;
-  }, [xmtpClient, isConnected]);
+  // Messaging removed for lean foundation
 
 
   // In mini apps, OnchainKit's miniKit auto-connects the wallet
@@ -168,13 +89,7 @@ function AppContent() {
       {shouldShowDashboard ? (
         // Main dashboard for connected users
         <>
-          <DashboardHeader
-            activeView={activeView}
-            isInitialized={xmtpClient !== null}
-            isInitializing={isInitializing}
-            onMessagesClick={() => setActiveView('messages')}
-            onInitializeXMTP={handleXMTPInitialization}
-          />
+          <DashboardHeader activeView={activeView} isInitialized={false} isInitializing={false} onMessagesClick={() => {}} onInitializeXMTP={() => {}} />
 
           {/* Main Content */}
           <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
@@ -194,25 +109,11 @@ function AppContent() {
                 requestPermissions={requestPermissions}
                 refreshSteps={refreshSteps}
                 openHealthSettings={openHealthSettings}
-                isWhoopConnected={isWhoopConnected}
-                isWhoopConnecting={isWhoopConnecting}
-                whoopError={whoopError}
-                whoopData={whoopData}
-                connectWhoop={connectWhoop}
-                disconnectWhoop={disconnectWhoop}
-                refreshWhoopData={refreshWhoopData}
               />
             )}
 
             {activeTab === 'connect' && (
-              <ConnectTab
-                xmtpClient={xmtpClient}
-                isInitializing={isInitializing}
-                onInitializeXMTP={handleXMTPInitialization}
-                todaySteps={todaySteps}
-                dailyGoal={dailyGoal}
-                onShare={handleShare}
-              />
+              <ConnectTab todaySteps={todaySteps} dailyGoal={dailyGoal} onShare={handleShare} />
             )}
 
             {activeTab === 'rewards' && (
@@ -249,23 +150,18 @@ function AppContent() {
         </div>
       )}
 
-      {/* XMTP Status Indicator */}
-      {error && (
-        <div className="fixed bottom-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded z-50">
-          XMTP Error: {error}
-        </div>
-      )}
+      {/* Status Indicator */}
     </div>
   );
 }
 
-// Main App component that wraps everything with XMTP provider
+// Main App component
 function App() {
   return (
-    <XMTPProvider>
+    <>
       <Toaster position="top-center" />
       <AppContent />
-    </XMTPProvider>
+    </>
   );
 }
 

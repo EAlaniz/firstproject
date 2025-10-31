@@ -15,26 +15,17 @@
     "migrate": "node migrate-to-base.js"
   },
   "dependencies": {
-    "@capacitor/android": "^7.4.4",
-    "@capacitor/cli": "^7.4.4",
-    "@capacitor/core": "^7.4.4",
-    "@capacitor/ios": "^7.4.4",
     "@coinbase/onchainkit": "^1.1.2",
     "@coinbase/wallet-sdk": "^4.3.4",
     "@tanstack/react-query": "^5.80.7",
     "@xmtp/browser-sdk": "^5.0.1",
     "@xmtp/proto": "^3.87.0",
-    "buffer": "^6.0.3",
-    "capacitor-health": "^7.0.0",
     "framer-motion": "^12.23.24",
     "lucide-react": "^0.548.0",
-    "process": "^0.11.10",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-hot-toast": "^2.5.2",
-    "util": "^0.12.5",
     "viem": "^2.31.4",
-    "vite-plugin-node-polyfills": "^0.23.0",
     "wagmi": "^2.12.0"
   },
   "devDependencies": {

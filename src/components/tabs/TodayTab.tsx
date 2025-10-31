@@ -1,12 +1,7 @@
-import React, { Suspense, lazy } from 'react';
+import React from 'react';
 import { motion } from 'framer-motion';
 import { Activity, RefreshCw, Zap } from 'lucide-react';
 import { StepsCard } from '../pages/Dashboard/StepsCard';
-
-// Lazy load WearablesManager for better initial load performance
-const WearablesManager = lazy(() => 
-  import('../WearablesManager').then(module => ({ default: module.WearablesManager }))
-);
 
 interface TodayTabProps {
   // Steps data
@@ -25,15 +20,6 @@ interface TodayTabProps {
   requestPermissions: () => void;
   refreshSteps: () => void;
   openHealthSettings: () => void;
-
-  // Whoop integration
-  isWhoopConnected: boolean;
-  isWhoopConnecting: boolean;
-  whoopError: string | null;
-  whoopData: any;
-  connectWhoop: () => void;
-  disconnectWhoop: () => void;
-  refreshWhoopData: () => void;
 }
 
 const springConfig = {
@@ -56,13 +42,6 @@ export const TodayTab: React.FC<TodayTabProps> = ({
   requestPermissions,
   refreshSteps,
   openHealthSettings,
-  isWhoopConnected,
-  isWhoopConnecting,
-  whoopError,
-  whoopData,
-  connectWhoop,
-  disconnectWhoop,
-  refreshWhoopData,
 }) => {
   return (
     <motion.div
@@ -147,113 +126,7 @@ export const TodayTab: React.FC<TodayTabProps> = ({
           </motion.div>
         )}
 
-        {/* Whoop Connection Banner */}
-        {!isWhoopConnected && !isWhoopConnecting && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={springConfig}
-            className="p-4 bg-gradient-to-r from-brand-500/5 to-brand-500/10 border border-brand-500/30 rounded-xl"
-          >
-            <div className="flex items-start space-x-3">
-              <Zap className="w-5 h-5 text-brand-500 flex-shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <h4 className="font-medium text-white mb-1">Connect Your Whoop</h4>
-                <p className="text-sm text-neutral-300 mb-3">
-                  Track recovery, sleep, and strain data. Get rewarded for optimal health!
-                </p>
-                <button
-                  onClick={connectWhoop}
-                  className="bg-brand-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-brand-600 transition-colors flex items-center space-x-2"
-                >
-                  <Zap className="w-4 h-4" />
-                  <span>Connect Whoop</span>
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        {/* Whoop Connecting State */}
-        {isWhoopConnecting && (
-          <div className="p-4 bg-brand-500/10 border border-brand-500/30 rounded-xl">
-            <div className="flex items-center space-x-3">
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-brand-500"></div>
-              <p className="text-sm text-neutral-300 font-medium">Connecting to Whoop...</p>
-            </div>
-          </div>
-        )}
-
-        {/* Whoop Connected State */}
-        {isWhoopConnected && whoopData && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={springConfig}
-            className="p-4 bg-success/10 border border-success/30 rounded-xl"
-          >
-            <div className="flex items-start justify-between">
-              <div className="flex items-start space-x-3 flex-1">
-                <Zap className="w-5 h-5 text-success flex-shrink-0 mt-0.5" />
-                <div className="flex-1">
-                  <h4 className="font-medium text-white mb-1">Whoop Connected</h4>
-                  <div className="text-sm text-neutral-300 space-y-1">
-                    {whoopData.profile && (
-                      <p>
-                        Connected as {whoopData.profile.first_name} {whoopData.profile.last_name}
-                      </p>
-                    )}
-                    {whoopData.recovery && (
-                      <p>Latest Recovery: {whoopData.recovery.score?.recovery_score}%</p>
-                    )}
-                    {whoopData.sleep && (
-                      <p>Sleep Performance: {whoopData.sleep.score?.sleep_performance_percentage}%</p>
-                    )}
-                    {whoopData.cycle && <p>Daily Strain: {whoopData.cycle.score?.strain.toFixed(1)}</p>}
-                  </div>
-                  <div className="flex items-center space-x-2 mt-3">
-                    <button
-                      onClick={refreshWhoopData}
-                      className="text-xs text-success hover:text-neutral-300 flex items-center space-x-1"
-                    >
-                      <RefreshCw className="w-3 h-3" />
-                      <span>Refresh Data</span>
-                    </button>
-                    <span className="text-neutral-500">•</span>
-                    <button onClick={disconnectWhoop} className="text-xs text-danger hover:text-neutral-300">
-                      Disconnect
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        {/* Whoop Error Banner */}
-        {whoopError && (
-          <div className="p-4 bg-danger/10 border border-danger/30 rounded-xl">
-            <div className="flex items-start space-x-3">
-              <svg
-                className="w-5 h-5 text-danger flex-shrink-0 mt-0.5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-              <div className="flex-1">
-                <h4 className="font-medium text-white mb-1">Whoop Connection Error</h4>
-                <p className="text-sm text-neutral-300">{whoopError}</p>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Whoop removed for lean foundation */}
       </div>
 
       {/* Steps Card */}
@@ -301,16 +174,7 @@ export const TodayTab: React.FC<TodayTabProps> = ({
         </div>
       </section>
 
-      {/* Wearables Section */}
-      <section className="mb-8">
-        <Suspense fallback={
-          <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
-          </div>
-        }>
-          <WearablesManager />
-        </Suspense>
-      </section>
+      {/* Wearables removed for lean foundation */}
     </motion.div>
   );
 };

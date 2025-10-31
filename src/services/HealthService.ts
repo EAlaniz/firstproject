@@ -1,5 +1,4 @@
-import { Capacitor } from '@capacitor/core';
-import { Health } from 'capacitor-health';
+// Web-only HealthService for Base Mini App. Native integrations removed for lean build.
 
 /**
  * Health Service
@@ -25,13 +24,9 @@ class HealthService {
   private platform: 'ios' | 'android' | 'web';
 
   constructor() {
-    this.isNative = Capacitor.isNativePlatform();
-    this.platform = Capacitor.getPlatform() as 'ios' | 'android' | 'web';
-
-    console.log('🏥 HealthService initialized', {
-      isNative: this.isNative,
-      platform: this.platform
-    });
+    this.isNative = false;
+    this.platform = 'web';
+    console.log('🏥 HealthService initialized', { isNative: this.isNative, platform: this.platform });
   }
 
   /**
@@ -50,21 +45,7 @@ class HealthService {
       return { granted: false, platform: this.platform };
     }
 
-    try {
-      console.log('📱 Requesting health permissions...');
-
-      // Request read permission for steps
-      await Health.requestAuthorization({
-        read: ['steps'],
-        write: [] // We only need to read, not write
-      });
-
-      console.log('✅ Health permissions granted');
-      return { granted: true, platform: this.platform };
-    } catch (error) {
-      console.error('❌ Failed to request health permissions:', error);
-      return { granted: false, platform: this.platform };
-    }
+    return { granted: false, platform: this.platform };
   }
 
   /**
@@ -75,15 +56,7 @@ class HealthService {
       return false;
     }
 
-    try {
-      // Note: capacitor-health doesn't have a direct "check" method
-      // We'll attempt to read data and catch permission errors
-      const hasPermission = await Health.isAvailable();
-      return hasPermission;
-    } catch (error) {
-      console.error('❌ Error checking health permissions:', error);
-      return false;
-    }
+    return false;
   }
 
   /**
@@ -95,40 +68,7 @@ class HealthService {
       return this.getMockSteps();
     }
 
-    try {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      const endDate = new Date();
-
-      console.log('📊 Querying step data...', {
-        startDate: today,
-        endDate
-      });
-
-      // Query steps from the native health API
-      const result = await Health.queryAggregated({
-        startDate: today.toISOString(),
-        endDate: endDate.toISOString(),
-        dataType: 'steps'
-      });
-
-      const steps = result.value || 0;
-      const source = this.platform === 'ios' ? 'healthkit' : 'health-connect';
-
-      console.log('✅ Step data retrieved:', { steps, source });
-
-      return {
-        steps,
-        date: new Date(),
-        source
-      };
-    } catch (error) {
-      console.error('❌ Failed to get step data:', error);
-
-      // If permission denied or other error, return mock data
-      return this.getMockSteps();
-    }
+    return this.getMockSteps();
   }
 
   /**
@@ -139,37 +79,7 @@ class HealthService {
       return this.getMockSteps();
     }
 
-    try {
-      const startDate = new Date(date);
-      startDate.setHours(0, 0, 0, 0);
-
-      const endDate = new Date(date);
-      endDate.setHours(23, 59, 59, 999);
-
-      console.log('📊 Querying step data for date:', {
-        date: date.toLocaleDateString(),
-        startDate,
-        endDate
-      });
-
-      const result = await Health.queryAggregated({
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
-        dataType: 'steps'
-      });
-
-      const steps = result.value || 0;
-      const source = this.platform === 'ios' ? 'healthkit' : 'health-connect';
-
-      return {
-        steps,
-        date,
-        source
-      };
-    } catch (error) {
-      console.error('❌ Failed to get step data for date:', error);
-      return this.getMockSteps();
-    }
+    return this.getMockSteps();
   }
 
   /**
@@ -188,60 +98,15 @@ class HealthService {
       });
     }
 
-    try {
-      const endDate = new Date();
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - days);
-
-      console.log('📊 Querying step history...', {
-        days,
-        startDate,
-        endDate
-      });
-
-      // Query historical data
-      const result = await Health.query({
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
-        dataType: 'steps'
-      });
-
-      // Process and aggregate by day
-      const stepsByDay = new Map<string, number>();
-
-      result.forEach((record: any) => {
-        const date = new Date(record.startDate);
-        const dateKey = date.toLocaleDateString();
-        const currentSteps = stepsByDay.get(dateKey) || 0;
-        stepsByDay.set(dateKey, currentSteps + (record.value || 0));
-      });
-
-      const source = this.platform === 'ios' ? 'healthkit' : 'health-connect';
-
-      // Convert to array
-      const history: StepData[] = Array.from(stepsByDay.entries()).map(([dateStr, steps]) => ({
-        steps,
-        date: new Date(dateStr),
-        source
-      }));
-
-      console.log('✅ Step history retrieved:', history.length, 'days');
-
-      return history;
-    } catch (error) {
-      console.error('❌ Failed to get step history:', error);
-
-      // Return mock data on error
-      return Array.from({ length: days }, (_, i) => {
-        const date = new Date();
-        date.setDate(date.getDate() - i);
-        return {
-          steps: Math.floor(Math.random() * 5000) + 5000,
-          date,
-          source: 'mock' as const
-        };
-      });
-    }
+    return Array.from({ length: days }, (_, i) => {
+      const dateItem = new Date();
+      dateItem.setDate(dateItem.getDate() - i);
+      return {
+        steps: Math.floor(Math.random() * 5000) + 5000,
+        date: dateItem,
+        source: 'mock' as const
+      };
+    });
   }
 
   /**
@@ -267,20 +132,7 @@ class HealthService {
       return;
     }
 
-    try {
-      // Note: This might require additional plugin or deep link implementation
-      console.log('🔧 Opening health settings...');
-
-      if (this.platform === 'ios') {
-        // Open iOS Health app (requires app-prefs: URL scheme)
-        window.open('x-apple-health://', '_system');
-      } else if (this.platform === 'android') {
-        // Open Android Health Connect
-        window.open('healthconnect://home', '_system');
-      }
-    } catch (error) {
-      console.error('❌ Failed to open health settings:', error);
-    }
+    return;
   }
 }
 

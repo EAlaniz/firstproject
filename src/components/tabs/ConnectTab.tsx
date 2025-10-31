@@ -1,19 +1,8 @@
-import React, { Suspense, lazy } from 'react';
+import React from 'react';
 import { motion } from 'framer-motion';
 import { MessageCircle, Share2, Users, TrendingUp } from 'lucide-react';
 
-// Lazy load XMTPMessenger for better initial load performance
-const XMTPMessenger = lazy(() => 
-  import('../../xmtp/components/XMTPMessenger').then(module => ({ default: module.XMTPMessenger }))
-);
-
 interface ConnectTabProps {
-  // XMTP
-  xmtpClient: any;
-  isInitializing: boolean;
-  onInitializeXMTP: () => void;
-
-  // Social
   todaySteps: number;
   dailyGoal: number;
   onShare: (platform: string, text: string) => void;
@@ -25,39 +14,10 @@ const springConfig = {
   stiffness: 300,
 };
 
-export const ConnectTab: React.FC<ConnectTabProps> = ({
-  xmtpClient,
-  isInitializing,
-  onInitializeXMTP,
-  todaySteps,
-  dailyGoal,
-  onShare,
-}) => {
+export const ConnectTab: React.FC<ConnectTabProps> = ({ todaySteps, dailyGoal, onShare }) => {
   const isGoalReached = todaySteps >= dailyGoal;
 
-  // If XMTP is initialized, show the messenger
-  if (xmtpClient) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -20 }}
-        transition={springConfig}
-        className="pb-24"
-        style={{ height: 'calc(100vh - 180px)' }}
-      >
-        <Suspense fallback={
-          <div className="flex items-center justify-center h-full">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-          </div>
-        }>
-          <XMTPMessenger />
-        </Suspense>
-      </motion.div>
-    );
-  }
-
-  // Otherwise, show the connect hub
+  // Connect hub only (messaging deferred)
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -76,59 +36,7 @@ export const ConnectTab: React.FC<ConnectTabProps> = ({
         </p>
       </div>
 
-      {/* XMTP Messaging Card */}
-      <section className="mb-6">
-        <motion.div
-          whileHover={{ y: -2 }}
-          transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-          className="card-dimensional p-6"
-        >
-          <div className="flex items-start space-x-4">
-            <div
-              style={{
-                width: '48px',
-                height: '48px',
-                borderRadius: 'var(--radius-md)',
-                background: 'var(--gradient-base)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: 'var(--shadow-base-glow)',
-              }}
-            >
-              <MessageCircle size={24} color="white" />
-            </div>
-            <div className="flex-1">
-              <h3 className="text-lg font-semibold text-white mb-2">
-                Secure Messaging
-              </h3>
-              <p className="text-sm text-neutral-400 mb-4">
-                {isInitializing
-                  ? 'Setting up your encrypted messaging...'
-                  : 'Enable XMTP to chat securely with other users on Base'}
-              </p>
-              <button
-                onClick={onInitializeXMTP}
-                disabled={isInitializing}
-                className="btn-gradient"
-                style={{
-                  opacity: isInitializing ? 0.6 : 1,
-                  cursor: isInitializing ? 'not-allowed' : 'pointer',
-                }}
-              >
-                {isInitializing ? (
-                  <div className="flex items-center space-x-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    <span>Initializing...</span>
-                  </div>
-                ) : (
-                  'Enable Messaging'
-                )}
-              </button>
-            </div>
-          </div>
-        </motion.div>
-      </section>
+      {/* Messaging removed for lean foundation */}
 
       {/* Share Progress Card */}
       <section className="mb-6">

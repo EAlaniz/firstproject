@@ -29,6 +29,11 @@ export class ErrorBoundary extends Component<Props, State> {
       `An unexpected error occurred: ${error.message}`,
       { duration: 5000 }
     );
+
+    // Ensure Base Mini App splash is cleared even on error
+    try {
+      (window as any).BaseMiniKit?.actions?.ready?.();
+    } catch {/* no-op */}
   }
 
   private handleReset = () => {
