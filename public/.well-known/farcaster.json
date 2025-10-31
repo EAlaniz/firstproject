@@ -1,16 +1,32 @@
 {
-  "name": "10K - Move. Earn. Connect.",
-  "version": "vNext",
-  "iconUrl": "https://www.move10k.xyz/10k-icon.png",
-  "homeUrl": "https://www.move10k.xyz",
-  "splashImageUrl": "https://www.move10k.xyz/opengraph-image.png",
-  "splashBackgroundColor": "#0A0B0D",
-  "primaryCategory": "health_fitness",
-  "tags": ["fitness", "health", "rewards", "social", "base"],
   "accountAssociation": {
     "header": "",
     "payload": "",
     "signature": ""
+  },
+  "baseBuilder": {
+    "ownerAddress": "0x"
+  },
+  "miniapp": {
+    "version": "1",
+    "name": "10K - Move. Earn. Connect.",
+    "homeUrl": "https://www.move10k.xyz",
+    "iconUrl": "https://www.move10k.xyz/10k-icon.png",
+    "splashImageUrl": "https://www.move10k.xyz/opengraph-image.png",
+    "splashBackgroundColor": "#0A0B0D",
+    "primaryCategory": "health-fitness",
+    "tags": ["fitness", "health", "rewards", "social", "base"],
+    "subtitle": "Move. Earn. Connect.",
+    "description": "Inclusive wellness app that rewards your daily movement on Base.",
+    "screenshotUrls": [
+      "https://www.move10k.xyz/opengraph-image.png"
+    ],
+    "heroImageUrl": "https://www.move10k.xyz/opengraph-image.png",
+    "tagline": "Rewards for your movement",
+    "ogTitle": "10K - Move. Earn. Connect.",
+    "ogDescription": "Earn tokens for steps and connect with friends on Base.",
+    "ogImageUrl": "https://www.move10k.xyz/opengraph-image.png",
+    "noindex": true
   }
 }
 {
