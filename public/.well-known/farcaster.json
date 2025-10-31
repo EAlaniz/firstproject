@@ -1,38 +1,5 @@
 {
   "frame": {
-    "version": "1",
-    "name": "10K - Move. Earn. Connect.",
-    "iconUrl": "https://www.move10k.xyz/10k-icon.png",
-    "homeUrl": "https://www.move10k.xyz",
-    "imageUrl": "https://www.move10k.xyz/opengraph-image.png",
-    "buttonTitle": "🚶 Start Moving",
-    "splashImageUrl": "https://www.move10k.xyz/10k-icon.png",
-    "splashBackgroundColor": "#667eea",
-    "requiredChains": [
-      "eip155:8453"
-    ],
-    "requiredCapabilities": [
-      "actions.signIn",
-      "wallet.getEthereumProvider",
-      "actions.composeCast",
-      "actions.addMiniApp"
-    ],
-    "subtitle": "Move. Earn. Connect.",
-    "description": "Track your steps, earn tokens, and connect with friends on Base Chain",
-    "primaryCategory": "health-fitness",
-    "tags": ["fitness", "wellness", "steps", "social"],
-    "heroImageUrl": "https://www.move10k.xyz/opengraph-image.png",
-    "tagline": "Move. Earn. Connect.",
-    "ogTitle": "10K - Move. Earn. Connect.",
-    "ogDescription": "Track your steps, earn tokens, and connect with friends on Base Chain",
-    "ogImageUrl": "https://www.move10k.xyz/opengraph-image.png"
-  },
-  "accountAssociation": {
-    "header": "eyJmaWQiOjM4NDkxMiwidHlwZSI6ImN1c3RvZHkiLCJrZXkiOiIweDA2MDk1MEU2N2YwRUM3YThDMkI2MzBkYjQzOTYxODdDNWU5M0E5NkYifQ",
-    "payload": "eyJkb21haW4iOiJ3d3cubW92ZTEway54eXoifQ",
-    "signature": "MHg0MGU1NGZmN2RhOTY1NTQ0ZjVmYmE3NGMxYTdiZTY5YmMwZmE4MWE4MzBkNDFhNzEwNTk5ODg4NDZiMjIxZWNkMmQ1NzhjNTVjYTVjNzhkY2Y2YjlmNGUzZjMyYWIxZDQ1NTBlNmIwZTE5ODU5ZGFiNDE0YTgxZDRiM2RmODQyYTFj"
-  },
-  "baseBuilder": {
-    "ownerAddress": "0xaf9077EBDaA56ba93f8C9C54c0A061Baf2062f3E"
+    "version": "vNext"
   }
-} 
+}

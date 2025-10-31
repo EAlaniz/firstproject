@@ -231,6 +231,8 @@ function AppContent() {
             onTabChange={(tab: TabView) => setActiveTab(tab)}
           />
         </>
+      ) : (
+        <LandingPage />
       )}
 
       {/* Modals - Rendered outside conditional so they work on both landing page and dashboard */}

@@ -33,13 +33,17 @@ createRoot(rootElement).render(
             miniKit={{ 
               enabled: true,
               // Provide RPC URL to avoid public endpoint warnings
-              rpcUrl: import.meta.env.VITE_RPC_URL,
+              rpcUrl: import.meta.env.VITE_RPC_URL || 'https://mainnet.base.org',
             }}
             config={{
               appearance: {
                 mode: 'dark',
                 theme: 'base',
                 name: '10K',
+              },
+              // Disable EIP-6963 probing inside sandboxed mini app iframes
+              wallet: {
+                disableEIP6963: true,
               },
             }}
           >
