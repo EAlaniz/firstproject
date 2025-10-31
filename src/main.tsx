@@ -19,6 +19,32 @@ const queryClient = new QueryClient({
   },
 });
 
+// Ensure client-side requests to our serverless API use absolute URLs
+// This fixes Base Preview loading where relative paths resolve against base.dev
+if (typeof window !== 'undefined') {
+  const originalFetch = window.fetch.bind(window);
+  // Scope the override to Base Preview environments only to avoid global side effects
+  if (window.location.hostname.endsWith('base.dev')) {
+    window.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
+      try {
+        const inputUrl = typeof input === 'string' ? input : input instanceof URL ? input.toString() : '';
+        if (typeof inputUrl === 'string' && inputUrl.startsWith('/api/')) {
+          const absolute = new URL(inputUrl, window.location.origin).toString();
+          return originalFetch(absolute, init);
+        }
+      } catch {
+        // fall through to original fetch
+      }
+      return originalFetch(input as any, init);
+    };
+  }
+
+  // Surface a clear warning in development if RPC URL is missing
+  if (!import.meta.env.VITE_RPC_URL) {
+    console.warn('[OnchainKit] VITE_RPC_URL is not set. Configure a Base RPC in your environment to avoid public endpoint fallbacks.');
+  }
+}
+
 const rootElement = document.getElementById('root');
 if (!rootElement) throw new Error('Root element not found');
 
@@ -32,8 +58,8 @@ createRoot(rootElement).render(
             chain={base}
             miniKit={{ 
               enabled: true,
-              // Provide RPC URL to avoid public endpoint warnings
-              rpcUrl: import.meta.env.VITE_RPC_URL || 'https://mainnet.base.org',
+              // Provide RPC URL to avoid public endpoint warnings (must be set via env)
+              rpcUrl: import.meta.env.VITE_RPC_URL,
             }}
             config={{
               appearance: {
