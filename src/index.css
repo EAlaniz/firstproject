@@ -83,5 +83,5 @@ body:has([data-testid="ockSheet"]) {
   margin-top: auto !important;
 }
 
-/* Remove any overrides that might interfere with OnchainKit's default WalletDropdownLink layout */
-/* OnchainKit handles icon/text alignment internally - don't override it */
+/* Don't override WalletDropdownLink - let OnchainKit handle it completely */
+/* Any overrides here interfere with icon alignment */

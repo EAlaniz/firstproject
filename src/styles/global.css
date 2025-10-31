@@ -62,10 +62,21 @@ svg {
   height: auto;
 }
 
-/* Don't override OnchainKit SVG display - let it handle its own layout */
+/* CRITICAL: Override SVG block display for OnchainKit components */
+/* OnchainKit SVGs need inline/flex display for proper icon alignment */
 [data-ock-theme] svg,
-[data-testid*="ock"] svg {
-  display: revert;
+[data-testid*="ock"] svg,
+[data-testid="ockSheet"] svg,
+[role="dialog"] svg,
+[data-radix-portal] svg,
+a[href*="coinbase.com"] svg,
+a[href*="keys.coinbase.com"] svg,
+button[class*="ock"] svg,
+[class*="ock"] svg,
+a[role="link"] svg {
+  display: revert !important;
+  max-width: revert !important;
+  height: revert !important;
 }
 
 /* Inherit fonts for inputs and buttons */
