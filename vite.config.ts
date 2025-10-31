@@ -43,30 +43,9 @@ export default defineConfig({
     },
     rollupOptions: {
       external: [],
-      output: {
-        manualChunks: (id) => {
-          // Separate vendor chunks for better caching and smaller initial bundle
-          if (id.includes('node_modules')) {
-            if (id.includes('@coinbase/onchainkit')) {
-              return 'onchainkit';
-            }
-            if (id.includes('wagmi') || id.includes('viem')) {
-              return 'wagmi';
-            }
-            if (id.includes('@xmtp')) {
-              return 'xmtp';
-            }
-            if (id.includes('react') || id.includes('react-dom')) {
-              return 'react-vendor';
-            }
-            if (id.includes('framer-motion')) {
-              return 'framer-motion';
-            }
-            // All other node_modules go into vendor chunk
-            return 'vendor';
-          }
-        },
-      },
+      // Remove manual chunking to avoid initialization order issues
+      // Rollup will automatically optimize chunks for better performance
+      // This prevents "Cannot access before initialization" errors with wagmi/viem
     },
   },
   optimizeDeps: {

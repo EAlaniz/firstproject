@@ -3,7 +3,9 @@ import { motion } from 'framer-motion';
 import { MessageCircle, Share2, Users, TrendingUp } from 'lucide-react';
 
 // Lazy load XMTPMessenger for better initial load performance
-const XMTPMessenger = lazy(() => import('../../xmtp/components/XMTPMessenger').then(module => ({ default: module.XMTPMessenger })));
+const XMTPMessenger = lazy(() => 
+  import('../../xmtp/components/XMTPMessenger').then(module => ({ default: module.XMTPMessenger }))
+);
 
 interface ConnectTabProps {
   // XMTP

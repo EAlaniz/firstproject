@@ -4,7 +4,9 @@ import { Activity, RefreshCw, Zap } from 'lucide-react';
 import { StepsCard } from '../pages/Dashboard/StepsCard';
 
 // Lazy load WearablesManager for better initial load performance
-const WearablesManager = lazy(() => import('../WearablesManager').then(module => ({ default: module.WearablesManager })));
+const WearablesManager = lazy(() => 
+  import('../WearablesManager').then(module => ({ default: module.WearablesManager }))
+);
 
 interface TodayTabProps {
   // Steps data
