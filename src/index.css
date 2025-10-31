@@ -23,5 +23,52 @@ body {
 
 /* OnchainKit styles are managed by its own CSS. Avoid overrides here. */
 
-/* Rely on OnchainKit's default styling and behavior for wallet components. */
-/* The WalletDropdown uses Radix UI portals which render correctly in mini apps. */
+/* WalletDropdown: Ensure all content is visible and scrollable in mini apps */
+/* The WalletDropdown uses Radix UI Sheet component - ensure full content is visible */
+[data-testid="ockSheet"],
+[data-testid="ockSheet"] [role="dialog"] {
+  /* Ensure the sheet container allows scrolling */
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior: contain !important;
+}
+
+/* Ensure the content wrapper inside the sheet allows all content */
+[data-testid="ockSheet"] > div {
+  /* Make sure the wrapper displays all children */
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: fit-content !important;
+}
+
+/* Ensure the max-h-120 container allows content to flow */
+[data-testid="ockSheet"] > div > div[class*="max-h-120"],
+[data-testid="ockSheet"] > div > div[class*="max-h"] {
+  /* Remove or increase max-height constraint to show all content */
+  max-height: 85vh !important;
+  /* Ensure content can scroll if needed */
+  overflow-y: auto !important;
+  /* Display all children */
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* Ensure Identity and Disconnect button are both visible */
+[data-testid="ockSheet"] > div > div > [data-testid="ockIdentityLayout_container"],
+[data-testid="ockSheet"] > div > div > button {
+  /* Prevent flex shrinking that might hide content */
+  flex-shrink: 0 !important;
+  /* Ensure proper visibility */
+  visibility: visible !important;
+  display: block !important;
+}
+
+/* Ensure disconnect button is always visible */
+[data-testid="ockSheet"] button[type="button"][class*="disconnect"],
+[data-testid="ockSheet"] button:has(svg[aria-label*="disconnect"]) {
+  /* Ensure button is visible and clickable */
+  visibility: visible !important;
+  display: flex !important;
+  opacity: 1 !important;
+  flex-shrink: 0 !important;
+}
