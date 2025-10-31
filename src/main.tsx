@@ -67,16 +67,35 @@ createRoot(rootElement).render(
   </StrictMode>
 );
 
-// Notify Base Mini App host that the app is ready to display
+// Notify host that the app is ready to display (robust across hosts)
 if (typeof window !== 'undefined') {
-  const markReady = () => {
+  let readyCalled = false;
+  const tryReady = () => {
+    if (readyCalled) return;
     try {
-      (window as any).BaseMiniKit?.actions?.ready?.();
-    } catch {/* no-op */}
+      const w: any = window as any;
+      // Try common host SDK aliases
+      const ok =
+        w.BaseMiniKit?.actions?.ready?.() ??
+        w.miniKit?.actions?.ready?.() ??
+        w.sdk?.actions?.ready?.();
+      if (ok !== undefined) readyCalled = true;
+    } catch {
+      // ignore
+    }
   };
-  if (document.readyState === 'complete' || document.readyState === 'interactive') {
-    requestAnimationFrame(markReady);
-  } else {
-    window.addEventListener('DOMContentLoaded', () => requestAnimationFrame(markReady), { once: true });
-  }
+
+  const fireSoon = () => requestAnimationFrame(() => {
+    tryReady();
+    // Fallback: retry shortly after paint in case SDK hydrates late
+    setTimeout(tryReady, 50);
+    setTimeout(tryReady, 250);
+    setTimeout(tryReady, 1000);
+  });
+
+  if (document.readyState === 'complete' || document.readyState === 'interactive') fireSoon();
+  else window.addEventListener('DOMContentLoaded', fireSoon, { once: true });
+  window.addEventListener('load', fireSoon, { once: true });
+  window.addEventListener('pageshow', fireSoon, { once: true });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') tryReady(); });
 }
