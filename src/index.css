@@ -23,3 +23,15 @@ body {
 
 /* OnchainKit styles are managed by its own CSS - no overrides needed */
 /* Base-native toolkit handles everything */
+
+/* Fix WalletDropdownLink icon alignment - use flex alignment like Disconnect */
+/* WalletDropdownLink uses transform-based centering (top-1/2 -translate-y-1/2) which breaks */
+/* WalletDropdownDisconnect uses simple flex alignment which works perfectly */
+/* Override to match the working Disconnect approach */
+a[href*="keys.coinbase.com"] > div[class*="absolute"][class*="translate-y"],
+a[href*="coinbase.com"] > div[class*="absolute"][class*="translate-y"] {
+  /* Remove transform-based centering, let flex handle it */
+  top: unset !important;
+  transform: unset !important;
+  --tw-translate-y: 0 !important;
+}
