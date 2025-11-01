@@ -44,15 +44,19 @@ body:has([data-testid="ockSheet"]) {
 }
 
 /* Fix the inner content wrapper to show all children */
+/* IMPORTANT: Preserve normal flow for absolutely positioned children inside links */
 [data-testid="ockSheet"] > div {
   /* Ensure wrapper doesn't clip content */
   display: flex !important;
   flex-direction: column !important;
   min-height: fit-content !important;
   height: auto !important;
+  /* Don't create new positioning context that breaks absolute children */
+  position: static !important;
 }
 
 /* Fix max-height constraint on content container */
+/* IMPORTANT: Don't add position:relative here - it breaks WalletDropdownLink absolute positioning */
 [data-testid="ockSheet"] > div > div[class*="max-h-120"],
 [data-testid="ockSheet"] > div > div[class*="max-h"] {
   /* Increase max-height to show all content including disconnect button */
@@ -61,6 +65,8 @@ body:has([data-testid="ockSheet"]) {
   min-height: fit-content !important;
   /* Allow scrolling if content is tall */
   overflow-y: visible !important;
+  /* Don't create new stacking context that breaks absolute positioning */
+  isolation: auto !important;
 }
 
 /* Ensure Identity container doesn't clip following content */
@@ -83,5 +89,9 @@ body:has([data-testid="ockSheet"]) {
   margin-top: auto !important;
 }
 
-/* Don't override WalletDropdownLink - let OnchainKit handle it completely */
-/* Any overrides here interfere with icon alignment */
+/* COMPLETELY remove any CSS targeting WalletDropdownLink */
+/* OnchainKit's classes should handle everything: */
+/* - Link: ock:relative ock:flex ock:items-center */
+/* - Icon div: ock:-translate-y-1/2 ock:absolute ock:top-1/2 ock:left-4 */
+/* - Text span: ock:pl-6 */
+/* Any overrides here will break OnchainKit's positioning */

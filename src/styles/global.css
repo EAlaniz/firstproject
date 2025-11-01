@@ -62,8 +62,9 @@ svg {
   height: auto;
 }
 
-/* CRITICAL: Override SVG block display for OnchainKit components */
-/* OnchainKit SVGs need inline/flex display for proper icon alignment */
+/* CRITICAL: Fix SVG display for OnchainKit components */
+/* OnchainKit's base layer ALSO sets svg { display: block } which breaks flex layouts */
+/* SVGs inside flex containers need inline-block to align properly */
 [data-ock-theme] svg,
 [data-testid*="ock"] svg,
 [data-testid="ockSheet"] svg,
@@ -73,11 +74,22 @@ a[href*="coinbase.com"] svg,
 a[href*="keys.coinbase.com"] svg,
 button[class*="ock"] svg,
 [class*="ock"] svg,
-a[role="link"] svg {
-  display: revert !important;
+a[role="link"] svg,
+/* Specifically target WalletDropdownLink icon container - this is critical for alignment */
+a[href*="coinbase.com"] > div[class*="absolute"] svg,
+a[href*="keys.coinbase.com"] > div[class*="absolute"] svg,
+/* SVGs inside flex containers should use inline-block to respect flex alignment */
+div[class*="flex"] svg {
+  /* Use inline-block instead of block to work with flex layouts */
+  display: inline-block !important;
   max-width: revert !important;
   height: revert !important;
+  vertical-align: middle !important;
 }
+
+/* Don't override WalletDropdownLink icon container - let OnchainKit handle it */
+/* OnchainKit uses: absolute top-1/2 left-4 -translate-y-1/2 for icon alignment */
+/* Any overrides here break the positioning */
 
 /* Inherit fonts for inputs and buttons */
 input,
