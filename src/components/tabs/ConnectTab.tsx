@@ -30,7 +30,7 @@ export const ConnectTab: React.FC<ConnectTabProps> = ({ todaySteps, dailyGoal, o
       {/* Share Progress Card - Poolsuite Style */}
       <section className="flex-1 flex flex-col justify-center max-w-2xl mx-auto w-full"
         style={{
-          gap: isMiniApp ? 'var(--space-2)' : 'var(--space-4)',
+          gap: isMiniApp ? 'var(--space-3)' : 'var(--space-4)',
         }}
       >
         <motion.div
@@ -41,7 +41,7 @@ export const ConnectTab: React.FC<ConnectTabProps> = ({ todaySteps, dailyGoal, o
             !isGoalReached ? 'opacity-60' : ''
           }`}
           style={{
-            padding: isMiniApp ? 'var(--space-2)' : 'var(--space-4)',
+            padding: isMiniApp ? 'var(--space-3)' : 'var(--space-4)',
             boxShadow: isGoalReached
               ? '4px 4px 0px rgba(127, 208, 87, 0.4)'
               : '4px 4px 0px rgba(0, 0, 0, 0.8)',
@@ -80,7 +80,7 @@ export const ConnectTab: React.FC<ConnectTabProps> = ({ todaySteps, dailyGoal, o
               <p className="text-[var(--text-muted)]"
                 style={{
                   fontSize: 'var(--fs-caption)',
-                  marginBottom: isMiniApp ? 'var(--space-2)' : 'var(--space-3)',
+                  marginBottom: isMiniApp ? 'var(--space-1-5)' : 'var(--space-3)',
                 }}
               >
                 {isGoalReached
@@ -144,13 +144,13 @@ export const ConnectTab: React.FC<ConnectTabProps> = ({ todaySteps, dailyGoal, o
           transition={{ ...springConfig, delay: 0.2 }}
           className="border-2 border-black rounded-xl bg-[var(--surface-elevated)]"
           style={{
-            padding: isMiniApp ? 'var(--space-2)' : 'var(--space-4)',
+            padding: isMiniApp ? 'var(--space-3)' : 'var(--space-4)',
             boxShadow: '4px 4px 0px rgba(0, 0, 0, 0.8)',
           }}
         >
           <div className="flex items-center pb-2 border-b-2 border-black/20"
             style={{
-              gap: 'var(--space-1)',
+              gap: 'var(--space-1-5)',
               marginBottom: isMiniApp ? 'var(--space-2)' : 'var(--space-3)',
             }}
           >
@@ -177,7 +177,7 @@ export const ConnectTab: React.FC<ConnectTabProps> = ({ todaySteps, dailyGoal, o
 
           <div className="grid grid-cols-3"
             style={{
-              gap: isMiniApp ? 'var(--space-2)' : 'var(--space-3)',
+              gap: isMiniApp ? 'var(--space-1-5)' : 'var(--space-3)',
             }}
           >
             <div className="text-center">

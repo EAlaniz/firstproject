@@ -16,11 +16,13 @@ export function useIsBaseMiniApp(): { isMiniApp: boolean; ready: boolean } {
       try {
         // Heuristic 1: Check if embedded in iframe (strongest signal for Mini Apps)
         if (typeof window !== 'undefined') {
+          // Also check viewport width as additional signal (mobile devices)
+          const isNarrowViewport = window.innerWidth < 500;
           const isEmbedded = window.self !== window.top;
-          
-          if (isEmbedded) {
+
+          if (isEmbedded || isNarrowViewport) {
             if (!cancelled) {
-              console.log('🔍 Mini App detected: iframe embedded');
+              console.log('🔍 Mini App detected:', { isEmbedded, isNarrowViewport, width: window.innerWidth });
               setIsMiniApp(true);
               setReady(true);
               return;
