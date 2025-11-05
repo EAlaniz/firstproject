@@ -97,10 +97,10 @@ function AppContent() {
 
           {/* Main Content */}
           <main
-            className={`max-w-6xl mx-auto ${isMiniApp ? 'flex-1 flex items-center' : ''}`}
+            className={`max-w-6xl mx-auto ${isMiniApp ? 'flex-1 flex' : ''} ${isMiniApp && activeTab === 'today' ? 'items-center' : ''}`}
             style={{
-              paddingLeft: isMiniApp ? 'var(--space-2)' : 'var(--space-4)',
-              paddingRight: isMiniApp ? 'var(--space-2)' : 'var(--space-4)',
+              paddingLeft: isMiniApp && activeTab !== 'connect' ? 'var(--space-2)' : activeTab === 'connect' ? '0' : 'var(--space-4)',
+              paddingRight: isMiniApp && activeTab !== 'connect' ? 'var(--space-2)' : activeTab === 'connect' ? '0' : 'var(--space-4)',
               paddingTop: isMiniApp ? '0' : 'var(--space-8)',
               paddingBottom: isMiniApp ? '0' : 'var(--space-8)',
             }}
@@ -125,7 +125,7 @@ function AppContent() {
             )}
 
             {activeTab === 'connect' && (
-              <ConnectTab todaySteps={todaySteps} dailyGoal={dailyGoal} onShare={handleShare} />
+              <ConnectTab todaySteps={todaySteps} dailyGoal={dailyGoal} />
             )}
 
             {activeTab === 'rewards' && (
