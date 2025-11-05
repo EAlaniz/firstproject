@@ -3,13 +3,14 @@ import { useEffect } from 'react';
 /**
  * Signals readiness to Base/Farcaster mini app host after app initialization.
  * This must be called for the mini app to display correctly in previews.
- * 
+ *
  * Based on Base docs: https://docs.base.org/mini-apps/core-concepts/initialization
- * 
+ *
  * OnchainKitProvider with miniKit.enabled should handle this automatically, but
  * we explicitly signal readiness as a fallback to ensure previews work correctly.
  */
 export function MiniAppReady() {
+  // Signal readiness to parent
   useEffect(() => {
     // Only signal readiness if we're in a mini app (iframe)
     if (typeof window === 'undefined' || window.self === window.top) {
@@ -96,6 +97,52 @@ export function MiniAppReady() {
     return () => {
       clearTimeout(timeoutId);
       clearTimeout(timeoutId2);
+    };
+  }, []);
+
+  // Send resize messages to parent iframe
+  useEffect(() => {
+    if (typeof window === 'undefined' || window.self === window.top) {
+      return;
+    }
+
+    const sendResize = () => {
+      const height = document.documentElement.scrollHeight;
+
+      if (window.parent && window.parent !== window) {
+        // Send multiple resize message formats that different hosts might listen for
+        window.parent.postMessage(
+          { type: 'farcaster:resize', height, source: 'miniapp' },
+          '*'
+        );
+        window.parent.postMessage(
+          { type: 'base:resize', height, source: 'miniapp' },
+          '*'
+        );
+        window.parent.postMessage(
+          { type: 'miniapp:resize', height },
+          '*'
+        );
+        console.log('📐 Resize signal sent:', height);
+      }
+    };
+
+    // Send initial resize
+    sendResize();
+
+    // Observe DOM changes and send resize on content changes
+    const resizeObserver = new ResizeObserver(() => {
+      sendResize();
+    });
+
+    resizeObserver.observe(document.body);
+
+    // Also send on window resize
+    window.addEventListener('resize', sendResize);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', sendResize);
     };
   }, []);
 
