@@ -29,8 +29,6 @@ html {
 }
 
 body {
-  min-height: 100vh;
-  min-height: 100dvh;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -42,7 +40,6 @@ body {
 
 #root {
   background-color: var(--bg);
-  min-height: 100vh;
 }
 
 /* Remove list styles */
