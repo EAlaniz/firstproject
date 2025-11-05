@@ -93,7 +93,14 @@ function AppContent() {
           <DashboardHeader activeView={activeView} isInitialized={false} isInitializing={false} onMessagesClick={() => {}} onInitializeXMTP={() => {}} />
 
           {/* Main Content */}
-          <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
+          <main className="max-w-6xl mx-auto"
+            style={{
+              paddingLeft: isMiniApp ? 'var(--space-2)' : 'var(--space-4)',
+              paddingRight: isMiniApp ? 'var(--space-2)' : 'var(--space-4)',
+              paddingTop: isMiniApp ? 'var(--space-3)' : 'var(--space-8)',
+              paddingBottom: isMiniApp ? 'var(--space-10)' : 'var(--space-8)',
+            }}
+          >
             {/* Tab-based content */}
             {activeTab === 'today' && (
               <TodayTab

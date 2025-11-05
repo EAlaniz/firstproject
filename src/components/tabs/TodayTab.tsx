@@ -59,10 +59,16 @@ export const TodayTab: React.FC<TodayTabProps> = ({
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={springConfig}
-            className="card p-4 bg-brand-500/10 border border-brand-500/30 rounded-xl"
+            className="card p-4 rounded-xl"
+            style={{
+              backgroundColor: 'rgba(59, 130, 246, 0.1)',
+              borderWidth: '1px',
+              borderStyle: 'solid',
+              borderColor: 'rgba(59, 130, 246, 0.3)'
+            }}
           >
             <div className="flex items-start space-x-3">
-              <Activity className="w-5 h-5 text-brand-500 flex-shrink-0 mt-0.5" />
+              <Activity className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: 'rgb(59, 130, 246)' }} />
               <div className="flex-1">
                 <h4 className="font-medium text-white mb-1">Enable Step Tracking</h4>
                 <p className="text-sm text-neutral-300 mb-3">
@@ -71,7 +77,12 @@ export const TodayTab: React.FC<TodayTabProps> = ({
                 </p>
                 <button
                   onClick={requestPermissions}
-                  className="bg-brand-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-brand-600 transition-colors"
+                  className="text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                  style={{
+                    backgroundColor: 'rgb(59, 130, 246)'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(37, 99, 235)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(59, 130, 246)'}
                 >
                   Enable Tracking
                 </button>
@@ -139,7 +150,8 @@ export const TodayTab: React.FC<TodayTabProps> = ({
             <button
               onClick={refreshSteps}
               disabled={isLoadingSteps}
-              className="text-xs text-brand-500 hover:text-neutral-300 flex items-center space-x-1 disabled:opacity-50"
+              className="text-xs hover:text-neutral-300 flex items-center space-x-1 disabled:opacity-50"
+              style={{ color: 'rgb(59, 130, 246)' }}
             >
               <RefreshCw className={`w-3 h-3 ${isLoadingSteps ? 'animate-spin' : ''}`} />
               <span>Refresh</span>

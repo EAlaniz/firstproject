@@ -54,8 +54,11 @@ export const RewardsTab: React.FC<RewardsTabProps> = ({
               Total Tokens Earned
             </div>
             <div
-              className="text-5xl font-bold font-mono text-brand-500 leading-none mb-4"
-              style={{ textShadow: '0px 0px 30px rgb(59 130 246 / 0.5), 0px 0px 50px rgb(59 130 246 / 0.3)' }}
+              className="text-5xl font-bold font-mono leading-none mb-4"
+              style={{
+                color: 'rgb(59, 130, 246)',
+                textShadow: '0px 0px 30px rgb(59 130 246 / 0.5), 0px 0px 50px rgb(59 130 246 / 0.3)'
+              }}
             >
               {totalTokens.toLocaleString()}
             </div>
@@ -107,7 +110,7 @@ export const RewardsTab: React.FC<RewardsTabProps> = ({
               <span className="text-xs font-bold uppercase tracking-tight text-[var(--text-muted)]">
                 {balance.symbol} Balance:
               </span>
-              <span className="text-xl font-bold font-mono text-brand-500">
+              <span className="text-xl font-bold font-mono" style={{ color: 'rgb(59, 130, 246)' }}>
                 {parseFloat(balance.formatted).toFixed(4)}
               </span>
             </div>
