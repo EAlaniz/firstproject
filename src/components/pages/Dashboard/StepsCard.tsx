@@ -46,7 +46,7 @@ export const StepsCard: React.FC<StepsCardProps> = React.memo(({
 
   return (
     <motion.div
-      className={`relative rounded-xl overflow-visible border-2 border-black bg-[var(--surface-elevated)] max-w-2xl mx-auto ${isMiniApp ? 'flex-1 flex flex-col' : ''}`}
+      className={`relative rounded-xl overflow-visible border-2 border-black bg-[var(--surface-elevated)] ${isMiniApp ? 'flex-1 flex flex-col w-full' : 'max-w-2xl mx-auto'}`}
       style={{
         padding: isMiniApp ? 'var(--space-3)' : 'var(--space-4)',
         boxShadow: '4px 4px 0px rgba(0, 0, 0, 0.9)',
@@ -401,6 +401,9 @@ export const StepsCard: React.FC<StepsCardProps> = React.memo(({
           </div>
         </motion.div>
       )}
+
+      {/* Flex spacer to fill vertical space in mini apps */}
+      {isMiniApp && <div className="flex-1" />}
     </motion.div>
   );
 });
