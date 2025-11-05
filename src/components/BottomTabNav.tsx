@@ -92,8 +92,7 @@ export const BottomTabNav: React.FC<BottomTabNavProps> = ({ activeTab, onTabChan
         </div>
       </div>
 
-      {/* Safe area for iOS notch */}
-      <div className="pointer-events-none" style={{ height: 'env(safe-area-inset-bottom)' }} />
+      {/* Safe area for iOS notch - removed to reduce bottom padding in mini app */}
     </nav>
   );
 };
