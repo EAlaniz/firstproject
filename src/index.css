@@ -20,6 +20,14 @@ body {
   background-color: rgb(10, 11, 13);
 }
 
+/* Mini app specific: ensure content doesn't stretch to fill viewport */
+body.mini-app,
+body.mini-app html,
+body.mini-app #root {
+  height: auto !important;
+  min-height: 0 !important;
+}
+
 /* OnchainKit styles are managed by its own CSS - no overrides needed */
 /* Base-native toolkit handles everything */
 

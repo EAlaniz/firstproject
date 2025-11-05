@@ -23,6 +23,7 @@ export function useIsBaseMiniApp(): { isMiniApp: boolean; ready: boolean } {
           if (isEmbedded || isNarrowViewport) {
             if (!cancelled) {
               console.log('🔍 Mini App detected:', { isEmbedded, isNarrowViewport, width: window.innerWidth });
+              document.body.classList.add('mini-app');
               setIsMiniApp(true);
               setReady(true);
               return;
@@ -50,6 +51,7 @@ export function useIsBaseMiniApp(): { isMiniApp: boolean; ready: boolean } {
           if (isMiniKit || isFromBase) {
             if (!cancelled) {
               console.log('🔍 Mini App detected:', { isMiniKit, isFromBase });
+              document.body.classList.add('mini-app');
               setIsMiniApp(true);
               setReady(true);
               return;
@@ -68,6 +70,9 @@ export function useIsBaseMiniApp(): { isMiniApp: boolean; ready: boolean } {
             const baseHex = '0x2105';
             const hasAny = Boolean(caps?.[baseHex]);
             if (!cancelled) {
+              if (hasAny) {
+                document.body.classList.add('mini-app');
+              }
               setIsMiniApp(Boolean(hasAny));
               setReady(true);
               return;
@@ -81,10 +86,13 @@ export function useIsBaseMiniApp(): { isMiniApp: boolean; ready: boolean } {
         if (typeof window !== 'undefined') {
           const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
           const win = window as any;
-          const detected = /BaseApp/i.test(ua) || 
+          const detected = /BaseApp/i.test(ua) ||
                           /Farcaster/i.test(ua) ||
                           Boolean(win.farcaster || win.baseApp);
           if (!cancelled) {
+            if (detected) {
+              document.body.classList.add('mini-app');
+            }
             setIsMiniApp(detected);
             setReady(true);
             return;
