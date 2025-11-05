@@ -48,7 +48,7 @@ export const StepsCard: React.FC<StepsCardProps> = React.memo(({
     <motion.div
       className="relative rounded-xl overflow-visible border-2 border-black bg-[var(--surface-elevated)] max-w-2xl mx-auto"
       style={{
-        padding: isMiniApp ? 'var(--space-2)' : 'var(--space-3)',
+        padding: isMiniApp ? 'var(--space-3)' : 'var(--space-4)',
         boxShadow: '4px 4px 0px rgba(0, 0, 0, 0.9)',
       }}
       initial={{ opacity: 0, y: 8 }}
@@ -61,10 +61,10 @@ export const StepsCard: React.FC<StepsCardProps> = React.memo(({
       {/* Header with retro computer aesthetic */}
       <div className="flex items-center justify-between pb-2 border-b-2 border-black/20"
         style={{
-          marginBottom: isMiniApp ? 'var(--space-1)' : 'var(--space-2)',
+          marginBottom: isMiniApp ? 'var(--space-2)' : 'var(--space-3)',
         }}
       >
-        <div className="flex items-center" style={{ gap: isMiniApp ? 'var(--space-1)' : 'var(--space-2)' }}>
+        <div className="flex items-center" style={{ gap: isMiniApp ? 'var(--space-1-5)' : 'var(--space-2)' }}>
           <div className="rounded border-2 border-black flex items-center justify-center"
             style={{
               width: isMiniApp ? 'var(--avatar-l)' : 'var(--avatar-xl)',
@@ -94,10 +94,10 @@ export const StepsCard: React.FC<StepsCardProps> = React.memo(({
       </div>
 
       {/* Big Step Counter Display - Retro LCD style */}
-      <div style={{ marginBottom: isMiniApp ? 'var(--space-1)' : 'var(--space-1-5)' }}>
+      <div style={{ marginBottom: isMiniApp ? 'var(--space-2)' : 'var(--space-2)' }}>
         <div className="border-2 border-black rounded-lg bg-gradient-to-br from-[var(--surface-elevated-2)] to-[var(--bg-secondary)] relative overflow-hidden"
           style={{
-            padding: isMiniApp ? 'var(--space-1-5)' : 'var(--space-2)',
+            padding: isMiniApp ? 'var(--space-2)' : 'var(--space-3)',
             boxShadow: 'inset 2px 2px 4px rgba(0, 0, 0, 0.3), 2px 2px 0px rgba(0, 0, 0, 0.5)'
           }}
         >
@@ -115,7 +115,7 @@ export const StepsCard: React.FC<StepsCardProps> = React.memo(({
               animate={{ scale: 1, opacity: 1 }}
               transition={{ duration: 0.5, delay: 0.1 }}
               className="text-center"
-              style={{ marginBottom: isMiniApp ? 'var(--space-0-5)' : 'var(--space-1)' }}
+              style={{ marginBottom: isMiniApp ? 'var(--space-1)' : 'var(--space-1-5)' }}
             >
               <div className="font-bold leading-none tracking-tighter font-mono"
                 style={{
@@ -207,8 +207,8 @@ export const StepsCard: React.FC<StepsCardProps> = React.memo(({
           }}
           className="border-2 border-black bg-gradient-to-r from-success/20 to-warning/20 rounded-lg text-center relative overflow-hidden"
           style={{
-            padding: isMiniApp ? 'var(--space-0-5)' : 'var(--space-1)',
-            marginBottom: isMiniApp ? 'var(--space-1)' : 'var(--space-1-5)',
+            padding: isMiniApp ? 'var(--space-1)' : 'var(--space-1-5)',
+            marginBottom: isMiniApp ? 'var(--space-2)' : 'var(--space-2)',
             boxShadow: '3px 3px 0px rgba(127, 208, 87, 0.3)',
           }}
         >
@@ -235,16 +235,16 @@ export const StepsCard: React.FC<StepsCardProps> = React.memo(({
       {/* Stats Pills - Poolsuite inspired with press effect */}
       <div className="grid grid-cols-2"
         style={{
-          gap: isMiniApp ? 'var(--space-1)' : 'var(--space-1-5)',
-          marginBottom: isMiniApp ? 'var(--space-1)' : 'var(--space-1-5)',
+          gap: isMiniApp ? 'var(--space-1-5)' : 'var(--space-2)',
+          marginBottom: isMiniApp ? 'var(--space-2)' : 'var(--space-2)',
         }}
       >
         {/* Streak Pill */}
         <motion.button
           className="relative border-2 border-black rounded-lg flex items-center transition-all duration-150 bg-[var(--surface-elevated-2)] hover:translate-y-[-1px] active:translate-y-[1px] active:shadow-none cursor-pointer"
           style={{
-            padding: isMiniApp ? 'var(--space-1)' : 'var(--space-2)',
-            gap: isMiniApp ? 'var(--space-1)' : 'var(--space-2)',
+            padding: isMiniApp ? 'var(--space-1-5)' : 'var(--space-2)',
+            gap: isMiniApp ? 'var(--space-1-5)' : 'var(--space-2)',
             boxShadow: '0px 3px 0px rgba(0, 0, 0, 0.8)',
           }}
           initial={{ opacity: 0, x: -20 }}
@@ -295,8 +295,8 @@ export const StepsCard: React.FC<StepsCardProps> = React.memo(({
         <motion.button
           className="relative border-2 border-black rounded-lg flex items-center transition-all duration-150 bg-[var(--surface-elevated-2)] hover:translate-y-[-1px] active:translate-y-[1px] active:shadow-none cursor-pointer"
           style={{
-            padding: isMiniApp ? 'var(--space-1)' : 'var(--space-2)',
-            gap: isMiniApp ? 'var(--space-1)' : 'var(--space-2)',
+            padding: isMiniApp ? 'var(--space-1-5)' : 'var(--space-2)',
+            gap: isMiniApp ? 'var(--space-1-5)' : 'var(--space-2)',
             boxShadow: '0px 3px 0px rgba(0, 0, 0, 0.8)',
           }}
           initial={{ opacity: 0, x: 20 }}
@@ -355,7 +355,7 @@ export const StepsCard: React.FC<StepsCardProps> = React.memo(({
         >
           <div className="flex items-center"
             style={{
-              padding: isMiniApp ? 'var(--space-1)' : 'var(--space-2)',
+              padding: isMiniApp ? 'var(--space-1-5)' : 'var(--space-2)',
             }}
           >
             <div className="rounded border-2 border-black flex items-center justify-center"
