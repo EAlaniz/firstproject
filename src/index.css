@@ -18,7 +18,6 @@ body {
 
 #root {
   background-color: rgb(10, 11, 13);
-  min-height: 100vh;
 }
 
 /* OnchainKit styles are managed by its own CSS - no overrides needed */
