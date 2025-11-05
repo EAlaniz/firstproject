@@ -49,7 +49,7 @@ export const TodayTab: React.FC<TodayTabProps> = ({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
       transition={springConfig}
-      className="flex flex-col"
+      className="flex flex-col h-full"
     >
       {/* Permission Banners */}
       <div className="space-y-4 mb-2">
@@ -131,7 +131,7 @@ export const TodayTab: React.FC<TodayTabProps> = ({
       </div>
 
       {/* Steps Card */}
-      <section className="flex flex-col">
+      <section className="flex flex-col flex-1">
         <StepsCard
           currentSteps={todaySteps}
           dailyGoal={dailyGoal}
