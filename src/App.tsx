@@ -97,8 +97,8 @@ function AppContent() {
             style={{
               paddingLeft: isMiniApp ? 'var(--space-2)' : 'var(--space-4)',
               paddingRight: isMiniApp ? 'var(--space-2)' : 'var(--space-4)',
-              paddingTop: isMiniApp ? 'var(--space-3)' : 'var(--space-8)',
-              paddingBottom: isMiniApp ? 'var(--space-10)' : 'var(--space-8)',
+              paddingTop: isMiniApp ? 'var(--space-1)' : 'var(--space-8)',
+              paddingBottom: isMiniApp ? 'var(--space-1)' : 'var(--space-8)',
             }}
           >
             {/* Tab-based content */}
