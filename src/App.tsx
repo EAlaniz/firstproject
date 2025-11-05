@@ -86,7 +86,7 @@ function AppContent() {
 
   // Main return with conditional rendering
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className={`${isMiniApp ? '' : 'min-h-screen'} bg-black text-white`}>
       {shouldShowDashboard ? (
         // Main dashboard for connected users
         <>
