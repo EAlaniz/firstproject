@@ -38,7 +38,6 @@ export const BottomTabNav: React.FC<BottomTabNavProps> = ({ activeTab, onTabChan
   return (
     <nav
       className={isMiniApp ? "w-full z-40 pointer-events-none" : "fixed bottom-0 left-0 right-0 z-40 pointer-events-none"}
-      style={isMiniApp ? { backgroundColor: 'rgb(10, 11, 13)' } : undefined}
     >
       <div className="flex justify-center"
         style={{
