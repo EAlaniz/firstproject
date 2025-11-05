@@ -52,7 +52,7 @@ export const TodayTab: React.FC<TodayTabProps> = ({
       className="h-full flex flex-col overflow-hidden"
     >
       {/* Permission Banners */}
-      <div className="space-y-4 mb-6">
+      <div className="space-y-4 mb-2">
         {/* Health Permission Banner */}
         {isNative && !hasPermission && (
           <motion.div
