@@ -98,8 +98,8 @@ function AppContent() {
               paddingLeft: isMiniApp ? 'var(--space-2)' : 'var(--space-4)',
               paddingRight: isMiniApp ? 'var(--space-2)' : 'var(--space-4)',
               paddingTop: isMiniApp ? 'var(--space-1)' : 'var(--space-8)',
-              paddingBottom: isMiniApp ? '0' : 'var(--space-8)',
-              marginBottom: isMiniApp ? '80px' : '0',
+              paddingBottom: '0',
+              marginBottom: isMiniApp ? '80px' : '80px',
             }}
           >
             {/* Tab-based content */}
