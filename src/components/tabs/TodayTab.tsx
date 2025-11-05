@@ -49,7 +49,7 @@ export const TodayTab: React.FC<TodayTabProps> = ({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
       transition={springConfig}
-      className="h-full flex flex-col overflow-hidden"
+      className="flex flex-col"
     >
       {/* Permission Banners */}
       <div className="space-y-4 mb-2">
