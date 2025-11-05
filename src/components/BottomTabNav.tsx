@@ -36,12 +36,13 @@ const tabs: TabConfig[] = [
 export const BottomTabNav: React.FC<BottomTabNavProps> = ({ activeTab, onTabChange }) => {
   const { isMiniApp } = useIsBaseMiniApp();
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 pointer-events-none">
+    <nav className={isMiniApp ? "w-full z-40 pointer-events-none" : "fixed bottom-0 left-0 right-0 z-40 pointer-events-none"}>
       <div className="flex justify-center"
         style={{
-          paddingBottom: isMiniApp ? 'var(--space-1)' : 'var(--space-4)',
+          paddingBottom: isMiniApp ? 'var(--space-2)' : 'var(--space-4)',
           paddingLeft: isMiniApp ? 'var(--space-2)' : 'var(--space-4)',
           paddingRight: isMiniApp ? 'var(--space-2)' : 'var(--space-4)',
+          paddingTop: isMiniApp ? 'var(--space-2)' : '0',
         }}
       >
         <div
