@@ -131,7 +131,7 @@ export const TodayTab: React.FC<TodayTabProps> = ({
       </div>
 
       {/* Steps Card */}
-      <section className="flex-1 flex flex-col justify-center">
+      <section className="flex-1 flex flex-col">
         <StepsCard
           currentSteps={todaySteps}
           dailyGoal={dailyGoal}
@@ -142,7 +142,7 @@ export const TodayTab: React.FC<TodayTabProps> = ({
 
         {/* Step Data Source Indicator & Refresh */}
         {isNative && hasPermission && (
-          <div className="flex justify-center items-center mt-4 space-x-3">
+          <div className="flex justify-center items-center mt-2 space-x-3">
             <span className="text-xs text-neutral-400">
               {stepDataSource === 'healthkit' && '📱 Apple Health'}
               {stepDataSource === 'health-connect' && '📱 Health Connect'}
