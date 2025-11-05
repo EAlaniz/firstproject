@@ -34,17 +34,17 @@
   --border-subtle: rgba(138, 145, 158, 0.1);
   --border-primary: rgb(87, 139, 250); /* base.dev --color-bgLinePrimary */
 
-  /* Brand - Base.dev Purple-Blue Primary */
-  --brand-50: rgba(117, 117, 255, 0.05);
-  --brand-100: rgba(117, 117, 255, 0.1);
-  --brand-200: rgba(117, 117, 255, 0.2);
-  --brand-300: rgba(117, 117, 255, 0.4);
-  --brand-400: rgba(117, 117, 255, 0.7);
-  --brand-500: #7575FF;               /* base.dev --color-fgPrimary */
-  --brand-600: rgb(87, 139, 250);     /* base.dev --color-bgPrimary */
-  --brand-700: #6060FF;
-  --brand-800: #4A4AFF;
-  --brand-900: #3535FF;
+  /* Brand - Blue Primary (rgb(59 130 246)) */
+  --brand-50: rgba(59, 130, 246, 0.05);
+  --brand-100: rgba(59, 130, 246, 0.1);
+  --brand-200: rgba(59, 130, 246, 0.2);
+  --brand-300: rgba(59, 130, 246, 0.4);
+  --brand-400: rgba(59, 130, 246, 0.7);
+  --brand-500: rgb(59, 130, 246);     /* Blue primary color */
+  --brand-600: rgb(37, 99, 235);      /* Darker blue */
+  --brand-700: rgb(29, 78, 216);
+  --brand-800: rgb(30, 64, 175);
+  --brand-900: rgb(30, 58, 138);
   --brand-contrast: #FFFFFF;
 
   /* Primary Dark - for button backgrounds */

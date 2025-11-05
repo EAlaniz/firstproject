@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { MessageCircle, Share2, Users, TrendingUp } from 'lucide-react';
+import { Share2, Users, TrendingUp } from 'lucide-react';
 
 interface ConnectTabProps {
   todaySteps: number;
@@ -17,75 +17,54 @@ const springConfig = {
 export const ConnectTab: React.FC<ConnectTabProps> = ({ todaySteps, dailyGoal, onShare }) => {
   const isGoalReached = todaySteps >= dailyGoal;
 
-  // Connect hub only (messaging deferred)
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
       transition={springConfig}
-      className="pb-24"
+      className="h-full flex flex-col overflow-hidden"
     >
-      {/* Page Header */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-semibold text-white mb-2">
-          Connect
-        </h1>
-        <p className="text-sm text-neutral-400">
-          Share your progress and chat with the community
-        </p>
-      </div>
-
-      {/* Messaging removed for lean foundation */}
-
-      {/* Share Progress Card */}
-      <section className="mb-6">
+      {/* Share Progress Card - Poolsuite Style */}
+      <section className="flex-1 flex flex-col justify-center space-y-4 max-w-2xl mx-auto w-full">
         <motion.div
-          whileHover={{ y: -2 }}
-          transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-          className={`card-dimensional p-6 ${!isGoalReached ? 'opacity-60' : ''}`}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ ...springConfig, delay: 0.1 }}
+          className={`border-2 border-black rounded-xl p-4 bg-[var(--surface-elevated)] ${
+            !isGoalReached ? 'opacity-60' : ''
+          }`}
+          style={{
+            boxShadow: isGoalReached
+              ? '4px 4px 0px rgba(127, 208, 87, 0.4)'
+              : '4px 4px 0px rgba(0, 0, 0, 0.8)',
+          }}
         >
-          <div className="flex items-start space-x-4">
+          <div className="flex items-start gap-3">
             <div
+              className="w-10 h-10 rounded-lg border-2 border-black flex items-center justify-center"
               style={{
-                width: '48px',
-                height: '48px',
-                borderRadius: 'var(--radius-md)',
                 background: isGoalReached
-                  ? 'linear-gradient(135deg, #10B981 0%, #34D399 100%)'
-                  : 'linear-gradient(135deg, #D1D5DB 0%, #9CA3AF 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: isGoalReached ? '0 4px 12px rgba(16, 185, 129, 0.3)' : 'none',
+                  ? 'linear-gradient(135deg, #7FD057 0%, #34D399 100%)'
+                  : 'linear-gradient(135deg, #4A4A4A 0%, #2A2A2A 100%)',
+                boxShadow: isGoalReached
+                  ? '2px 2px 0px rgba(0, 0, 0, 0.4)'
+                  : '2px 2px 0px rgba(0, 0, 0, 0.6)',
               }}
             >
-              <Share2 size={24} color="white" />
+              <Share2 size={20} color="white" />
             </div>
             <div className="flex-1">
-              <h3
-                style={{
-                  fontSize: 'var(--text-lg)',
-                  fontWeight: 600,
-                  color: 'var(--gray-900)',
-                  marginBottom: 'var(--space-1)',
-                }}
-              >
+              <h3 className="text-base font-bold uppercase tracking-tight text-[var(--text)] mb-1">
                 Share Your Achievement
               </h3>
-              <p
-                style={{
-                  fontSize: 'var(--text-sm)',
-                  color: 'var(--gray-600)',
-                  marginBottom: 'var(--space-4)',
-                }}
-              >
+              <p className="text-xs text-[var(--text-muted)] mb-3">
                 {isGoalReached
                   ? 'You crushed your goal today! Share your progress with the community.'
                   : `Complete your goal to unlock sharing (${(dailyGoal - todaySteps).toLocaleString()} steps left)`}
               </p>
               {isGoalReached && (
-                <div className="flex space-x-2">
+                <div className="flex gap-2">
                   <button
                     onClick={() =>
                       onShare(
@@ -95,7 +74,10 @@ export const ConnectTab: React.FC<ConnectTabProps> = ({ todaySteps, dailyGoal, o
                         )}K step goal on @Move10K! Moving more, earning more. 💪`
                       )
                     }
-                    className="flex-1 px-4 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors"
+                    className="flex-1 px-3 py-2 bg-black border-2 border-black rounded-lg text-xs font-bold uppercase tracking-tight text-white transition-all hover:translate-y-[-2px] active:translate-y-[1px] active:shadow-none"
+                    style={{
+                      boxShadow: '0px 3px 0px rgba(0, 0, 0, 0.9)',
+                    }}
                   >
                     Share on X
                   </button>
@@ -106,154 +88,101 @@ export const ConnectTab: React.FC<ConnectTabProps> = ({ todaySteps, dailyGoal, o
                         `Just hit my ${(dailyGoal / 1000).toFixed(1)}K step goal on Move10K! 💪`
                       )
                     }
-                    className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors"
+                    className="flex-1 px-3 py-2 border-2 border-black rounded-lg text-xs font-bold uppercase tracking-tight text-white transition-all hover:translate-y-[-2px] active:translate-y-[1px] active:shadow-none"
+                    style={{
+                      background: 'linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)',
+                      boxShadow: '0px 3px 0px rgba(0, 0, 0, 0.9)',
+                    }}
                   >
-                    Share on Warpcast
+                    Warpcast
                   </button>
                 </div>
               )}
             </div>
           </div>
         </motion.div>
-      </section>
 
-      {/* Community Stats Card */}
-      <section className="mb-6">
+
+      {/* Community Stats Card - Poolsuite Style */}
         <motion.div
-          whileHover={{ y: -2 }}
-          transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-          className="card-dimensional p-6"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ ...springConfig, delay: 0.2 }}
+          className="border-2 border-black rounded-xl p-4 bg-[var(--surface-elevated)]"
+          style={{
+            boxShadow: '4px 4px 0px rgba(0, 0, 0, 0.8)',
+          }}
         >
-          <div className="flex items-center space-x-3 mb-4">
-            <Users className="w-5 h-5" style={{ color: 'var(--color-base-blue)' }} />
-            <h3
+          <div className="flex items-center gap-2 mb-3 pb-2 border-b-2 border-black/20">
+            <div
+              className="w-8 h-8 rounded border-2 border-black flex items-center justify-center"
               style={{
-                fontSize: 'var(--text-lg)',
-                fontWeight: 600,
-                color: 'var(--gray-900)',
+                backgroundColor: 'rgb(59, 130, 246)',
+                boxShadow: '2px 2px 0px rgba(0, 0, 0, 0.5), 0 0 15px rgb(59 130 246 / 0.5)'
               }}
             >
+              <Users size={16} color="white" strokeWidth={2.5} />
+            </div>
+            <h3 className="text-xs font-bold uppercase tracking-tight text-[var(--text-secondary)]">
               Community Activity
             </h3>
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-3 gap-3">
             <div className="text-center">
-              <div
-                style={{
-                  fontSize: 'var(--text-2xl)',
-                  fontWeight: 700,
-                  color: 'var(--color-base-blue)',
-                  marginBottom: 'var(--space-1)',
-                }}
-              >
-                1.2K
-              </div>
-              <div
-                style={{
-                  fontSize: 'var(--text-xs)',
-                  color: 'var(--gray-600)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                }}
-              >
+              <div className="text-2xl font-bold font-mono text-brand-500 mb-0.5">1.2K</div>
+              <div className="text-xs uppercase font-bold tracking-tight text-[var(--text-muted)]">
                 Active Users
               </div>
             </div>
             <div className="text-center">
-              <div
-                style={{
-                  fontSize: 'var(--text-2xl)',
-                  fontWeight: 700,
-                  color: 'var(--success-600)',
-                  marginBottom: 'var(--space-1)',
-                }}
-              >
-                15M
-              </div>
-              <div
-                style={{
-                  fontSize: 'var(--text-xs)',
-                  color: 'var(--gray-600)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                }}
-              >
+              <div className="text-2xl font-bold font-mono text-success mb-0.5">15M</div>
+              <div className="text-xs uppercase font-bold tracking-tight text-[var(--text-muted)]">
                 Steps Today
               </div>
             </div>
             <div className="text-center">
-              <div
-                style={{
-                  fontSize: 'var(--text-2xl)',
-                  fontWeight: 700,
-                  color: 'var(--warning-600)',
-                  marginBottom: 'var(--space-1)',
-                }}
-              >
-                892
-              </div>
-              <div
-                style={{
-                  fontSize: 'var(--text-xs)',
-                  color: 'var(--gray-600)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                }}
-              >
+              <div className="text-2xl font-bold font-mono text-warning mb-0.5">892</div>
+              <div className="text-xs uppercase font-bold tracking-tight text-[var(--text-muted)]">
                 Goals Hit
               </div>
             </div>
           </div>
         </motion.div>
-      </section>
 
-      {/* Recent Activity Feed (Coming Soon) */}
-      <section className="mb-6">
-        <h2
+
+      {/* Activity Feed - Coming Soon - Poolsuite Style */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ ...springConfig, delay: 0.3 }}
+          className="border-2 border-black rounded-xl p-6 bg-[var(--bg-secondary)] text-center relative overflow-hidden"
           style={{
-            fontSize: 'var(--text-xl)',
-            fontWeight: 600,
-            color: 'var(--gray-900)',
-            marginBottom: 'var(--space-4)',
+            boxShadow: 'inset 1px 1px 3px rgba(0, 0, 0, 0.3), 3px 3px 0px rgba(0, 0, 0, 0.7)',
           }}
         >
-          Activity Feed
-        </h2>
-
-        <div className="text-center py-12">
+          {/* Retro scanline effect */}
           <div
+            className="absolute inset-0 opacity-5 pointer-events-none"
             style={{
-              width: '64px',
-              height: '64px',
-              borderRadius: '50%',
-              background: 'var(--gray-100)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto var(--space-3)',
+              background:
+                'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.1) 2px, rgba(255,255,255,0.1) 4px)',
             }}
-          >
-            <TrendingUp size={32} style={{ color: 'var(--gray-400)' }} />
+          />
+
+          <div className="relative z-10">
+            <div
+              className="w-12 h-12 rounded-full border-2 border-black bg-[var(--surface-elevated)] flex items-center justify-center mx-auto mb-3"
+              style={{ boxShadow: '2px 2px 0px rgba(0, 0, 0, 0.5)' }}
+            >
+              <TrendingUp size={24} className="text-[var(--text-muted)]" />
+            </div>
+            <p className="text-sm font-bold uppercase tracking-tight text-[var(--text-secondary)] mb-1">
+              Activity Feed Coming Soon
+            </p>
+            <p className="text-xs text-[var(--text-muted)]">See what your friends are achieving</p>
           </div>
-          <p
-            style={{
-              fontSize: 'var(--text-base)',
-              color: 'var(--gray-500)',
-              marginBottom: 'var(--space-1)',
-            }}
-          >
-            Activity feed coming soon
-          </p>
-          <p
-            style={{
-              fontSize: 'var(--text-sm)',
-              color: 'var(--gray-400)',
-            }}
-          >
-            See what your friends are achieving
-          </p>
-        </div>
+        </motion.div>
       </section>
     </motion.div>
   );

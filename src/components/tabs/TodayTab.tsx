@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Activity, RefreshCw, Zap } from 'lucide-react';
+import { Activity, RefreshCw } from 'lucide-react';
 import { StepsCard } from '../pages/Dashboard/StepsCard';
 
 interface TodayTabProps {
@@ -49,18 +49,8 @@ export const TodayTab: React.FC<TodayTabProps> = ({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
       transition={springConfig}
-      className="pb-24"
+      className="h-full flex flex-col overflow-hidden"
     >
-      {/* Page Header */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-semibold text-white mb-2">
-          Today's Activity
-        </h1>
-        <p className="text-sm text-neutral-400">
-          Track your progress and stay motivated
-        </p>
-      </div>
-
       {/* Permission Banners */}
       <div className="space-y-4 mb-6">
         {/* Health Permission Banner */}
@@ -130,23 +120,22 @@ export const TodayTab: React.FC<TodayTabProps> = ({
       </div>
 
       {/* Steps Card */}
-      <section className="mb-8">
+      <section className="flex-1 flex flex-col justify-center">
         <StepsCard
           currentSteps={todaySteps}
           dailyGoal={dailyGoal}
           currentStreak={currentStreak}
           totalTokens={totalTokens}
+          onGoalChange={onGoalChange}
         />
 
         {/* Step Data Source Indicator & Refresh */}
-        <div className="flex justify-center items-center mt-4 space-x-3">
-          <span className="text-xs text-neutral-400">
-            {stepDataSource === 'healthkit' && '📱 Apple Health'}
-            {stepDataSource === 'health-connect' && '📱 Health Connect'}
-            {stepDataSource === 'mock' && '🌐 Demo Mode'}
-            {stepDataSource === 'manual' && '✍️ Manual Entry'}
-          </span>
-          {isNative && hasPermission && (
+        {isNative && hasPermission && (
+          <div className="flex justify-center items-center mt-4 space-x-3">
+            <span className="text-xs text-neutral-400">
+              {stepDataSource === 'healthkit' && '📱 Apple Health'}
+              {stepDataSource === 'health-connect' && '📱 Health Connect'}
+            </span>
             <button
               onClick={refreshSteps}
               disabled={isLoadingSteps}
@@ -155,23 +144,8 @@ export const TodayTab: React.FC<TodayTabProps> = ({
               <RefreshCw className={`w-3 h-3 ${isLoadingSteps ? 'animate-spin' : ''}`} />
               <span>Refresh</span>
             </button>
-          )}
-        </div>
-
-        {/* Goal Selector */}
-        <div className="flex justify-center mt-6">
-          <select
-            value={dailyGoal}
-            onChange={(e) => onGoalChange(Number(e.target.value))}
-            className="bg-neutral-800 border-0 rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
-          >
-            <option value={5000}>5K Steps</option>
-            <option value={7500}>7.5K Steps</option>
-            <option value={10000}>10K Steps</option>
-            <option value={12500}>12.5K Steps</option>
-            <option value={15000}>15K Steps</option>
-          </select>
-        </div>
+          </div>
+        )}
       </section>
 
       {/* Wearables removed for lean foundation */}

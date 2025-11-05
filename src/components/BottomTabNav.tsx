@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'framer-motion';
 import { Activity, MessageCircle, Trophy } from 'lucide-react';
 import { useIsBaseMiniApp } from '../hooks/useIsBaseMiniApp';
 
@@ -37,9 +36,15 @@ const tabs: TabConfig[] = [
 export const BottomTabNav: React.FC<BottomTabNavProps> = ({ activeTab, onTabChange }) => {
   const { isMiniApp } = useIsBaseMiniApp();
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-neutral-900 border-t border-neutral-800 z-40">
-      <div className="max-w-6xl mx-auto px-4">
-        <div className="grid grid-cols-3" style={{ minHeight: isMiniApp ? '48px' : '56px' }}>
+    <nav className="fixed bottom-0 left-0 right-0 z-40 pointer-events-none">
+      <div className="flex justify-center pb-4 px-4">
+        <div
+          className="inline-flex gap-2 p-2 bg-[var(--surface-elevated)] border-2 border-black rounded-xl pointer-events-auto"
+          style={{
+            boxShadow: '4px 4px 0px rgba(0, 0, 0, 0.9)',
+            minHeight: isMiniApp ? '48px' : '56px',
+          }}
+        >
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;
 
@@ -47,29 +52,21 @@ export const BottomTabNav: React.FC<BottomTabNavProps> = ({ activeTab, onTabChan
               <button
                 key={tab.id}
                 onClick={() => onTabChange(tab.id)}
-                className={`relative flex flex-col items-center justify-center transition-colors duration-fast py-2 ${
-                  isActive ? 'text-brand-500' : 'text-neutral-400 hover:text-neutral-200'
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-black transition-all duration-150 ${
+                  isActive
+                    ? 'text-white translate-y-[1px]'
+                    : 'bg-[var(--surface-elevated-2)] text-[var(--text-muted)] hover:translate-y-[-1px] active:translate-y-[1px] active:shadow-none'
                 }`}
+                style={{
+                  backgroundColor: isActive ? 'rgb(59, 130, 246)' : undefined,
+                  boxShadow: isActive ? '0 0 20px rgb(59 130 246 / 0.5), 0 0 40px rgb(59 130 246 / 0.3)' : '0px 2px 0px rgba(0, 0, 0, 0.8)',
+                }}
               >
-                {/* Active indicator */}
-                {isActive && (
-                  <motion.div
-                    layoutId="activeTab"
-                    className="absolute top-0 left-0 right-0 h-0.5 bg-brand-500"
-                    transition={{
-                      duration: 0.25,
-                      ease: [0.4, 0, 0.2, 1],
-                    }}
-                  />
-                )}
-
                 {/* Icon */}
-                <div className="mb-0.5">
-                  {tab.icon}
-                </div>
+                {tab.icon}
 
                 {/* Label */}
-                <span className={`text-[10px] ${isActive ? 'font-semibold' : 'font-normal'}`}>
+                <span className="text-xs uppercase tracking-tight font-bold">
                   {tab.label}
                 </span>
               </button>
@@ -79,7 +76,7 @@ export const BottomTabNav: React.FC<BottomTabNavProps> = ({ activeTab, onTabChan
       </div>
 
       {/* Safe area for iOS notch */}
-      <div style={{ height: 'env(safe-area-inset-bottom)' }} />
+      <div className="pointer-events-none" style={{ height: 'env(safe-area-inset-bottom)' }} />
     </nav>
   );
 };
