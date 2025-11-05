@@ -131,7 +131,7 @@ export const TodayTab: React.FC<TodayTabProps> = ({
       </div>
 
       {/* Steps Card */}
-      <section className="flex-1 flex flex-col">
+      <section className="flex flex-col">
         <StepsCard
           currentSteps={todaySteps}
           dailyGoal={dailyGoal}
