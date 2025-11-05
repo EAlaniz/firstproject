@@ -401,9 +401,6 @@ export const StepsCard: React.FC<StepsCardProps> = React.memo(({
           </div>
         </motion.div>
       )}
-
-      {/* Flex spacer to fill vertical space in mini apps */}
-      {isMiniApp && <div className="flex-1" />}
     </motion.div>
   );
 });

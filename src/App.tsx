@@ -97,11 +97,11 @@ function AppContent() {
 
           {/* Main Content */}
           <main
-            className={`max-w-6xl mx-auto ${isMiniApp ? 'flex-1' : ''}`}
+            className={`max-w-6xl mx-auto ${isMiniApp ? 'flex-1 flex items-center' : ''}`}
             style={{
               paddingLeft: isMiniApp ? 'var(--space-2)' : 'var(--space-4)',
               paddingRight: isMiniApp ? 'var(--space-2)' : 'var(--space-4)',
-              paddingTop: isMiniApp ? 'var(--space-1)' : 'var(--space-8)',
+              paddingTop: isMiniApp ? '0' : 'var(--space-8)',
               paddingBottom: isMiniApp ? '0' : 'var(--space-8)',
             }}
           >
