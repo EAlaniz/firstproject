@@ -33,7 +33,16 @@ body.mini-app #root {
   min-height: 100vh !important;
 }
 
-/* OnchainKit styles are managed by its own CSS - no overrides needed */
+/* OnchainKit wallet button color override */
+button[data-testid="ockConnectButton"] {
+  background-color: rgb(59 130 246 / 0.5) !important;
+}
+
+button[data-testid="ockConnectButton"]:hover {
+  background-color: rgb(59 130 246 / 0.7) !important;
+}
+
+/* OnchainKit styles are managed by its own CSS - minimal overrides */
 /* Base-native toolkit handles everything */
 
 /* Fix WalletDropdownLink icon alignment - use flex alignment like Disconnect */

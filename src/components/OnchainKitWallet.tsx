@@ -24,22 +24,20 @@ import {
  */
 export const OnchainKitWallet = () => {
   return (
-    <div className="onchainkit-connect-wallet">
-      <Wallet>
-        <ConnectWallet />
-        <WalletDropdown>
-          <Identity className="px-4 pt-3 pb-2" hasCopyAddressOnClick>
-            <Avatar />
-            <Name />
-            <Address className="text-gray-400" />
-            <EthBalance />
-          </Identity>
-          <WalletDropdownLink icon="wallet" href="https://keys.coinbase.com">
-            Wallet
-          </WalletDropdownLink>
-          <WalletDropdownDisconnect />
-        </WalletDropdown>
-      </Wallet>
-    </div>
+    <Wallet>
+      <ConnectWallet />
+      <WalletDropdown>
+        <Identity className="px-4 pt-3 pb-2" hasCopyAddressOnClick>
+          <Avatar />
+          <Name />
+          <Address className="text-gray-400" />
+          <EthBalance />
+        </Identity>
+        <WalletDropdownLink icon="wallet" href="https://keys.coinbase.com">
+          Wallet
+        </WalletDropdownLink>
+        <WalletDropdownDisconnect />
+      </WalletDropdown>
+    </Wallet>
   );
 };
