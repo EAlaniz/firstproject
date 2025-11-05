@@ -87,7 +87,7 @@ function AppContent() {
   // Main return with conditional rendering
   return (
     <div
-      className={`${isMiniApp ? 'flex flex-col' : 'min-h-screen'} bg-black text-white`}
+      className={`${isMiniApp ? 'flex flex-col' : activeTab === 'connect' ? 'h-screen flex flex-col' : 'min-h-screen'} bg-black text-white`}
       style={isMiniApp ? { minHeight: '100vh' } : undefined}
     >
       {shouldShowDashboard ? (
@@ -97,12 +97,12 @@ function AppContent() {
 
           {/* Main Content */}
           <main
-            className={`max-w-6xl mx-auto ${isMiniApp ? 'flex-1 flex' : ''} ${isMiniApp && activeTab === 'today' ? 'items-center' : ''}`}
+            className={`max-w-6xl mx-auto ${isMiniApp || activeTab === 'connect' ? 'flex-1 flex' : ''} ${isMiniApp && activeTab === 'today' ? 'items-center' : ''}`}
             style={{
-              paddingLeft: isMiniApp && activeTab !== 'connect' ? 'var(--space-2)' : activeTab === 'connect' ? '0' : 'var(--space-4)',
-              paddingRight: isMiniApp && activeTab !== 'connect' ? 'var(--space-2)' : activeTab === 'connect' ? '0' : 'var(--space-4)',
-              paddingTop: isMiniApp ? '0' : 'var(--space-8)',
-              paddingBottom: isMiniApp ? '0' : 'var(--space-8)',
+              paddingLeft: activeTab === 'connect' ? '0' : isMiniApp ? 'var(--space-2)' : 'var(--space-4)',
+              paddingRight: activeTab === 'connect' ? '0' : isMiniApp ? 'var(--space-2)' : 'var(--space-4)',
+              paddingTop: isMiniApp || activeTab === 'connect' ? '0' : 'var(--space-8)',
+              paddingBottom: isMiniApp || activeTab === 'connect' ? '0' : 'var(--space-8)',
             }}
           >
             {/* Tab-based content */}
@@ -138,8 +138,8 @@ function AppContent() {
             )}
           </main>
 
-          {/* Spacer for fixed bottom nav - only needed for desktop */}
-          {!isMiniApp && <div style={{ height: '90px' }} />}
+          {/* Spacer for fixed bottom nav - only needed for desktop non-connect tabs */}
+          {!isMiniApp && activeTab !== 'connect' && <div style={{ height: '90px' }} />}
 
           {/* Bottom Tab Navigation */}
           <BottomTabNav
