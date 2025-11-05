@@ -87,8 +87,8 @@ function AppContent() {
   // Main return with conditional rendering
   return (
     <div
-      className={`${isMiniApp ? '' : 'min-h-screen'} bg-black text-white`}
-      style={isMiniApp ? { height: 'auto', minHeight: 'auto' } : undefined}
+      className={`${isMiniApp ? 'flex flex-col' : 'min-h-screen'} bg-black text-white`}
+      style={isMiniApp ? { minHeight: '100vh' } : undefined}
     >
       {shouldShowDashboard ? (
         // Main dashboard for connected users
@@ -96,7 +96,8 @@ function AppContent() {
           <DashboardHeader activeView={activeView} isInitialized={false} isInitializing={false} onMessagesClick={() => {}} onInitializeXMTP={() => {}} />
 
           {/* Main Content */}
-          <main className="max-w-6xl mx-auto"
+          <main
+            className={`max-w-6xl mx-auto ${isMiniApp ? 'flex-1' : ''}`}
             style={{
               paddingLeft: isMiniApp ? 'var(--space-2)' : 'var(--space-4)',
               paddingRight: isMiniApp ? 'var(--space-2)' : 'var(--space-4)',
