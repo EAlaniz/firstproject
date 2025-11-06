@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { MessageCircle, Heart, Trophy, Flame } from 'lucide-react';
+import { MessageCircle, Trophy, Flame } from 'lucide-react';
 import { useIsBaseMiniApp } from '../hooks/useIsBaseMiniApp';
 
 interface WallPost {
@@ -67,11 +67,26 @@ const formatTimeAgo = (date: Date): string => {
 
 export const MovementWall: React.FC<MovementWallProps> = ({ onMessageUser }) => {
   const { isMiniApp } = useIsBaseMiniApp();
+  const [postInputHeight, setPostInputHeight] = React.useState(0);
+  const postInputRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (postInputRef.current) {
+      const height = postInputRef.current.offsetHeight;
+      setPostInputHeight(height);
+    }
+  }, [isMiniApp]);
 
   return (
-    <div className="flex flex-col" style={{ gap: isMiniApp ? 'var(--space-3)' : 'var(--space-4)' }}>
-      {/* Post Input */}
+    <div
+      style={{
+        height: '100%',
+        position: 'relative',
+      }}
+    >
+      {/* Post Input - Fixed at top */}
       <motion.div
+        ref={postInputRef}
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ type: 'spring', damping: 25, stiffness: 300, delay: 0.1 }}
@@ -115,26 +130,41 @@ export const MovementWall: React.FC<MovementWallProps> = ({ onMessageUser }) => 
         </button>
       </motion.div>
 
-      {/* Feed Header */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ type: 'spring', damping: 25, stiffness: 300, delay: 0.2 }}
+      {/* Scrollable Feed Section */}
+      <div
+        style={{
+          position: 'absolute',
+          top: postInputHeight ? `${postInputHeight + (isMiniApp ? 16 : 24)}px` : '250px',
+          left: 0,
+          right: 0,
+          bottom: 0,
+          overflowY: 'scroll',
+          overflowX: 'hidden',
+          paddingRight: 'var(--space-1)',
+          WebkitOverflowScrolling: 'touch',
+        }}
       >
-        <h3
-          className="font-bold uppercase tracking-tight text-[var(--text-secondary)]"
-          style={{
-            fontSize: 'var(--fs-caption)',
-            fontWeight: 'var(--fw-caption)',
-            marginBottom: isMiniApp ? 'var(--space-2)' : 'var(--space-3)',
-          }}
+        {/* Feed Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ type: 'spring', damping: 25, stiffness: 300, delay: 0.2 }}
         >
-          Recent Activity
-        </h3>
-      </motion.div>
+          <h3
+            className="font-bold uppercase tracking-tight text-[var(--text-secondary)]"
+            style={{
+              fontSize: 'var(--fs-caption)',
+              fontWeight: 'var(--fw-caption)',
+              marginBottom: isMiniApp ? 'var(--space-2)' : 'var(--space-3)',
+            }}
+          >
+            Recent Activity
+          </h3>
+        </motion.div>
 
-      {/* Posts Feed */}
-      {mockPosts.map((post, index) => (
+        {/* Posts Feed */}
+        <div className="flex flex-col" style={{ gap: isMiniApp ? 'var(--space-3)' : 'var(--space-4)' }}>
+          {mockPosts.map((post, index) => (
         <motion.div
           key={post.id}
           initial={{ opacity: 0, y: 10 }}
@@ -308,7 +338,9 @@ export const MovementWall: React.FC<MovementWallProps> = ({ onMessageUser }) => 
             </button>
           </div>
         </motion.div>
-      ))}
+          ))}
+        </div>
+      </div>
     </div>
   );
 };
