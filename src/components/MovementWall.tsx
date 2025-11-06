@@ -74,6 +74,7 @@ export const MovementWall: React.FC<MovementWallProps> = ({ onMessageUser }) => 
     const measureHeight = () => {
       if (postInputRef.current) {
         const height = postInputRef.current.offsetHeight;
+        console.log('📏 Post input height:', height, 'isMiniApp:', isMiniApp);
         setPostInputHeight(height);
       }
     };
@@ -95,6 +96,8 @@ export const MovementWall: React.FC<MovementWallProps> = ({ onMessageUser }) => 
       resizeObserver.disconnect();
     };
   }, [isMiniApp]);
+
+  console.log('🎨 Rendering MovementWall, postInputHeight:', postInputHeight, 'mockPosts:', mockPosts.length);
 
   return (
     <div
@@ -161,6 +164,7 @@ export const MovementWall: React.FC<MovementWallProps> = ({ onMessageUser }) => 
           overflowX: 'hidden',
           paddingRight: 'var(--space-1)',
           WebkitOverflowScrolling: 'touch',
+          backgroundColor: 'rgba(255, 0, 0, 0.1)', // DEBUG: Red tint to see if element is rendering
         }}
       >
         {/* Feed Header */}
