@@ -115,11 +115,12 @@ export const ConnectTab: React.FC<ConnectTabProps> = ({ todaySteps, dailyGoal })
               display: 'flex',
               flexDirection: 'column',
               overflow: 'hidden',
-              padding: isMiniApp ? 'var(--space-3)' : 'var(--space-4)',
               filter: !isGoalReached ? 'blur(4px)' : 'none',
             }}
           >
-            <MovementWall onMessageUser={handleMessageUser} />
+            <div style={{ padding: isMiniApp ? 'var(--space-3)' : 'var(--space-4)', height: '100%' }}>
+              <MovementWall onMessageUser={handleMessageUser} />
+            </div>
           </div>
         </div>
       </div>
