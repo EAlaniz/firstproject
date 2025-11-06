@@ -87,8 +87,7 @@ function AppContent() {
   // Main return with conditional rendering
   return (
     <div
-      className={`${isMiniApp ? 'flex flex-col' : activeTab === 'connect' ? 'h-screen flex flex-col overflow-hidden' : 'min-h-screen'} bg-black text-white`}
-      style={isMiniApp ? { minHeight: '100vh' } : undefined}
+      className={`${isMiniApp || activeTab === 'connect' ? 'h-screen flex flex-col overflow-hidden' : 'min-h-screen'} bg-black text-white`}
     >
       {shouldShowDashboard ? (
         // Main dashboard for connected users
