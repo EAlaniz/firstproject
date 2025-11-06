@@ -71,10 +71,29 @@ export const MovementWall: React.FC<MovementWallProps> = ({ onMessageUser }) => 
   const postInputRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
+    const measureHeight = () => {
+      if (postInputRef.current) {
+        const height = postInputRef.current.offsetHeight;
+        setPostInputHeight(height);
+      }
+    };
+
+    // Measure immediately
+    measureHeight();
+
+    // Also measure after a short delay to ensure everything is rendered
+    const timer = setTimeout(measureHeight, 100);
+
+    // Setup ResizeObserver for dynamic resizing
+    const resizeObserver = new ResizeObserver(measureHeight);
     if (postInputRef.current) {
-      const height = postInputRef.current.offsetHeight;
-      setPostInputHeight(height);
+      resizeObserver.observe(postInputRef.current);
     }
+
+    return () => {
+      clearTimeout(timer);
+      resizeObserver.disconnect();
+    };
   }, [isMiniApp]);
 
   return (
@@ -134,7 +153,7 @@ export const MovementWall: React.FC<MovementWallProps> = ({ onMessageUser }) => 
       <div
         style={{
           position: 'absolute',
-          top: postInputHeight ? `${postInputHeight + (isMiniApp ? 16 : 24)}px` : '250px',
+          top: postInputHeight > 0 ? `${postInputHeight + (isMiniApp ? 16 : 24)}px` : (isMiniApp ? '220px' : '260px'),
           left: 0,
           right: 0,
           bottom: 0,
